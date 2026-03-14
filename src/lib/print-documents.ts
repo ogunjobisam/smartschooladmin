@@ -19,9 +19,11 @@ interface InvoicePrintData {
   totalPaid: number;
   balance: number;
   payments: { date: string; amount: number; method: string; reference: string }[];
+  currency?: string;
 }
 
 export function printInvoice(data: InvoicePrintData) {
+  const fmt = (v: number) => formatCurrency(v, data.currency || "NGN");
   const win = window.open("", "_blank");
   if (!win) return;
 
