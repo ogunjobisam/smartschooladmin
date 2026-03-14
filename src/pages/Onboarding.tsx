@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ const countries = [
 
 export default function Onboarding() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [seedDemo, setSeedDemo] = useState(true);
@@ -51,86 +49,20 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      // 1. Create organisation group
-      const { data: org, error: orgErr } = await supabase
-        .from("organisation_groups")
-        .insert({ name: orgName, country, currency, created_by: user.id })
-        .select()
-        .single();
-      if (orgErr) throw orgErr;
+      // Call edge function to set up org, school, role (bypasses RLS)
+      const { data: setupData, error: setupErr } = await supabase.functions.invoke("setup-organisation", {
+        body: { orgName, country, currency, schoolName, campusName, academicYear, terms },
+      });
+      if (setupErr) throw setupErr;
+      if (setupData?.error) throw new Error(setupData.error);
 
-      // 2. Assign proprietor role
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .insert({ user_id: user.id, role: "proprietor" as any, org_id: org.id });
-      if (roleErr) throw roleErr;
+      const { org_id, school_id } = setupData;
 
-      // 3. Create school
-      const { data: school, error: schoolErr } = await supabase
-        .from("schools")
-        .insert({ org_id: org.id, name: schoolName })
-        .select()
-        .single();
-      if (schoolErr) throw schoolErr;
-
-      // 4. Create campus
-      await supabase
-        .from("campuses")
-        .insert({ school_id: school.id, name: campusName });
-
-      // 5. Create academic year
-      const { data: ay, error: ayErr } = await supabase
-        .from("academic_years")
-        .insert({
-          org_id: org.id,
-          name: academicYear,
-          start_date: "2025-09-01",
-          end_date: "2026-07-31",
-          is_current: true,
-        })
-        .select()
-        .single();
-      if (ayErr) throw ayErr;
-
-      // 6. Create terms/periods
-      const periodDates = [
-        { start: "2025-09-01", end: "2025-12-15" },
-        { start: "2026-01-10", end: "2026-04-10" },
-        { start: "2026-04-25", end: "2026-07-20" },
-      ];
-
-      for (let i = 0; i < terms.length; i++) {
-        await supabase.from("academic_periods").insert({
-          academic_year_id: ay.id,
-          name: terms[i],
-          start_date: periodDates[i]?.start || "2026-01-01",
-          end_date: periodDates[i]?.end || "2026-12-31",
-          is_current: i === 1,
-        });
-      }
-
-      // 7. Create default classes
-      const defaultClasses = ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"];
-      for (let i = 0; i < defaultClasses.length; i++) {
-        await supabase.from("classes").insert({
-          school_id: school.id,
-          name: defaultClasses[i],
-          level_order: i + 1,
-        });
-      }
-
-      // 8. Create default fee categories
-      const defaultFees = ["Tuition", "Books & Materials", "Transport", "Feeding", "Exam Fee", "Uniform", "Boarding"];
-      for (const name of defaultFees) {
-        await supabase.from("fee_categories").insert({ org_id: org.id, name });
-      }
-
-      // 9. Seed demo data if requested
+      // Seed demo data if requested
       if (seedDemo) {
         toast.info("Seeding demo data…");
-        const { data: { session } } = await supabase.auth.getSession();
         const resp = await supabase.functions.invoke("seed-demo-data", {
-          body: { org_id: org.id, school_id: school.id },
+          body: { org_id, school_id },
         });
         if (resp.error) {
           console.error("Seed error:", resp.error);
