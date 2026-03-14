@@ -96,7 +96,7 @@ export default function UserManagement() {
 
   // Only super_admin and proprietor can access this page
   if (userRole !== "super_admin" && userRole !== "proprietor") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleInvite = async () => {
