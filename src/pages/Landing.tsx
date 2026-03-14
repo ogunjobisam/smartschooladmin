@@ -116,8 +116,11 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-border/60 py-8">
-        <div className="mx-auto max-w-6xl px-6 flex items-center justify-between text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} SmartSchool. All rights reserved.</span>
+        <div className="mx-auto max-w-6xl px-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
+          <div>
+            <span>© {new Date().getFullYear()} SmartSchool. All rights reserved.</span>
+            <p className="mt-1 text-[11px] text-muted-foreground/70">SmartSchoolAdmin is a trading name of Smartever Ltd. Registered in England &amp; Wales. Company No: 15038603</p>
+          </div>
           <div className="flex gap-4">
             <Link to="/login" className="hover:text-foreground transition-colors">Log in</Link>
             <Link to="/signup" className="hover:text-foreground transition-colors">Sign up</Link>
