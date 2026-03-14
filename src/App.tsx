@@ -25,6 +25,7 @@ import Index from "./pages/Index";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
 import Guardians from "./pages/Guardians";
+import GuardianDetail from "./pages/GuardianDetail";
 import Staff from "./pages/Staff";
 import StaffDetail from "./pages/StaffDetail";
 import Fees from "./pages/Fees";
