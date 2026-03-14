@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 
 export default function Guardians() {
   const { orgId } = useAuth();
