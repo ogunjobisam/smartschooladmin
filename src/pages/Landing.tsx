@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { GraduationCap, CreditCard, Users, BarChart3, Shield, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import dashboardMockup from "@/assets/dashboard-mockup.png";
-import { Button } from "@/components/ui/button";
 
 const features = [
   { icon: GraduationCap, title: "Student Management", desc: "Enrol, track, and manage students with class assignments and guardian linking." },
