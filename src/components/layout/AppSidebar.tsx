@@ -68,7 +68,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     system: ["Settings"],
   },
   principal: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Invoices", "Arrears"],
     operations: ["Approvals", "Reports"],
     system: [],
