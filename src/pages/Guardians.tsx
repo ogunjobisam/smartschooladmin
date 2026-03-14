@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Plus, Search } from "lucide-react";
+import { Users, Plus, Search, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
+import { exportToCsv } from "@/lib/csv-export";
 
 export default function Guardians() {
   const navigate = useNavigate();
@@ -43,6 +44,11 @@ export default function Guardians() {
   return (
     <div className="space-y-6">
       <PageHeader title="Guardians" description="Manage parent and guardian records.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!guardians?.length) return;
+          exportToCsv("guardians", ["Name", "Phone", "Email", "Children"],
+            guardians.map((g: any) => [`${g.first_name} ${g.last_name}`, g.phone || "", g.email || "", (g.student_guardians?.length || 0).toString()]));
+        }}><Download className="h-4 w-4" /> Export</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Guardian</Button>
       </PageHeader>
       <AddGuardianDialog open={showAdd} onOpenChange={setShowAdd} />

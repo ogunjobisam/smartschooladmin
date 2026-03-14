@@ -1,7 +1,9 @@
-import { AlertTriangle, Users } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Users, Bell, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
@@ -19,8 +21,55 @@ function ageingBadge(days: number) {
 }
 
 export default function Arrears() {
-  const { schoolId } = useAuth();
+  const { schoolId, orgId, user } = useAuth();
   const { formatMoney } = useCurrency();
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+
+  const handleSendReminder = async (inv: any) => {
+    if (!orgId || !user) return;
+    setSendingReminder(inv.id);
+
+    // Find guardians linked to this student
+    const { data: guardianLinks } = await supabase
+      .from("student_guardians")
+      .select("guardian_id, guardians(id, first_name, last_name, user_id)")
+      .eq("student_id", inv.student_id);
+
+    const guardians = (guardianLinks || []).map((gl: any) => gl.guardians).filter(Boolean);
+
+    if (guardians.length === 0) {
+      toast.error("No guardians linked to this student");
+      setSendingReminder(null);
+      return;
+    }
+
+    // Create notifications for each guardian with a user_id
+    const notifications = guardians
+      .filter((g: any) => g.user_id)
+      .map((g: any) => ({
+        org_id: orgId,
+        school_id: schoolId,
+        user_id: g.user_id,
+        type: "overdue_reminder" as const,
+        title: "Overdue Payment Reminder",
+        message: `Invoice ${inv.invoice_number} for ${inv.studentName} has an outstanding balance of ${formatMoney(inv.balance)}. Please make payment at your earliest convenience.`,
+        entity_type: "invoice",
+        entity_id: inv.id,
+      }));
+
+    if (notifications.length > 0) {
+      const { error } = await supabase.from("notifications").insert(notifications);
+      if (error) {
+        toast.error("Failed to send reminder");
+      } else {
+        toast.success(`Reminder sent to ${notifications.length} guardian(s)`);
+      }
+    } else {
+      toast.info("No guardians with portal access to notify");
+    }
+
+    setSendingReminder(null);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["arrears", schoolId],
@@ -29,7 +78,7 @@ export default function Arrears() {
 
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("id, invoice_number, total_amount, amount_paid, due_date, status, students(first_name, last_name, enrolments(classes(name)))")
+        .select("id, invoice_number, total_amount, amount_paid, due_date, status, student_id, students(first_name, last_name, enrolments(classes(name)))")
         .eq("school_id", schoolId)
         .eq("status", "overdue")
         .order("due_date", { ascending: true });
@@ -70,6 +119,7 @@ export default function Arrears() {
               <TableHead className="text-xs">Invoice</TableHead>
               <TableHead className="text-xs text-right">Outstanding</TableHead>
               <TableHead className="text-xs">Ageing</TableHead>
+              <TableHead className="text-xs w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -82,9 +132,9 @@ export default function Arrears() {
                 </TableRow>
               ))
             ) : data?.overdueInvoices?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No overdue invoices.</TableCell>
-              </TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No overdue invoices.</TableCell>
+                </TableRow>
             ) : (
               data?.overdueInvoices?.map((s: any) => (
                 <TableRow key={s.id}>
@@ -93,6 +143,18 @@ export default function Arrears() {
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.invoice_number}</TableCell>
                   <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      disabled={sendingReminder === s.id}
+                      onClick={() => handleSendReminder(s)}
+                    >
+                      {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                      Remind
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}

@@ -111,6 +111,14 @@ export default function SettingsPage() {
   const [newYearEnd, setNewYearEnd] = useState("");
   const [addingYear, setAddingYear] = useState(false);
 
+  // ── Period state ──
+  const [newPeriodYearId, setNewPeriodYearId] = useState<string | null>(null);
+  const [newPeriodName, setNewPeriodName] = useState("");
+  const [newPeriodStart, setNewPeriodStart] = useState("");
+  const [newPeriodEnd, setNewPeriodEnd] = useState("");
+  const [addingPeriod, setAddingPeriod] = useState(false);
+  const [togglingCurrent, setTogglingCurrent] = useState<string | null>(null);
+
   // ── Handlers ──
 
   const handleSaveBranding = async () => {
@@ -194,6 +202,38 @@ export default function SettingsPage() {
     setAddingYear(false);
     if (error) toast.error("Failed to add academic year");
     else { toast.success("Academic year added"); setNewYearName(""); setNewYearStart(""); setNewYearEnd(""); queryClient.invalidateQueries({ queryKey: ["academic-years"] }); }
+  };
+
+  const handleAddPeriod = async (yearId: string) => {
+    if (!newPeriodName.trim() || !newPeriodStart || !newPeriodEnd) return;
+    setAddingPeriod(true);
+    const { error } = await supabase.from("academic_periods").insert({
+      academic_year_id: yearId, name: newPeriodName.trim(), start_date: newPeriodStart, end_date: newPeriodEnd,
+    });
+    setAddingPeriod(false);
+    if (error) toast.error("Failed to add period");
+    else {
+      toast.success("Period added");
+      setNewPeriodName(""); setNewPeriodStart(""); setNewPeriodEnd(""); setNewPeriodYearId(null);
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+    }
+  };
+
+  const handleToggleCurrentPeriod = async (periodId: string, yearId: string) => {
+    setTogglingCurrent(periodId);
+    // Clear all is_current for this year's periods first
+    const year = academicYears?.find((y: any) => y.id === yearId);
+    if (year?.academic_periods) {
+      for (const p of year.academic_periods) {
+        if (p.is_current) {
+          await supabase.from("academic_periods").update({ is_current: false }).eq("id", p.id);
+        }
+      }
+    }
+    await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+    setTogglingCurrent(null);
+    toast.success("Current period updated");
+    queryClient.invalidateQueries({ queryKey: ["academic-years"] });
   };
 
   return (
@@ -527,11 +567,49 @@ export default function SettingsPage() {
                             <div className="mt-2 space-y-1">
                               {year.academic_periods.map((p: any) => (
                                 <div key={p.id} className="flex items-center justify-between rounded bg-muted/50 px-3 py-1.5 text-xs">
-                                  <span className="font-medium">{p.name}</span>
-                                  <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{p.name}</span>
+                                    {p.is_current && <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">Current</span>}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
+                                    {canManage && !p.is_current && (
+                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id, year.id)}>
+                                        {togglingCurrent === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Current"}
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
+                          )}
+                          {canManage && (
+                            newPeriodYearId === year.id ? (
+                              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4 items-end rounded border bg-muted/30 p-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Period Name</Label>
+                                  <Input placeholder="e.g. Term 1" value={newPeriodName} onChange={(e) => setNewPeriodName(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Start</Label>
+                                  <Input type="date" value={newPeriodStart} onChange={(e) => setNewPeriodStart(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">End</Label>
+                                  <Input type="date" value={newPeriodEnd} onChange={(e) => setNewPeriodEnd(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => handleAddPeriod(year.id)} disabled={addingPeriod || !newPeriodName.trim() || !newPeriodStart || !newPeriodEnd}>
+                                    {addingPeriod ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Add
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setNewPeriodYearId(null)}>Cancel</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button variant="outline" size="sm" className="mt-2 h-7 gap-1 text-xs" onClick={() => setNewPeriodYearId(year.id)}>
+                                <Plus className="h-3 w-3" /> Add Period
+                              </Button>
+                            )
                           )}
                         </div>
                       ))}

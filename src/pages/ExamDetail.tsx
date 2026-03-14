@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Loader2, Printer, ArrowLeft, BookOpen } from "lucide-react";
+import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 function computeGrade(score: number, maxScore: number): string {
   const pct = (score / maxScore) * 100;
@@ -43,6 +44,83 @@ export default function ExamDetail() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [reportCardStudent, setReportCardStudent] = useState<string | null>(null);
+  const { branding } = useSchoolBranding();
+
+  const handlePrintAllReportCards = () => {
+    if (!exam || students.length === 0) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
+
+    const pages = students.map((student: any) => {
+      const studentScores = Array.from(scores.values())
+        .filter((s) => s.studentId === student.id && s.score !== "")
+        .map((s) => ({
+          subjectId: s.subjectId,
+          score: parseFloat(s.score),
+          grade: computeGrade(parseFloat(s.score), exam.max_score),
+        }));
+
+      const totalScore = studentScores.reduce((sum, s) => sum + s.score, 0);
+      const average = studentScores.length > 0 ? totalScore / studentScores.length : 0;
+      const pct = (average / exam.max_score) * 100;
+      const overallGrade = studentScores.length > 0 ? computeGrade(average, exam.max_score) : "N/A";
+
+      const rows = studentScores.map((s, idx) => {
+        const sub = subjectMap.get(s.subjectId);
+        const p = ((s.score / exam.max_score) * 100).toFixed(1);
+        return `<tr><td>${idx + 1}</td><td>${sub?.name || "Unknown"}</td><td class="text-center">${s.score}</td><td class="text-center">${exam.max_score}</td><td class="text-center">${p}%</td><td class="text-center">${s.grade}</td></tr>`;
+      }).join("");
+
+      return `
+        <div class="page">
+          <div class="header">
+            <h1>${branding.name}</h1>
+            ${branding.tagline ? `<p>${branding.tagline}</p>` : ""}
+            <p style="font-weight:600;margin-top:4px">STUDENT REPORT CARD</p>
+            <p>${exam.name} • ${exam.academic_periods?.name || ""}</p>
+          </div>
+          <div class="student-info">
+            <div><span class="label">Student Name: </span><strong>${student.first_name} ${student.last_name}</strong></div>
+            <div><span class="label">Student ID: </span><strong>${student.student_id_number || "N/A"}</strong></div>
+            <div><span class="label">Class: </span><strong>${exam.classes?.name || "—"}</strong></div>
+            <div><span class="label">Term/Period: </span><strong>${exam.academic_periods?.name || "—"}</strong></div>
+          </div>
+          <table><thead><tr><th>#</th><th>Subject</th><th class="text-center">Score</th><th class="text-center">Max</th><th class="text-center">%</th><th class="text-center">Grade</th></tr></thead><tbody>${rows}</tbody></table>
+          <div class="summary"><div class="summary-grid">
+            <div><div class="summary-value">${totalScore}</div><div class="summary-label">Total Score</div></div>
+            <div><div class="summary-value">${average.toFixed(1)}</div><div class="summary-label">Average</div></div>
+            <div><div class="summary-value">${overallGrade}</div><div class="summary-label">Overall Grade</div></div>
+          </div></div>
+          <div class="footer"><div><div class="sign-line">Class Teacher's Signature</div></div><div><div class="sign-line">Principal's Signature & Stamp</div></div></div>
+        </div>`;
+    }).join("");
+
+    win.document.write(`<html><head><title>Report Cards - ${exam.name}</title><style>
+      body { font-family: 'Inter', system-ui, sans-serif; color: #1e293b; margin: 0; }
+      .page { padding: 32px; max-width: 800px; margin: 0 auto; page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px double #1e293b; }
+      .header h1 { font-size: 22px; margin: 0 0 4px; }
+      .header p { font-size: 12px; color: #64748b; margin: 2px 0; }
+      .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: 13px; }
+      .label { color: #64748b; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+      th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; }
+      td { padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; }
+      .text-center { text-align: center; }
+      .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+      .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; text-align: center; }
+      .summary-value { font-size: 24px; font-weight: 700; }
+      .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+      .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 12px; }
+      .sign-line { border-top: 1px solid #1e293b; padding-top: 4px; margin-top: 40px; }
+      @media print { .page { padding: 16px; } }
+    </style></head><body>${pages}</body></html>`);
+    win.document.close();
+    win.print();
+  };
 
   // Fetch exam
   const { data: exam, isLoading: examLoading } = useQuery({
@@ -236,6 +314,11 @@ export default function ExamDetail() {
           <Button variant="outline" size="sm" onClick={() => navigate("/exams")}>
             <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back
           </Button>
+          {students.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handlePrintAllReportCards}>
+              <FileDown className="mr-2 h-3.5 w-3.5" /> Print All Reports
+            </Button>
+          )}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}

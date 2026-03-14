@@ -60,6 +60,26 @@ export default function InvoiceDetail() {
     enabled: !!id,
   });
 
+  const { data: receipts } = useQuery({
+    queryKey: ["invoice-receipts", id],
+    queryFn: async () => {
+      // Get payment ids from allocations, then find receipts
+      const { data: allocations } = await supabase
+        .from("payment_allocations")
+        .select("payment_id")
+        .eq("invoice_id", id!);
+      const paymentIds = (allocations || []).map((a) => a.payment_id);
+      if (paymentIds.length === 0) return [];
+      const { data } = await supabase
+        .from("receipts")
+        .select("id, receipt_number, amount, issued_at")
+        .in("payment_id", paymentIds)
+        .order("issued_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
   if (isLoading || !invoice) {
     return (
       <div className="space-y-6">
@@ -217,6 +237,32 @@ export default function InvoiceDetail() {
               </TableBody>
             </Table>
           </div>
+
+          {receipts && receipts.length > 0 && (
+            <div className="rounded-lg border bg-card">
+              <div className="border-b px-5 py-3">
+                <h3 className="text-sm font-semibold text-card-foreground">Receipts</h3>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Receipt #</TableHead>
+                    <TableHead className="text-xs text-right">Amount</TableHead>
+                    <TableHead className="text-xs">Issued</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receipts.map((r: any) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-mono text-xs">{r.receipt_number}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.amount)}</TableCell>
+                      <TableCell className="tabular-nums text-sm">{new Date(r.issued_at).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
