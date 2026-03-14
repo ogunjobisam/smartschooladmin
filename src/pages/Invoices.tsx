@@ -26,6 +26,7 @@ export default function Invoices() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoices", schoolId, search, statusFilter, page],
