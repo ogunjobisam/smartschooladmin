@@ -111,6 +111,14 @@ export default function SettingsPage() {
   const [newYearEnd, setNewYearEnd] = useState("");
   const [addingYear, setAddingYear] = useState(false);
 
+  // ── Period state ──
+  const [newPeriodYearId, setNewPeriodYearId] = useState<string | null>(null);
+  const [newPeriodName, setNewPeriodName] = useState("");
+  const [newPeriodStart, setNewPeriodStart] = useState("");
+  const [newPeriodEnd, setNewPeriodEnd] = useState("");
+  const [addingPeriod, setAddingPeriod] = useState(false);
+  const [togglingCurrent, setTogglingCurrent] = useState<string | null>(null);
+
   // ── Handlers ──
 
   const handleSaveBranding = async () => {
