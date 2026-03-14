@@ -11,6 +11,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
+import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
 
 export default function Guardians() {
   const { orgId } = useAuth();
@@ -23,7 +24,7 @@ export default function Guardians() {
       if (!orgId) return [];
       let query = supabase
         .from("guardians")
-        .select("id, first_name, last_name, phone, email, student_guardians(id)")
+        .select("id, first_name, last_name, phone, email, user_id, student_guardians(id)")
         .eq("org_id", orgId)
         .order("last_name");
 
@@ -57,20 +58,21 @@ export default function Guardians() {
               <TableHead className="text-xs">Phone</TableHead>
               <TableHead className="text-xs">Email</TableHead>
               <TableHead className="text-xs text-right">Children</TableHead>
+              <TableHead className="text-xs">Access</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 4 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : guardians?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No guardians found.</TableCell>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No guardians found.</TableCell>
               </TableRow>
             ) : (
               guardians?.map((g: any) => (
@@ -79,6 +81,14 @@ export default function Guardians() {
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{g.email || "—"}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums">{g.student_guardians?.length || 0}</TableCell>
+                  <TableCell>
+                    <InviteGuardianButton
+                      guardianId={g.id}
+                      guardianName={`${g.first_name} ${g.last_name}`}
+                      guardianEmail={g.email}
+                      hasUserId={!!g.user_id}
+                    />
+                  </TableCell>
                 </TableRow>
               ))
             )}

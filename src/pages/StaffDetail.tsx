@@ -14,6 +14,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
+import { InviteStaffButton } from "@/components/staff/InviteStaffButton";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -115,7 +116,10 @@ export default function StaffDetail() {
               <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
+          <div className="flex gap-2">
+            <InviteStaffButton staffId={staff.id} staffName={`${staff.first_name} ${staff.last_name}`} staffEmail={staff.email} hasUserId={!!staff.user_id} />
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
+          </div>
         </div>
         <Separator className="my-4" />
         <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
