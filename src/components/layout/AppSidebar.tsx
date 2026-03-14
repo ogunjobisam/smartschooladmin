@@ -62,7 +62,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     system: ["Settings", "Users"],
   },
   group_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings"],
