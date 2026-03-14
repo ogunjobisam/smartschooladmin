@@ -143,6 +143,18 @@ export default function Arrears() {
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.invoice_number}</TableCell>
                   <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      disabled={sendingReminder === s.id}
+                      onClick={() => handleSendReminder(s)}
+                    >
+                      {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                      Remind
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}

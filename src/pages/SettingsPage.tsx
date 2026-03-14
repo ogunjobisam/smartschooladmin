@@ -567,11 +567,49 @@ export default function SettingsPage() {
                             <div className="mt-2 space-y-1">
                               {year.academic_periods.map((p: any) => (
                                 <div key={p.id} className="flex items-center justify-between rounded bg-muted/50 px-3 py-1.5 text-xs">
-                                  <span className="font-medium">{p.name}</span>
-                                  <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{p.name}</span>
+                                    {p.is_current && <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">Current</span>}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
+                                    {canManage && !p.is_current && (
+                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id, year.id)}>
+                                        {togglingCurrent === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Current"}
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
+                          )}
+                          {canManage && (
+                            newPeriodYearId === year.id ? (
+                              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4 items-end rounded border bg-muted/30 p-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Period Name</Label>
+                                  <Input placeholder="e.g. Term 1" value={newPeriodName} onChange={(e) => setNewPeriodName(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Start</Label>
+                                  <Input type="date" value={newPeriodStart} onChange={(e) => setNewPeriodStart(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">End</Label>
+                                  <Input type="date" value={newPeriodEnd} onChange={(e) => setNewPeriodEnd(e.target.value)} className="h-8 text-xs" />
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => handleAddPeriod(year.id)} disabled={addingPeriod || !newPeriodName.trim() || !newPeriodStart || !newPeriodEnd}>
+                                    {addingPeriod ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Add
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setNewPeriodYearId(null)}>Cancel</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button variant="outline" size="sm" className="mt-2 h-7 gap-1 text-xs" onClick={() => setNewPeriodYearId(year.id)}>
+                                <Plus className="h-3 w-3" /> Add Period
+                              </Button>
+                            )
                           )}
                         </div>
                       ))}

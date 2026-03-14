@@ -44,6 +44,11 @@ export default function Guardians() {
   return (
     <div className="space-y-6">
       <PageHeader title="Guardians" description="Manage parent and guardian records.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!guardians?.length) return;
+          exportToCsv("guardians", ["Name", "Phone", "Email", "Children"],
+            guardians.map((g: any) => [`${g.first_name} ${g.last_name}`, g.phone || "", g.email || "", (g.student_guardians?.length || 0).toString()]));
+        }}><Download className="h-4 w-4" /> Export</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Guardian</Button>
       </PageHeader>
       <AddGuardianDialog open={showAdd} onOpenChange={setShowAdd} />

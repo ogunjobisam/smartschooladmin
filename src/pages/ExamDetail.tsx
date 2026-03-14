@@ -314,6 +314,11 @@ export default function ExamDetail() {
           <Button variant="outline" size="sm" onClick={() => navigate("/exams")}>
             <ArrowLeft className="mr-2 h-3.5 w-3.5" /> Back
           </Button>
+          {students.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handlePrintAllReportCards}>
+              <FileDown className="mr-2 h-3.5 w-3.5" /> Print All Reports
+            </Button>
+          )}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
