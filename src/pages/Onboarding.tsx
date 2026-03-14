@@ -107,7 +107,7 @@ export default function Onboarding() {
       }
 
       toast.success("Setup complete! Welcome to Smart School Admin.");
-      window.location.href = "/";
+      window.location.href = "/dashboard";
     } catch (err: any) {
       toast.error(err.message || "Setup failed. Please try again.");
     } finally {
