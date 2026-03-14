@@ -129,9 +129,9 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 xl:grid-cols-5">
         {/* Pending Approvals */}
-        <div className="rounded-lg border bg-card lg:col-span-3">
+        <div className="rounded-lg border bg-card xl:col-span-3 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b px-5 py-3">
             <h3 className="text-sm font-semibold text-card-foreground">Pending Approvals</h3>
             <Link to="/approvals">
