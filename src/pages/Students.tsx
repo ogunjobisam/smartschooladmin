@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
+import { exportToCsv } from "@/lib/csv-export";
 
 const PAGE_SIZE = 20;
 
