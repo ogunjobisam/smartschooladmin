@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
+import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -179,6 +180,7 @@ export default function StudentDetail() {
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="grades">Grades</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
@@ -327,6 +329,10 @@ export default function StudentDetail() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          {schoolId && <StudentHistoryTab studentId={id!} schoolId={schoolId} />}
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
