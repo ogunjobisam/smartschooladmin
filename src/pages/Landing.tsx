@@ -60,6 +60,18 @@ export default function Landing() {
             </Button>
           </Link>
         </div>
+
+        {/* Dashboard mockup */}
+        <div className="mx-auto mt-16 max-w-4xl">
+          <div className="rounded-xl border border-border bg-card shadow-2xl shadow-primary/10 overflow-hidden">
+            <img
+              src={dashboardMockup}
+              alt="SmartSchool dashboard showing student stats, revenue, and fee collection charts"
+              className="w-full h-auto"
+              loading="lazy"
+            />
+          </div>
+        </div>
       </section>
 
       {/* Features */}
