@@ -156,7 +156,7 @@ export function printReceipt(data: ReceiptPrintData) {
       <tbody>${data.invoiceAllocations.map(a => `
         <tr>
           <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-family:monospace">${a.invoiceNumber}</td>
-          <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(a.amount)}</td>
+          <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(a.amount)}</td>
         </tr>
       `).join("")}</tbody>
     </table>
