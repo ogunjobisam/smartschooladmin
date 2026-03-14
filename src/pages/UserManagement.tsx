@@ -232,7 +232,7 @@ export default function UserManagement() {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
+                    {availableRoles.map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
