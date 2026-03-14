@@ -1,81 +1,124 @@
-import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, FileText, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
-import { PageHeader } from "@/components/dashboard/PageHeader";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/mock-data";
 import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
-const staffMember = {
-  id: 'STF-003', name: 'Mr. Okafor Chidi', initials: 'OC',
-  position: 'Senior Teacher', department: 'Academics',
-  school: 'Bright Future Academy — Lekki Campus',
-  email: 'okafor.chidi@bfa.ng', phone: '08034567890',
-  employmentDate: '2020-01-15', status: 'active' as const,
-  gender: 'Male', dateOfBirth: '1985-08-22',
-  qualifications: 'B.Ed Mathematics, M.Ed Curriculum Studies',
-};
-
-const salaryInfo = {
-  basicSalary: 280_000_00, housing: 50_000_00, transport: 30_000_00,
-  pension: 25_200_00, tax: 18_500_00,
-  grossPay: 360_000_00, netPay: 316_300_00,
-};
-
-const bankDetails = {
-  bankName: 'First Bank of Nigeria', accountNumber: '301****8920', accountName: 'Okafor Chidi Emmanuel',
-};
-
-const payslips = [
-  { id: 'PS-2026-03-003', period: 'March 2026', gross: 360_000_00, net: 316_300_00, status: 'pending' as const },
-  { id: 'PS-2026-02-003', period: 'February 2026', gross: 360_000_00, net: 316_300_00, status: 'paid' as const },
-  { id: 'PS-2026-01-003', period: 'January 2026', gross: 360_000_00, net: 316_300_00, status: 'paid' as const },
-];
-
-const documents = [
-  { name: 'Employment Letter', uploaded: '2020-01-15', type: 'PDF' },
-  { name: 'ID Card Copy', uploaded: '2020-01-15', type: 'PDF' },
-  { name: 'Qualification Certificate', uploaded: '2020-01-18', type: 'PDF' },
-];
-
 export default function StaffDetail() {
+  const { id } = useParams<{ id: string }>();
+
+  const { data: staff, isLoading } = useQuery({
+    queryKey: ["staff-detail", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("staff")
+        .select("*, staff_positions(title, department, is_current), schools(name)")
+        .eq("id", id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: payrollProfile } = useQuery({
+    queryKey: ["payroll-profile", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payroll_profiles")
+        .select("*")
+        .eq("staff_id", id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: bankDetails } = useQuery({
+    queryKey: ["bank-details", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("staff_bank_details")
+        .select("*")
+        .eq("staff_id", id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: payslips } = useQuery({
+    queryKey: ["staff-payslips", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payroll_run_items")
+        .select("id, basic, allowances, deductions, net_pay, payroll_runs(period_label, status)")
+        .eq("staff_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  if (isLoading || !staff) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  const currentPos = staff.staff_positions?.find((p: any) => p.is_current);
+  const initials = `${staff.first_name[0]}${staff.last_name[0]}`.toUpperCase();
+
+  const pp = payrollProfile;
+  const grossPay = pp ? (pp.basic_salary || 0) + (pp.housing_allowance || 0) + (pp.transport_allowance || 0) + (pp.other_allowances || 0) : 0;
+  const pensionDeduction = pp ? Math.round(grossPay * ((pp.pension_rate || 0) / 100)) : 0;
+  const taxDeduction = pp ? Math.round(grossPay * ((pp.tax_rate || 0) / 100)) : 0;
+  const netPay = grossPay - pensionDeduction - taxDeduction;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Link to="/staff"><Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <span className="text-sm text-muted-foreground">Staff</span>
         <span className="text-sm text-muted-foreground">/</span>
-        <span className="text-sm font-medium">{staffMember.name}</span>
+        <span className="text-sm font-medium">{staff.first_name} {staff.last_name}</span>
       </div>
 
       <div className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">{staffMember.initials}</AvatarFallback>
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">{initials}</AvatarFallback>
             </Avatar>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-card-foreground">{staffMember.name}</h2>
-                <StatusBadge status={staffMember.status} />
+                <h2 className="text-xl font-bold text-card-foreground">{staff.first_name} {staff.last_name}</h2>
+                <StatusBadge status={staff.employment_status === "active" ? "active" : staff.employment_status === "on_leave" ? "pending" : "inactive"} />
               </div>
-              <p className="font-mono text-xs text-muted-foreground">{staffMember.id}</p>
-              <p className="text-sm text-muted-foreground">{staffMember.position} • {staffMember.department}</p>
+              <p className="font-mono text-xs text-muted-foreground">{staff.staff_id_number || "—"}</p>
+              <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5"><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
         </div>
         <Separator className="my-4" />
         <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" /> {staffMember.email}</div>
-          <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" /> {staffMember.phone}</div>
-          <div className="flex items-center gap-2 text-muted-foreground"><Building2 className="h-4 w-4" /> {staffMember.school}</div>
-          <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Joined: {staffMember.employmentDate}</div>
+          {staff.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" /> {staff.email}</div>}
+          {staff.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" /> {staff.phone}</div>}
+          <div className="flex items-center gap-2 text-muted-foreground"><Building2 className="h-4 w-4" /> {staff.schools?.name || "—"}</div>
+          {staff.employment_date && <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Joined: {staff.employment_date}</div>}
         </div>
       </div>
 
@@ -83,33 +126,41 @@ export default function StaffDetail() {
         <TabsList>
           <TabsTrigger value="salary">Salary & Payroll</TabsTrigger>
           <TabsTrigger value="payslips">Payslips</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="salary" className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border bg-card p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-accent" /> Salary Breakdown</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatNaira(salaryInfo.basicSalary)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatNaira(salaryInfo.housing)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatNaira(salaryInfo.transport)}</span></div>
-                <Separator />
-                <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatNaira(salaryInfo.grossPay)}</span></div>
-                <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension (7%)</span><span className="font-mono tabular-nums">-{formatNaira(salaryInfo.pension)}</span></div>
-                <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax (PAYE est.)</span><span className="font-mono tabular-nums">-{formatNaira(salaryInfo.tax)}</span></div>
-                <Separator />
-                <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatNaira(salaryInfo.netPay)}</span></div>
-              </div>
+              {pp ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatNaira(pp.basic_salary)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.housing_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.transport_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Other Allowances</span><span className="font-mono tabular-nums">{formatNaira(pp.other_allowances || 0)}</span></div>
+                  <Separator />
+                  <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatNaira(grossPay)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension ({pp.pension_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(pensionDeduction)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax ({pp.tax_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(taxDeduction)}</span></div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatNaira(netPay)}</span></div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">No payroll profile configured.</p>
+              )}
             </div>
 
             <div className="rounded-lg border bg-card p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Lock className="h-4 w-4 text-accent" /> Bank Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Bank</span><span>{bankDetails.bankName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Account Number</span><span className="font-mono tabular-nums">{bankDetails.accountNumber}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Account Name</span><span>{bankDetails.accountName}</span></div>
-              </div>
+              {bankDetails ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Bank</span><span>{bankDetails.bank_name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Account Number</span><span className="font-mono tabular-nums">{bankDetails.account_number}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Account Name</span><span>{bankDetails.account_name}</span></div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">No bank details on file.</p>
+              )}
               <p className="text-[11px] text-muted-foreground italic">Bank details are restricted to authorised finance roles.</p>
             </div>
           </div>
@@ -120,52 +171,29 @@ export default function StaffDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Payslip ID</TableHead>
                   <TableHead className="text-xs">Period</TableHead>
-                  <TableHead className="text-xs text-right">Gross</TableHead>
+                  <TableHead className="text-xs text-right">Basic</TableHead>
+                  <TableHead className="text-xs text-right">Allowances</TableHead>
+                  <TableHead className="text-xs text-right">Deductions</TableHead>
                   <TableHead className="text-xs text-right">Net</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payslips.map((ps) => (
-                  <TableRow key={ps.id}>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{ps.id}</TableCell>
-                    <TableCell>{ps.period}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.gross)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.net)}</TableCell>
-                    <TableCell><StatusBadge status={ps.status} /></TableCell>
-                    <TableCell className="text-right">
-                      {ps.status === 'paid' && <Button variant="ghost" size="sm" className="text-xs gap-1"><FileText className="h-3 w-3" /> Download</Button>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-4">
-          <div className="rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Document</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Uploaded</TableHead>
-                  <TableHead className="text-xs text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.map((d, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">{d.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{d.type}</TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">{d.uploaded}</TableCell>
-                    <TableCell className="text-right"><Button variant="ghost" size="sm" className="text-xs">View</Button></TableCell>
-                  </TableRow>
-                ))}
+                {payslips?.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No payslips found.</TableCell></TableRow>
+                ) : (
+                  payslips?.map((ps: any) => (
+                    <TableRow key={ps.id}>
+                      <TableCell className="font-medium">{ps.payroll_runs?.period_label || "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.basic)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.allowances)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(ps.deductions)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatNaira(ps.net_pay)}</TableCell>
+                      <TableCell><StatusBadge status={ps.payroll_runs?.status || "draft"} /></TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
