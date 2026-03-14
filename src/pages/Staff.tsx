@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserCog, Plus, Search, Download } from "lucide-react";
+import { UserCog, Plus, Search, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
