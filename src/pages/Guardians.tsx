@@ -58,6 +58,7 @@ export default function Guardians() {
               <TableHead className="text-xs">Phone</TableHead>
               <TableHead className="text-xs">Email</TableHead>
               <TableHead className="text-xs text-right">Children</TableHead>
+              <TableHead className="text-xs">Access</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
