@@ -185,7 +185,7 @@ export default function RecordPayment() {
                     {totalOutstanding > 0 && <StatusBadge status="overdue" />}
                   </div>
                   <p className="text-xs text-muted-foreground">{selectedStudent.student_id_number || "—"}</p>
-                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatNaira(totalOutstanding)}</span></p>
+                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatMoney(totalOutstanding)}</span></p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
