@@ -16,20 +16,29 @@ serve(async (req) => {
 
     let userId: string;
     const authHeader = req.headers.get("Authorization");
+    
+    // Clone request to read body for user_id fallback
+    const body = await req.json();
+    
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
       const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
       if (user) {
         userId = user.id;
+      } else if (body.user_id) {
+        // Allow service-role calls with explicit user_id
+        userId = body.user_id;
       } else {
         throw new Error("Unauthorized");
       }
+    } else if (body.user_id) {
+      userId = body.user_id;
     } else {
       throw new Error("Unauthorized");
     }
 
-    const { org_id, school_id } = await req.json();
+    const { org_id, school_id } = body;
     if (!org_id || !school_id) throw new Error("org_id and school_id required");
 
     // Get classes for this school
