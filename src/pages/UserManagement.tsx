@@ -103,17 +103,19 @@ export default function UserManagement() {
     enabled: !!orgId,
   });
 
-  // Only super_admin, proprietor, and school_admin can access this page
-  const isSchoolAdmin = userRole === "school_admin";
-  if (userRole !== "super_admin" && userRole !== "proprietor" && userRole !== "school_admin") {
+  // All admin roles can access this page (not teacher/parent)
+  const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
+  const ORG_LEVEL_ROLES = ["super_admin", "proprietor", "group_admin"];
+  const isOrgLevel = ORG_LEVEL_ROLES.includes(userRole || "");
+  if (!ADMIN_ROLES.includes(userRole || "")) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // School admins can only assign these roles
-  const SCHOOL_ADMIN_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
-  const availableRoles = isSchoolAdmin
-    ? ROLES.filter(r => SCHOOL_ADMIN_ROLES.includes(r.value))
-    : ROLES;
+  // School-level admins can only assign these roles
+  const SCHOOL_LEVEL_ASSIGNABLE = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+  const availableRoles = isOrgLevel
+    ? ROLES
+    : ROLES.filter(r => SCHOOL_LEVEL_ASSIGNABLE.includes(r.value));
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {
