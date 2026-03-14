@@ -1,4 +1,5 @@
 import { Calculator, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -17,6 +18,7 @@ const payrollRuns = [
 ];
 
 export default function Payroll() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Payroll" description="Manage payroll runs, approvals and payslips.">
@@ -44,7 +46,7 @@ export default function Payroll() {
           </TableHeader>
           <TableBody>
             {payrollRuns.map((r) => (
-              <TableRow key={r.id} className="cursor-pointer">
+              <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${r.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
                 <TableCell className="font-medium">{r.period}</TableCell>
                 <TableCell className="text-muted-foreground">{r.school}</TableCell>

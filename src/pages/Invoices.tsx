@@ -1,4 +1,5 @@
 import { FileText, Plus, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ const invoices = [
 ];
 
 export default function Invoices() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Invoices" description="View and manage student fee invoices.">
@@ -59,7 +61,7 @@ export default function Invoices() {
           </TableHeader>
           <TableBody>
             {invoices.map((inv) => (
-              <TableRow key={inv.id} className="cursor-pointer">
+              <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{inv.id}</TableCell>
                 <TableCell className="font-medium">{inv.student}</TableCell>
                 <TableCell>{inv.class}</TableCell>

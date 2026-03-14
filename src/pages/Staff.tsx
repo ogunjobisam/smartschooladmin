@@ -1,4 +1,5 @@
 import { UserCog, Plus, Search, Download } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ const staff = [
 ];
 
 export default function Staff() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Staff" description="Manage staff records and positions.">
@@ -44,7 +46,7 @@ export default function Staff() {
           </TableHeader>
           <TableBody>
             {staff.map((s) => (
-              <TableRow key={s.id} className="cursor-pointer">
+              <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/staff/${s.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>{s.position}</TableCell>
