@@ -85,6 +85,7 @@ const App = () => (
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />
+            <Route path="/guardians/:id" element={withLayout(<GuardianDetail />)} />
             <Route path="/staff" element={withLayout(<Staff />)} />
             <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
             <Route path="/fees" element={withLayout(<Fees />)} />

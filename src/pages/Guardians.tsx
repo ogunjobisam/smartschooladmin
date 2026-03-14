@@ -78,7 +78,7 @@ export default function Guardians() {
               </TableRow>
             ) : (
               guardians?.map((g: any) => (
-                <TableRow key={g.id} className="cursor-pointer">
+                <TableRow key={g.id} className="cursor-pointer" onClick={() => navigate(`/guardians/${g.id}`)}>
                   <TableCell className="font-medium">{g.first_name} {g.last_name}</TableCell>
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{g.email || "—"}</TableCell>
