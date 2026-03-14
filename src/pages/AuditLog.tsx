@@ -1,35 +1,64 @@
+import { useState } from "react";
 import { Shield, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
-const logs = [
-  { id: 'log-001', timestamp: '2026-03-12 14:32', user: 'Mrs. Adamu', action: 'Payment Recorded', entity: 'PAY-001', detail: '₦350,000 — Chukwuemeka Obi', type: 'finance' },
-  { id: 'log-002', timestamp: '2026-03-12 10:15', user: 'Mrs. Adamu', action: 'Bulk Invoice Generated', entity: 'INV-2026-*', detail: 'JSS2 Term 2 — 22 invoices', type: 'finance' },
-  { id: 'log-003', timestamp: '2026-03-11 16:45', user: 'Chief Okonkwo', action: 'Payroll Approved', entity: 'PR-2026-02B', detail: 'February 2026 — Ikeja', type: 'payroll' },
-  { id: 'log-004', timestamp: '2026-03-10 09:20', user: 'Mr. Bello', action: 'Fee Waiver Requested', entity: 'APR-001', detail: '₦150,000 waiver — Chioma Eze', type: 'approval' },
-  { id: 'log-005', timestamp: '2026-03-09 11:30', user: 'Mr. Bello', action: 'Staff Salary Updated', entity: 'STF-003', detail: 'Mr. Okafor — ₦280K → ₦320K', type: 'payroll' },
-  { id: 'log-006', timestamp: '2026-03-08 08:00', user: 'System', action: 'Student Enrolled', entity: 'STU-007', detail: 'Aisha Mohammed — JSS1 Lekki', type: 'academic' },
-];
+import { Button } from "@/components/ui/button";
 
 const typeColors: Record<string, string> = {
-  finance: 'bg-accent/10 text-accent border-accent/20',
+  student: 'bg-primary/10 text-primary border-primary/20',
+  staff: 'bg-accent/10 text-accent border-accent/20',
+  invoice: 'bg-warning/10 text-warning border-warning/20',
+  payment: 'bg-success/10 text-success border-success/20',
   payroll: 'bg-warning/10 text-warning border-warning/20',
   approval: 'bg-success/10 text-success border-success/20',
-  academic: 'bg-primary/10 text-primary border-primary/20',
+  fee: 'bg-accent/10 text-accent border-accent/20',
 };
 
+const PAGE_SIZE = 25;
+
 export default function AuditLog() {
+  const { orgId } = useAuth();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["audit-logs", orgId, search, page],
+    queryFn: async () => {
+      if (!orgId) return { logs: [], count: 0 };
+      let query = supabase
+        .from("audit_logs")
+        .select("id, action, entity_type, entity_id, detail, created_at, user_id", { count: "exact" })
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (search) {
+        query = query.or(`action.ilike.%${search}%,entity_type.ilike.%${search}%,detail.ilike.%${search}%`);
+      }
+
+      const { data: logs, count } = await query;
+      return { logs: logs || [], count: count || 0 };
+    },
+    enabled: !!orgId,
+  });
+
+  const totalPages = Math.ceil((data?.count || 0) / PAGE_SIZE);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Audit Log" description="Track all important actions across the platform." />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search audit log…" className="pl-9" />
+        <Input placeholder="Search audit log…" className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -37,7 +66,6 @@ export default function AuditLog() {
           <TableHeader>
             <TableRow>
               <TableHead className="text-xs">Timestamp</TableHead>
-              <TableHead className="text-xs">User</TableHead>
               <TableHead className="text-xs">Action</TableHead>
               <TableHead className="text-xs">Entity</TableHead>
               <TableHead className="text-xs">Details</TableHead>
@@ -45,20 +73,46 @@ export default function AuditLog() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((l) => (
-              <TableRow key={l.id}>
-                <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">{l.timestamp}</TableCell>
-                <TableCell className="text-sm">{l.user}</TableCell>
-                <TableCell className="font-medium text-sm">{l.action}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{l.entity}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{l.detail}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={`text-[11px] capitalize ${typeColors[l.type] || ''}`}>{l.type}</Badge>
-                </TableCell>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : data?.logs?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No audit logs found.</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              data?.logs?.map((l: any) => (
+                <TableRow key={l.id}>
+                  <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {new Date(l.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="font-medium text-sm capitalize">{l.action}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{l.entity_id || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{l.detail || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[11px] capitalize ${typeColors[l.entity_type] || ''}`}>
+                      {l.entity_type}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
+        <div className="flex items-center justify-between border-t px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Showing {Math.min((page * PAGE_SIZE) + 1, data?.count || 0)}–{Math.min((page + 1) * PAGE_SIZE, data?.count || 0)} of {data?.count || 0}
+          </p>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
+          </div>
+        </div>
       </div>
     </div>
   );
