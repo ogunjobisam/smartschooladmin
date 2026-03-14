@@ -15,6 +15,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 
 export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
@@ -108,6 +109,9 @@ export default function Dashboard() {
         title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${displayName.split(' ')[0]}`}
         description="Here's an overview of your schools today."
       />
+
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist />
 
       {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">

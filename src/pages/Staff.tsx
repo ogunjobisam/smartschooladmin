@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserCog, Plus, Search, Download } from "lucide-react";
+import { UserCog, Plus, Search, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +14,14 @@ import {
 } from "@/components/ui/table";
 import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
 import { exportToCsv } from "@/lib/csv-export";
+import { CsvImportDialog } from "@/components/import/CsvImportDialog";
 
 export default function Staff() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const { data: staffList, isLoading } = useQuery({
     queryKey: ["staff", schoolId, search],
@@ -53,10 +55,12 @@ export default function Staff() {
           if (!staffList?.length) return;
           exportToCsv("staff", ["Staff ID", "First Name", "Last Name", "Email", "Position", "Department", "Status"],
             staffList.map((s: any) => { const p = getPosition(s); return [s.staff_id_number || "", s.first_name, s.last_name, s.email || "", p.title, p.department, s.employment_status]; }));
-        }}><Download className="h-4 w-4" /> Export CSV</Button>
+        }}><Download className="h-4 w-4" /> Export</Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
       </PageHeader>
       <AddStaffDialog open={showAdd} onOpenChange={setShowAdd} />
+      <CsvImportDialog open={showImport} onOpenChange={setShowImport} mode="staff" />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
