@@ -8,11 +8,12 @@ interface AuthContextType {
   loading: boolean;
   userRole: string | null;
   orgId: string | null;
+  schoolId: string | null;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, orgId: null, signOut: async () => {},
+  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!session?.user) {
         setUserRole(null);
         setOrgId(null);
+        setSchoolId(null);
         setLoading(false);
       }
     });
@@ -42,20 +45,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch role & org when user changes
+  // Fetch role, org & school when user changes
   useEffect(() => {
     if (!user) return;
     
     const fetchRole = async () => {
       const { data } = await supabase
         .from('user_roles')
-        .select('role, org_id')
+        .select('role, org_id, school_id')
         .eq('user_id', user.id)
         .limit(1)
         .maybeSingle();
 
       setUserRole(data?.role ?? null);
       setOrgId(data?.org_id ?? null);
+
+      // If no school_id on role, fetch first school in org
+      if (data?.school_id) {
+        setSchoolId(data.school_id);
+      } else if (data?.org_id) {
+        const { data: school } = await supabase
+          .from('schools')
+          .select('id')
+          .eq('org_id', data.org_id)
+          .limit(1)
+          .maybeSingle();
+        setSchoolId(school?.id ?? null);
+      }
       setLoading(false);
     };
     fetchRole();
@@ -67,10 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUserRole(null);
     setOrgId(null);
+    setSchoolId(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, signOut }}>
       {children}
     </AuthContext.Provider>
   );
