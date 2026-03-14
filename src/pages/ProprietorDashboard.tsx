@@ -35,7 +35,7 @@ export default function ProprietorDashboard() {
       // Staff
       let staffQ = supabase.from("staff").select("id", { count: "exact", head: true });
       if (schoolFilter) staffQ = staffQ.eq("school_id", schoolFilter);
-      else staffQ = staffQ.in("school_id", schools.map(s => s.id));
+      else staffQ = staffQ.in("school_id", schoolIds);
       const { count: totalStaff } = await staffQ;
 
       // Invoices
