@@ -34,7 +34,9 @@ export default function Fees() {
   return (
     <div className="space-y-6">
       <PageHeader title="Fee Schedules" description="Configure fee structures by class and term.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New Schedule</Button>
+        <AddFeeScheduleDialog>
+          <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New Schedule</Button>
+        </AddFeeScheduleDialog>
       </PageHeader>
 
       <div className="rounded-lg border bg-card">
