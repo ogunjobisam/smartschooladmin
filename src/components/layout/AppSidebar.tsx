@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,6 +25,7 @@ const allNav = {
     { title: "Students", url: "/students", icon: GraduationCap },
     { title: "Guardians", url: "/guardians", icon: Users },
     { title: "Staff", url: "/staff", icon: UserCog },
+    { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   ] as NavItem[],
   finance: [
     { title: "Fee Schedules", url: "/fees", icon: Receipt },
@@ -48,25 +49,25 @@ const allNav = {
 // Role-based visibility rules
 const roleNavAccess: Record<string, { overview: string[]; finance: string[]; operations: string[]; system: string[] }> = {
   super_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   proprietor: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   group_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings"],
   },
   principal: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
     finance: ["Invoices", "Arrears"],
     operations: ["Approvals", "Reports"],
     system: [],
@@ -90,7 +91,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     system: [],
   },
   teacher: {
-    overview: ["Dashboard", "Students"],
+    overview: ["Dashboard", "Students", "Attendance"],
     finance: [],
     operations: [],
     system: [],

@@ -149,6 +149,67 @@ export type Database = {
           },
         ]
       }
+      attendance_records: {
+        Row: {
+          class_id: string
+          created_at: string
+          date: string
+          id: string
+          marked_by: string | null
+          notes: string | null
+          school_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          date: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          school_id: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          school_id?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1612,6 +1673,7 @@ export type Database = {
         | "payroll_run"
         | "arrears_exception"
         | "discount"
+      attendance_status: "present" | "absent" | "late" | "excused"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "void"
       notification_type:
         | "invoice_generated"
@@ -1778,6 +1840,7 @@ export const Constants = {
         "arrears_exception",
         "discount",
       ],
+      attendance_status: ["present", "absent", "late", "excused"],
       invoice_status: ["draft", "pending", "paid", "overdue", "void"],
       notification_type: [
         "invoice_generated",
