@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [currency, setCurrency] = useState("NGN");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
