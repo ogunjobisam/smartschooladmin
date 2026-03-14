@@ -138,16 +138,16 @@ export default function StaffDetail() {
               <h3 className="text-sm font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-accent" /> Salary Breakdown</h3>
               {pp ? (
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatNaira(pp.basic_salary)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.housing_allowance || 0)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.transport_allowance || 0)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Other Allowances</span><span className="font-mono tabular-nums">{formatNaira(pp.other_allowances || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatMoney(pp.basic_salary)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatMoney(pp.housing_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatMoney(pp.transport_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Other Allowances</span><span className="font-mono tabular-nums">{formatMoney(pp.other_allowances || 0)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatNaira(grossPay)}</span></div>
-                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension ({pp.pension_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(pensionDeduction)}</span></div>
-                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax ({pp.tax_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(taxDeduction)}</span></div>
+                  <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatMoney(grossPay)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension ({pp.pension_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatMoney(pensionDeduction)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax ({pp.tax_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatMoney(taxDeduction)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatNaira(netPay)}</span></div>
+                  <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatMoney(netPay)}</span></div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-4">No payroll profile configured.</p>
