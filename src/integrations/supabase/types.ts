@@ -1781,6 +1781,61 @@ export type Database = {
           },
         ]
       }
+      student_awards: {
+        Row: {
+          academic_period_id: string | null
+          award_date: string
+          created_at: string
+          description: string | null
+          id: string
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Insert: {
+          academic_period_id?: string | null
+          award_date?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Update: {
+          academic_period_id?: string | null
+          award_date?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          school_id?: string
+          student_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_awards_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_awards_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_awards_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_guardians: {
         Row: {
           guardian_id: string
