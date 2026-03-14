@@ -36,7 +36,7 @@ export default function StudentDetail() {
     enabled: !!id,
   });
 
-  const { data: guardians } = useQuery({
+  const { data: guardians, refetch: refetchGuardians } = useQuery({
     queryKey: ["student-guardians", id],
     queryFn: async () => {
       const { data } = await supabase
