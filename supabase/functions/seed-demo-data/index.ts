@@ -256,7 +256,7 @@ serve(async (req) => {
               weight: eName.includes("Mid") ? 30 : 70,
               status: period.is_current ? "published" : "published",
               exam_date: period.is_current ? "2026-03-01" : "2025-12-10",
-              created_by: user.id,
+              created_by: userId,
             });
           }
         }
