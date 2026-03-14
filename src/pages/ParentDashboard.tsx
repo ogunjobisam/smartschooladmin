@@ -291,6 +291,21 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {payInvoice && (
+        <PayInvoiceDialog
+          open={!!payInvoice}
+          onOpenChange={(open) => { if (!open) setPayInvoice(null); }}
+          invoice={{
+            id: payInvoice.id,
+            invoice_number: payInvoice.invoice_number,
+            total_amount: payInvoice.total_amount,
+            amount_paid: payInvoice.amount_paid,
+            student_id: payInvoice.students?.id || "",
+            school_id: payInvoice.schools?.id || "",
+          }}
+        />
+      )}
     </div>
   );
 }

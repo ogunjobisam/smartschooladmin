@@ -41,7 +41,7 @@ export default function ProprietorDashboard() {
       // Invoices
       let invQ = supabase.from("invoices").select("total_amount, amount_paid, status");
       if (schoolFilter) invQ = invQ.eq("school_id", schoolFilter);
-      else invQ = invQ.in("school_id", schools.map(s => s.id));
+      else invQ = invQ.in("school_id", schoolIds);
       const { data: invoices } = await invQ;
 
       const totalInvoiced = (invoices || []).reduce((s, i) => s + (i.total_amount || 0), 0);

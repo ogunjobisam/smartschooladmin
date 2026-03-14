@@ -230,6 +230,12 @@ export default function ExamDetail() {
             <EmptyState icon={BookOpen} title="No subjects configured" description="Add subjects in Settings before entering scores." />
           </CardContent>
         </Card>
+      ) : !exam.class_id ? (
+        <Card>
+          <CardContent className="py-10">
+            <EmptyState icon={BookOpen} title="No class assigned" description="This exam needs a class assigned before scores can be entered. Edit the exam to assign a class." />
+          </CardContent>
+        </Card>
       ) : students.length === 0 ? (
         <Card>
           <CardContent className="py-10">

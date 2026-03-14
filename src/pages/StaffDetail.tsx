@@ -220,9 +220,25 @@ export default function StaffDetail() {
             </Table>
           </div>
         </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {schoolId && orgId && (
+            <DocumentsTab entityType="staff" entityId={id!} schoolId={schoolId} orgId={orgId} />
+          )}
+        </TabsContent>
       </Tabs>
 
       {staff && <EditStaffDialog open={editOpen} onOpenChange={setEditOpen} staff={staff} />}
+      {staff && schoolId && (
+        <SalaryChangeDialog
+          open={salaryChangeOpen}
+          onOpenChange={setSalaryChangeOpen}
+          staffId={staff.id}
+          staffName={`${staff.first_name} ${staff.last_name}`}
+          schoolId={schoolId}
+          currentValues={pp || {}}
+        />
+      )}
     </div>
   );
 }
