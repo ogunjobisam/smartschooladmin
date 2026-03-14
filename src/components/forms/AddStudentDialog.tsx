@@ -52,7 +52,16 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
       if (!schoolId) throw new Error("No school selected");
       const { data, error } = await supabase
         .from("students")
-        .insert({ ...parsed, school_id: schoolId })
+        .insert({
+          first_name: parsed.first_name,
+          last_name: parsed.last_name,
+          student_id_number: parsed.student_id_number || null,
+          gender: parsed.gender || null,
+          date_of_birth: parsed.date_of_birth || null,
+          student_type: parsed.student_type || "day",
+          address: parsed.address || null,
+          school_id: schoolId,
+        })
         .select("id")
         .single();
       if (error) throw error;

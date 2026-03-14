@@ -50,11 +50,21 @@ export function AddStaffDialog({ open, onOpenChange }: AddStaffDialogProps) {
       const parsed = staffSchema.parse(form);
       if (!schoolId) throw new Error("No school selected");
       const { position_title, department, ...staffData } = parsed;
-      const emailVal = staffData.email === "" ? null : staffData.email;
+      const emailVal = staffData.email === "" ? null : (staffData.email || null);
 
       const { data, error } = await supabase
         .from("staff")
-        .insert({ ...staffData, email: emailVal, school_id: schoolId })
+        .insert({
+          first_name: staffData.first_name,
+          last_name: staffData.last_name,
+          email: emailVal,
+          phone: staffData.phone || null,
+          staff_id_number: staffData.staff_id_number || null,
+          gender: staffData.gender || null,
+          date_of_birth: staffData.date_of_birth || null,
+          employment_date: staffData.employment_date || null,
+          school_id: schoolId,
+        })
         .select("id")
         .single();
       if (error) throw error;

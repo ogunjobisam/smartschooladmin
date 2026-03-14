@@ -41,10 +41,17 @@ export function AddGuardianDialog({ open, onOpenChange }: AddGuardianDialogProps
     mutationFn: async () => {
       const parsed = guardianSchema.parse(form);
       if (!orgId) throw new Error("No organisation selected");
-      const emailVal = parsed.email === "" ? null : parsed.email;
+      const emailVal = parsed.email === "" ? null : (parsed.email || null);
       const { error } = await supabase
         .from("guardians")
-        .insert({ ...parsed, email: emailVal, org_id: orgId });
+        .insert({
+          first_name: parsed.first_name,
+          last_name: parsed.last_name,
+          email: emailVal,
+          phone: parsed.phone || null,
+          address: parsed.address || null,
+          org_id: orgId,
+        });
       if (error) throw error;
     },
     onSuccess: () => {
