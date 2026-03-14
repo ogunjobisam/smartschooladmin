@@ -78,8 +78,8 @@ export default function UserManagement() {
         .eq("org_id", orgId)
         .order("created_at", { ascending: true });
 
-      // School admins only see users in their school
-      if (userRole === "school_admin" && schoolId) {
+      // School-level admins only see users in their school
+      if (!["super_admin", "proprietor", "group_admin"].includes(userRole || "") && schoolId) {
         query = query.eq("school_id", schoolId);
       }
 
