@@ -79,9 +79,9 @@ export default function Payments() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Today's Collections" value={formatNaira(stats?.today || 0)} icon={CreditCard} mono />
-        <StatCard title="This Week" value={formatNaira(stats?.week || 0)} icon={CreditCard} mono />
-        <StatCard title="This Month" value={formatNaira(stats?.month || 0)} icon={CreditCard} mono />
+        <StatCard title="Today's Collections" value={formatMoney(stats?.today || 0)} icon={CreditCard} mono />
+        <StatCard title="This Week" value={formatMoney(stats?.week || 0)} icon={CreditCard} mono />
+        <StatCard title="This Month" value={formatMoney(stats?.month || 0)} icon={CreditCard} mono />
       </div>
 
       <div className="relative max-w-sm">
