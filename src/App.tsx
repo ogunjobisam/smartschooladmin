@@ -35,6 +35,7 @@ import Reports from "./pages/Reports";
 import AuditLog from "./pages/AuditLog";
 import SettingsPage from "./pages/SettingsPage";
 import ParentDashboard from "./pages/ParentDashboard";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
             <Route path="/reports" element={withLayout(<Reports />)} />
             <Route path="/audit-log" element={withLayout(<AuditLog />)} />
             <Route path="/settings" element={withLayout(<SettingsPage />)} />
+            <Route path="/users" element={withLayout(<UserManagement />)} />
             <Route path="/parent" element={withLayout(<ParentDashboard />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>

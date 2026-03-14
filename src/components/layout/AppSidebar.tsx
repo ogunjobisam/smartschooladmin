@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -40,6 +40,7 @@ const allNav = {
   ] as NavItem[],
   system: [
     { title: "Settings", url: "/settings", icon: Settings },
+    { title: "Users", url: "/users", icon: UserPlus },
   ] as NavItem[],
 };
 
@@ -49,13 +50,13 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Reports", "Audit Log"],
-    system: ["Settings"],
+    system: ["Settings", "Users"],
   },
   proprietor: {
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Reports", "Audit Log"],
-    system: ["Settings"],
+    system: ["Settings", "Users"],
   },
   group_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
