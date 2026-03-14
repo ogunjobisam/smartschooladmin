@@ -512,7 +512,7 @@ serve(async (req) => {
           org_id, school_id,
           title: "PTA Meeting Notice",
           body: "The Parent-Teacher Association meeting is scheduled for March 22nd at 10:00 AM in the school hall. All parents and guardians are encouraged to attend.",
-          audience: "parents", channels: ["in_app", "sms"], status: "sent", sent_by: user.id, sent_at: "2026-03-10T08:00:00Z",
+          audience: "parents", channels: ["in_app", "sms"], status: "sent", sent_by: userId, sent_at: "2026-03-10T08:00:00Z",
         },
         {
           org_id, school_id,
