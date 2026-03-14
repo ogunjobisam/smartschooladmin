@@ -251,6 +251,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* ── Add School ── */}
+          {(userRole === "super_admin" || userRole === "proprietor") && (
+            <AddSchoolCard orgId={orgId} queryClient={queryClient} />
+          )}
+
           {/* ── Danger Zone ── */}
           {(userRole === "super_admin" || userRole === "proprietor") && (
             <DangerZoneCard schoolId={schoolId} orgId={orgId} schoolName={school?.name || schoolName} queryClient={queryClient} />
