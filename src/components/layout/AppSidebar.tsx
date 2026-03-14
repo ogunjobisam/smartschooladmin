@@ -35,6 +35,11 @@ const allNav = {
     { title: "Payments", url: "/payments", icon: CreditCard },
     { title: "Arrears", url: "/arrears", icon: AlertTriangle },
   ] as NavItem[],
+  communications: [
+    { title: "Announcements", url: "/announcements", icon: Megaphone },
+    { title: "Templates", url: "/notification-templates", icon: MessageSquareText },
+    { title: "My Preferences", url: "/notification-settings", icon: Bell },
+  ] as NavItem[],
   operations: [
     { title: "Payroll", url: "/payroll", icon: Calculator },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
