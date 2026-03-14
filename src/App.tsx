@@ -34,6 +34,7 @@ import Approvals from "./pages/Approvals";
 import Reports from "./pages/Reports";
 import AuditLog from "./pages/AuditLog";
 import SettingsPage from "./pages/SettingsPage";
+import ParentDashboard from "./pages/ParentDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
