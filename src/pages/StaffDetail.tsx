@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
