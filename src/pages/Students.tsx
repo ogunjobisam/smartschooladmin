@@ -84,6 +84,11 @@ export default function Students() {
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!data?.students?.length) return;
+          exportToCsv("students", ["Student ID", "First Name", "Last Name", "Class", "Type", "Status"],
+            data.students.map((s: any) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
       </PageHeader>
       <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />

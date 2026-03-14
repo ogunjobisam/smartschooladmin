@@ -67,6 +67,11 @@ export default function Payments() {
   return (
     <div className="space-y-6">
       <PageHeader title="Payments" description="Record and manage fee payments.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!payments?.length) return;
+          exportToCsv("payments", ["Reference", "Student", "Amount", "Method", "Date"],
+            payments.map((p: any) => [p.reference_number || "", p.students ? `${p.students.first_name} ${p.students.last_name}` : "", String(p.amount), formatMethod(p.payment_method), new Date(p.payment_date).toLocaleDateString()]));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
           <Plus className="h-4 w-4" /> Record Payment
         </Button>
