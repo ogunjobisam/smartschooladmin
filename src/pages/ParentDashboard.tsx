@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,13 +14,15 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import {
-  GraduationCap, CreditCard, FileText, Receipt, Printer, Eye
+  GraduationCap, CreditCard, FileText, Receipt, Printer, Eye, Wallet
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const [payInvoice, setPayInvoice] = useState<any>(null);
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
@@ -58,7 +61,7 @@ export default function ParentDashboard() {
       if (studentIds.length === 0) return [];
       const { data } = await supabase
         .from("invoices")
-        .select("id, invoice_number, total_amount, amount_paid, status, due_date, issued_at, students(first_name, last_name, student_id_number, enrolments(classes(name))), schools(name, address, email, phone, logo_url), academic_periods(name)")
+        .select("id, invoice_number, total_amount, amount_paid, status, due_date, issued_at, student_id, school_id, students(id, first_name, last_name, student_id_number, enrolments(classes(name))), schools(id, name, address, email, phone, logo_url), academic_periods(name)")
         .in("student_id", studentIds)
         .order("issued_at", { ascending: false });
       return data || [];
@@ -230,9 +233,16 @@ export default function ParentDashboard() {
                       <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatMoney(balance)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintInvoice(inv)}>
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          {balance > 0 && (
+                            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setPayInvoice(inv)}>
+                              <Wallet className="h-3 w-3" /> Pay
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintInvoice(inv)}>
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -281,6 +291,21 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {payInvoice && (
+        <PayInvoiceDialog
+          open={!!payInvoice}
+          onOpenChange={(open) => { if (!open) setPayInvoice(null); }}
+          invoice={{
+            id: payInvoice.id,
+            invoice_number: payInvoice.invoice_number,
+            total_amount: payInvoice.total_amount,
+            amount_paid: payInvoice.amount_paid,
+            student_id: payInvoice.student_id,
+            school_id: payInvoice.school_id,
+          }}
+        />
+      )}
     </div>
   );
 }

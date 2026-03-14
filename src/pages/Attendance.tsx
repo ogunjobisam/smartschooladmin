@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { CalendarIcon, Check, X, Clock, ShieldOff, Save, Loader2, Users } from "lucide-react";
@@ -109,7 +109,8 @@ export default function Attendance() {
   });
 
   // Build rows when data changes
-  useMemo(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
     if (!studentData) return;
     const { students, records } = studentData;
     const recordMap = new Map(records.map((r: any) => [r.student_id, r]));

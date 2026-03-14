@@ -16,10 +16,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
+import { DocumentsTab } from "@/components/documents/DocumentsTab";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
-  const { schoolId } = useAuth();
+  const { schoolId, orgId } = useAuth();
   const { formatMoney } = useCurrency();
   const [editOpen, setEditOpen] = useState(false);
 
@@ -147,6 +148,7 @@ export default function StudentDetail() {
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guardians" className="mt-4">
@@ -220,6 +222,12 @@ export default function StudentDetail() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {schoolId && orgId && (
+            <DocumentsTab entityType="student" entityId={id!} schoolId={schoolId} orgId={orgId} />
+          )}
         </TabsContent>
       </Tabs>
 

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,11 +16,16 @@ import {
 } from "@/components/ui/table";
 import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 import { InviteStaffButton } from "@/components/staff/InviteStaffButton";
+import { DocumentsTab } from "@/components/documents/DocumentsTab";
+import { SalaryChangeDialog } from "@/components/payroll/SalaryChangeDialog";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const { formatMoney } = useCurrency();
+  const { schoolId, orgId, userRole } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
+  const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
+  const canRequestSalaryChange = userRole === "super_admin" || userRole === "proprietor" || userRole === "bursar" || userRole === "hr_admin";
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["staff-detail", id],
@@ -134,9 +140,17 @@ export default function StaffDetail() {
         <TabsList>
           <TabsTrigger value="salary">Salary & Payroll</TabsTrigger>
           <TabsTrigger value="payslips">Payslips</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="salary" className="mt-4 space-y-4">
+          {canRequestSalaryChange && pp && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSalaryChangeOpen(true)}>
+                <TrendingUp className="h-3.5 w-3.5" /> Request Salary Change
+              </Button>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border bg-card p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-accent" /> Salary Breakdown</h3>
@@ -206,9 +220,25 @@ export default function StaffDetail() {
             </Table>
           </div>
         </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {schoolId && orgId && (
+            <DocumentsTab entityType="staff" entityId={id!} schoolId={schoolId} orgId={orgId} />
+          )}
+        </TabsContent>
       </Tabs>
 
       {staff && <EditStaffDialog open={editOpen} onOpenChange={setEditOpen} staff={staff} />}
+      {staff && schoolId && (
+        <SalaryChangeDialog
+          open={salaryChangeOpen}
+          onOpenChange={setSalaryChangeOpen}
+          staffId={staff.id}
+          staffName={`${staff.first_name} ${staff.last_name}`}
+          schoolId={schoolId}
+          currentValues={pp || {}}
+        />
+      )}
     </div>
   );
 }

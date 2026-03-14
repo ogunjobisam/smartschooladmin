@@ -25,23 +25,24 @@ export default function ProprietorDashboard() {
     queryFn: async () => {
       if (!orgId) return null;
       const schoolFilter = selectedSchool !== "all" ? selectedSchool : null;
-
+      const schoolIds = schools.map(s => s.id);
+      if (schoolIds.length === 0) return null;
       // Students
       let studentsQ = supabase.from("students").select("id", { count: "exact", head: true });
       if (schoolFilter) studentsQ = studentsQ.eq("school_id", schoolFilter);
-      else studentsQ = studentsQ.in("school_id", schools.map(s => s.id));
+      else studentsQ = studentsQ.in("school_id", schoolIds);
       const { count: totalStudents } = await studentsQ;
 
       // Staff
       let staffQ = supabase.from("staff").select("id", { count: "exact", head: true });
       if (schoolFilter) staffQ = staffQ.eq("school_id", schoolFilter);
-      else staffQ = staffQ.in("school_id", schools.map(s => s.id));
+      else staffQ = staffQ.in("school_id", schoolIds);
       const { count: totalStaff } = await staffQ;
 
       // Invoices
       let invQ = supabase.from("invoices").select("total_amount, amount_paid, status");
       if (schoolFilter) invQ = invQ.eq("school_id", schoolFilter);
-      else invQ = invQ.in("school_id", schools.map(s => s.id));
+      else invQ = invQ.in("school_id", schoolIds);
       const { data: invoices } = await invQ;
 
       const totalInvoiced = (invoices || []).reduce((s, i) => s + (i.total_amount || 0), 0);
