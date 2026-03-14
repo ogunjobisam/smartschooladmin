@@ -22,7 +22,10 @@ import { SalaryChangeDialog } from "@/components/payroll/SalaryChangeDialog";
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const { formatMoney } = useCurrency();
+  const { schoolId, orgId, userRole } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
+  const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
+  const canRequestSalaryChange = userRole === "super_admin" || userRole === "proprietor" || userRole === "bursar" || userRole === "hr_admin";
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["staff-detail", id],
