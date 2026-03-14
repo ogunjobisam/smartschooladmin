@@ -17,6 +17,7 @@ import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["staff-detail", id],
