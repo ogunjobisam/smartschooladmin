@@ -121,7 +121,9 @@ export default function Landing() {
             <span>© {new Date().getFullYear()} SmartSchool. All rights reserved.</span>
             <p className="mt-1 text-[11px] text-muted-foreground/70">SmartSchoolAdmin is a trading name of Smartever Ltd. Registered in England &amp; Wales. Company No: 15038603</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
             <Link to="/login" className="hover:text-foreground transition-colors">Log in</Link>
             <Link to="/signup" className="hover:text-foreground transition-colors">Sign up</Link>
           </div>

@@ -70,6 +70,8 @@ const App = () => (
 
             {/* Protected app routes */}
             <Route path="/" element={<Landing />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
             <Route path="/dashboard" element={withLayout(<Index />)} />
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
