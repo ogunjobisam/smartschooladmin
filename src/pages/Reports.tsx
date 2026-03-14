@@ -232,7 +232,7 @@ export default function Reports() {
                   <Pie data={paymentsByMethod} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
                     {paymentsByMethod?.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatNaira(v)} />
+                  <Tooltip formatter={(v: number) => formatMoney(v)} />
                   <Legend iconSize={10} wrapperStyle={{ fontSize: "11px" }} />
                 </PieChart>
               </ResponsiveContainer>
