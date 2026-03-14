@@ -113,10 +113,10 @@ export default function PayrollRunDetail() {
                     <TableCell className="font-mono text-xs text-muted-foreground">{s.staff?.staff_id_number || "—"}</TableCell>
                     <TableCell className="font-medium">{s.staff?.first_name} {s.staff?.last_name}</TableCell>
                     <TableCell className="text-muted-foreground">{pos?.title || "—"}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(s.basic)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(s.allowances)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(s.deductions)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatNaira(s.net_pay)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(s.basic)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(s.allowances)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.deductions)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatMoney(s.net_pay)}</TableCell>
                   </TableRow>
                 );
               })

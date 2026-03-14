@@ -231,7 +231,7 @@ export default function StudentDetail() {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="tabular-nums">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(p.amount)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(p.amount)}</TableCell>
                         <TableCell>{formatMethod(p.payment_method)}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{p.reference_number || "—"}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{invoiceNum}</TableCell>

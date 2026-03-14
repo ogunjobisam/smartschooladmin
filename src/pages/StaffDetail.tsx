@@ -190,10 +190,10 @@ export default function StaffDetail() {
                   payslips?.map((ps: any) => (
                     <TableRow key={ps.id}>
                       <TableCell className="font-medium">{ps.payroll_runs?.period_label || "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.basic)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.allowances)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(ps.deductions)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatNaira(ps.net_pay)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(ps.basic)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(ps.allowances)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(ps.deductions)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatMoney(ps.net_pay)}</TableCell>
                       <TableCell><StatusBadge status={ps.payroll_runs?.status || "draft"} /></TableCell>
                     </TableRow>
                   ))

@@ -85,7 +85,7 @@ export default function Approvals() {
                   <TableCell className="font-medium">{formatType(a.type)}</TableCell>
                   <TableCell className="max-w-xs text-sm">{a.description}</TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(a.amount || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(a.amount || 0)}</TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
                   <TableCell className="text-right">
                     {a.status === "pending" ? (

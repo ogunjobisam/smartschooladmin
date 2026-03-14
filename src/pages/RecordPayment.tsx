@@ -227,7 +227,7 @@ export default function RecordPayment() {
                       <SelectContent>
                         {studentInvoices.map((inv: any) => (
                           <SelectItem key={inv.id} value={inv.id}>
-                            {inv.invoice_number} — Balance: {formatNaira((inv.total_amount || 0) - (inv.amount_paid || 0))}
+                            {inv.invoice_number} — Balance: {formatMoney((inv.total_amount || 0) - (inv.amount_paid || 0))}
                           </SelectItem>
                         ))}
                       </SelectContent>
