@@ -301,8 +301,8 @@ export default function ParentDashboard() {
             invoice_number: payInvoice.invoice_number,
             total_amount: payInvoice.total_amount,
             amount_paid: payInvoice.amount_paid,
-            student_id: payInvoice.students?.id || "",
-            school_id: payInvoice.schools?.id || "",
+            student_id: payInvoice.student_id,
+            school_id: payInvoice.school_id,
           }}
         />
       )}
