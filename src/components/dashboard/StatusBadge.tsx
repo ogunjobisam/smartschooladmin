@@ -18,9 +18,11 @@ const statusStyles: Record<Status, string> = {
 export const StatusBadge = React.forwardRef<HTMLDivElement, { status: Status }>(
   ({ status }, ref) => {
     return (
-      <Badge ref={ref} variant="outline" className={cn("text-[11px] font-medium capitalize", statusStyles[status])}>
-        {status}
-      </Badge>
+      <div ref={ref}>
+        <Badge variant="outline" className={cn("text-[11px] font-medium capitalize", statusStyles[status])}>
+          {status}
+        </Badge>
+      </div>
     );
   }
 );
