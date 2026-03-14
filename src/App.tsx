@@ -43,6 +43,7 @@ import ParentDashboard from "./pages/ParentDashboard";
 import UserManagement from "./pages/UserManagement";
 import NotificationHistory from "./pages/NotificationHistory";
 import ProprietorDashboard from "./pages/ProprietorDashboard";
+import Attendance from "./pages/Attendance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
