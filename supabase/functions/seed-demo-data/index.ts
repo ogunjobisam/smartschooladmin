@@ -326,7 +326,7 @@ serve(async (req) => {
             class_id: classes[i % classes.length].id,
             date: dateStr,
             status: statuses[(i + day) % statuses.length],
-            marked_by: user.id,
+            marked_by: userId,
           });
         }
       }
