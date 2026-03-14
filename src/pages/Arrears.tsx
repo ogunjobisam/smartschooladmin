@@ -119,6 +119,7 @@ export default function Arrears() {
               <TableHead className="text-xs">Invoice</TableHead>
               <TableHead className="text-xs text-right">Outstanding</TableHead>
               <TableHead className="text-xs">Ageing</TableHead>
+              <TableHead className="text-xs w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
