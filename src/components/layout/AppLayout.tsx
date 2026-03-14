@@ -1,11 +1,29 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { TopBar } from "./TopBar";
-import { dashboardStats } from "@/lib/mock-data";
 import { AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { orgId } = useAuth();
+
+  const { data: pendingCount } = useQuery({
+    queryKey: ["pending-approvals-count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count } = await supabase
+        .from("approval_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("status", "pending");
+      return count || 0;
+    },
+    enabled: !!orgId,
+  });
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
@@ -13,11 +31,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
 
-          {dashboardStats.pendingApprovals > 0 && (
+          {(pendingCount ?? 0) > 0 && (
             <div className="flex items-center gap-2 border-b bg-warning/10 px-4 py-2 text-sm text-warning-foreground">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <span>
-                You have <strong>{dashboardStats.pendingApprovals} pending approvals</strong> requiring your review.
+                You have <strong>{pendingCount} pending approvals</strong> requiring your review.
               </span>
               <Link to="/approvals" className="ml-auto text-xs font-medium text-accent underline-offset-2 hover:underline">
                 Review now →
