@@ -1,20 +1,27 @@
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Download, Printer, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
+import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
+import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
+  const { schoolId, orgId } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const [payOpen, setPayOpen] = useState(false);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -125,7 +132,12 @@ export default function InvoiceDetail() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Printer className="h-3.5 w-3.5" /> Print</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Download className="h-3.5 w-3.5" /> Download PDF</Button>
-            <Link to="/payments/new"><Button size="sm" className="gap-1.5">Record Payment</Button></Link>
+            {balance > 0 && (
+              <Button size="sm" className="gap-1.5" onClick={() => setPayOpen(true)}>
+                <CreditCard className="h-3.5 w-3.5" /> Pay Now
+              </Button>
+            )}
+            <Link to="/payments/new"><Button variant="outline" size="sm" className="gap-1.5">Record Payment</Button></Link>
           </div>
         </div>
         <Separator className="my-4" />
@@ -136,68 +148,98 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-3">
-          <h3 className="text-sm font-semibold text-card-foreground">Line Items</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Description</TableHead>
-              <TableHead className="text-xs">Category</TableHead>
-              <TableHead className="text-xs text-right">Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lineItems?.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">No line items.</TableCell></TableRow>
-            ) : (
-              lineItems?.map((item: any) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.fee_categories?.name || "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(item.amount)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <div className="border-t px-5 py-3 space-y-1">
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatMoney(invoice.total_amount)}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatMoney(totalPaid)}</span></div>
-          <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatMoney(balance)}</span></div>
-        </div>
-      </div>
+      <Tabs defaultValue="details">
+        <TabsList>
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+        </TabsList>
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-3">
-          <h3 className="text-sm font-semibold text-card-foreground">Payment History</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">Date</TableHead>
-              <TableHead className="text-xs text-right">Amount</TableHead>
-              <TableHead className="text-xs">Method</TableHead>
-              <TableHead className="text-xs">Reference</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paymentHistory?.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No payments recorded.</TableCell></TableRow>
-            ) : (
-              paymentHistory?.map((pa: any) => (
-                <TableRow key={pa.id}>
-                  <TableCell className="tabular-nums">{pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(pa.amount)}</TableCell>
-                  <TableCell>{pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—"}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{pa.payments?.reference_number || "—"}</TableCell>
+        <TabsContent value="details" className="mt-4 space-y-6">
+          <div className="rounded-lg border bg-card">
+            <div className="border-b px-5 py-3">
+              <h3 className="text-sm font-semibold text-card-foreground">Line Items</h3>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Description</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
+                  <TableHead className="text-xs text-right">Amount</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {lineItems?.length === 0 ? (
+                  <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">No line items.</TableCell></TableRow>
+                ) : (
+                  lineItems?.map((item: any) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.fee_categories?.name || "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(item.amount)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <div className="border-t px-5 py-3 space-y-1">
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatMoney(invoice.total_amount)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatMoney(totalPaid)}</span></div>
+              <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatMoney(balance)}</span></div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-card">
+            <div className="border-b px-5 py-3">
+              <h3 className="text-sm font-semibold text-card-foreground">Payment History</h3>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs text-right">Amount</TableHead>
+                  <TableHead className="text-xs">Method</TableHead>
+                  <TableHead className="text-xs">Reference</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentHistory?.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No payments recorded.</TableCell></TableRow>
+                ) : (
+                  paymentHistory?.map((pa: any) => (
+                    <TableRow key={pa.id}>
+                      <TableCell className="tabular-nums">{pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(pa.amount)}</TableCell>
+                      <TableCell>{pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—"}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{pa.payments?.reference_number || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {schoolId && orgId && (
+            <DocumentsTab entityType="invoice" entityId={id!} schoolId={schoolId} orgId={orgId} />
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {balance > 0 && (
+        <PayInvoiceDialog
+          open={payOpen}
+          onOpenChange={setPayOpen}
+          invoice={{
+            id: invoice.id,
+            invoice_number: invoice.invoice_number,
+            total_amount: invoice.total_amount,
+            amount_paid: invoice.amount_paid,
+            student_id: invoice.student_id,
+            school_id: invoice.school_id,
+          }}
+        />
+      )}
     </div>
   );
 }
