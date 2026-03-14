@@ -100,7 +100,6 @@ export default function ExamDetail() {
 
   // Initialize scores map from existing data
   useEffect(() => {
-    if (existingScores.length === 0 && scores.size > 0) return;
     const map = new Map<string, ScoreEntry>();
     existingScores.forEach((s: any) => {
       const key = `${s.student_id}-${s.subject_id}`;
@@ -112,6 +111,7 @@ export default function ExamDetail() {
       });
     });
     setScores(map);
+    setDirty(false);
   }, [existingScores]);
 
   const updateScore = (studentId: string, subjectId: string, value: string) => {
