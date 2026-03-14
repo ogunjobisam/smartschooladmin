@@ -243,6 +243,8 @@ export default function StudentDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {student && <EditStudentDialog open={editOpen} onOpenChange={setEditOpen} student={student} />}
     </div>
   );
 }
