@@ -13,8 +13,8 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin"];
-const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
+const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin"];
+const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
