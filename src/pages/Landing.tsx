@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { GraduationCap, CreditCard, Users, BarChart3, Shield, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import dashboardMockup from "@/assets/dashboard-mockup.png";
 
 const features = [
   { icon: GraduationCap, title: "Student Management", desc: "Enrol, track, and manage students with class assignments and guardian linking." },
@@ -58,6 +59,18 @@ export default function Landing() {
               Log in
             </Button>
           </Link>
+        </div>
+
+        {/* Dashboard mockup */}
+        <div className="mx-auto mt-16 max-w-4xl">
+          <div className="rounded-xl border border-border bg-card shadow-2xl shadow-primary/10 overflow-hidden">
+            <img
+              src={dashboardMockup}
+              alt="SmartSchool dashboard showing student stats, revenue, and fee collection charts"
+              className="w-full h-auto"
+              loading="lazy"
+            />
+          </div>
         </div>
       </section>
 
