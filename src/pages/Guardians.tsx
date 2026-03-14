@@ -81,6 +81,14 @@ export default function Guardians() {
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{g.email || "—"}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums">{g.student_guardians?.length || 0}</TableCell>
+                  <TableCell>
+                    <InviteGuardianButton
+                      guardianId={g.id}
+                      guardianName={`${g.first_name} ${g.last_name}`}
+                      guardianEmail={g.email}
+                      hasUserId={!!g.user_id}
+                    />
+                  </TableCell>
                 </TableRow>
               ))
             )}
