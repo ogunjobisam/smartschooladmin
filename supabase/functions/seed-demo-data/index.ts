@@ -14,11 +14,20 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-    const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
-    if (!user) throw new Error("Unauthorized");
+    let userId: string;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+      const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
+      if (user) {
+        userId = user.id;
+      } else {
+        throw new Error("Unauthorized");
+      }
+    } else {
+      throw new Error("Unauthorized");
+    }
 
     const { org_id, school_id } = await req.json();
     if (!org_id || !school_id) throw new Error("org_id and school_id required");
