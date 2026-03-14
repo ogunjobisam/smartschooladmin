@@ -78,7 +78,7 @@ export default function Arrears() {
 
       const { data: invoices } = await supabase
         .from("invoices")
-        .select("id, invoice_number, total_amount, amount_paid, due_date, status, students(first_name, last_name, enrolments(classes(name)))")
+        .select("id, invoice_number, total_amount, amount_paid, due_date, status, student_id, students(first_name, last_name, enrolments(classes(name)))")
         .eq("school_id", schoolId)
         .eq("status", "overdue")
         .order("due_date", { ascending: true });
