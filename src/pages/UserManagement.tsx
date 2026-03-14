@@ -69,18 +69,25 @@ export default function UserManagement() {
 
   // Fetch all user roles in this org with profiles
   const { data: users, isLoading } = useQuery({
-    queryKey: ["org-users", orgId],
+    queryKey: ["org-users", orgId, schoolId, userRole],
     queryFn: async () => {
       if (!orgId) return [];
-      const { data } = await supabase
+      let query = supabase
         .from("user_roles")
         .select("user_id, role, school_id, created_at, schools(name)")
         .eq("org_id", orgId)
         .order("created_at", { ascending: true });
 
+      // School admins only see users in their school
+      if (userRole === "school_admin" && schoolId) {
+        query = query.eq("school_id", schoolId);
+      }
+
+      const { data } = await query;
       if (!data) return [];
 
       const userIds = data.map((r: any) => r.user_id);
+      if (userIds.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
