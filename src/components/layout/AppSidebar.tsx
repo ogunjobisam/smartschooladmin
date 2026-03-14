@@ -25,6 +25,7 @@ const allNav = {
     { title: "Students", url: "/students", icon: GraduationCap },
     { title: "Guardians", url: "/guardians", icon: Users },
     { title: "Staff", url: "/staff", icon: UserCog },
+    { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   ] as NavItem[],
   finance: [
     { title: "Fee Schedules", url: "/fees", icon: Receipt },
