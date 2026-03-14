@@ -13,6 +13,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [schoolBrand, setSchoolBrand] = useState<{ name: string; logo_url: string | null; primary_color: string | null } | null>(null);
+
+  useEffect(() => {
+    const schoolSlug = searchParams.get("school");
+    if (!schoolSlug) return;
+    supabase
+      .from("schools")
+      .select("name, logo_url, primary_color")
+      .eq("id", schoolSlug)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setSchoolBrand(data); });
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
