@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -35,6 +35,7 @@ const allNav = {
   operations: [
     { title: "Payroll", url: "/payroll", icon: Calculator },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
+    { title: "Group Overview", url: "/group-overview", icon: BarChart3 },
     { title: "Reports", url: "/reports", icon: ClipboardList },
     { title: "Audit Log", url: "/audit-log", icon: Shield },
   ] as NavItem[],
@@ -49,19 +50,19 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
   super_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    operations: ["Payroll", "Approvals", "Reports", "Audit Log"],
+    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   proprietor: {
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    operations: ["Payroll", "Approvals", "Reports", "Audit Log"],
+    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   group_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    operations: ["Payroll", "Approvals", "Reports", "Audit Log"],
+    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings"],
   },
   principal: {
