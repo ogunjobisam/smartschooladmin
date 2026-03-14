@@ -1,7 +1,8 @@
+import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-type Status = 'paid' | 'pending' | 'overdue' | 'void' | 'active' | 'inactive' | 'approved' | 'draft';
+export type Status = 'paid' | 'pending' | 'overdue' | 'void' | 'active' | 'inactive' | 'approved' | 'draft';
 
 const statusStyles: Record<Status, string> = {
   paid: "bg-success/10 text-success border-success/20",
@@ -14,10 +15,13 @@ const statusStyles: Record<Status, string> = {
   inactive: "bg-muted text-muted-foreground border-border",
 };
 
-export function StatusBadge({ status }: { status: Status }) {
-  return (
-    <Badge variant="outline" className={cn("text-[11px] font-medium capitalize", statusStyles[status])}>
-      {status}
-    </Badge>
-  );
-}
+export const StatusBadge = React.forwardRef<HTMLDivElement, { status: Status }>(
+  ({ status }, ref) => {
+    return (
+      <Badge ref={ref} variant="outline" className={cn("text-[11px] font-medium capitalize", statusStyles[status])}>
+        {status}
+      </Badge>
+    );
+  }
+);
+StatusBadge.displayName = "StatusBadge";
