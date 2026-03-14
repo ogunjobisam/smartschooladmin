@@ -20,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 
 export default function RecordPayment() {
   const navigate = useNavigate();
-  const { schoolId, user } = useAuth();
+  const { schoolId, user, orgId } = useAuth();
   const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
 
