@@ -61,7 +61,7 @@ export default function ParentDashboard() {
       if (studentIds.length === 0) return [];
       const { data } = await supabase
         .from("invoices")
-        .select("id, invoice_number, total_amount, amount_paid, status, due_date, issued_at, students(first_name, last_name, student_id_number, enrolments(classes(name))), schools(name, address, email, phone, logo_url), academic_periods(name)")
+        .select("id, invoice_number, total_amount, amount_paid, status, due_date, issued_at, student_id, school_id, students(id, first_name, last_name, student_id_number, enrolments(classes(name))), schools(id, name, address, email, phone, logo_url), academic_periods(name)")
         .in("student_id", studentIds)
         .order("issued_at", { ascending: false });
       return data || [];
