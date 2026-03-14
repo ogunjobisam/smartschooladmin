@@ -23,6 +23,7 @@ const invoices = [
 ];
 
 export default function Invoices() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Invoices" description="View and manage student fee invoices.">
