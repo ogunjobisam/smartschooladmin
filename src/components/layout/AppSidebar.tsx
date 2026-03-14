@@ -55,7 +55,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     system: ["Settings", "Users"],
   },
   proprietor: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff"],
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
