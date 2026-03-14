@@ -21,8 +21,8 @@ export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
   const { branding, refetch } = useSchoolBranding();
   const queryClient = useQueryClient();
-  const canEditBranding = userRole === "proprietor" || userRole === "group_admin";
-  const canManage = userRole === "proprietor" || userRole === "group_admin" || userRole === "principal";
+  const canEditBranding = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin";
+  const canManage = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin" || userRole === "principal";
 
   // ── Branding state ──
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);
