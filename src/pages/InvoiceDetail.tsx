@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatNaira } from "@/lib/format";
+import { printInvoice } from "@/lib/print-documents";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -19,7 +20,7 @@ export default function InvoiceDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("invoices")
-        .select("*, students(first_name, last_name, student_id_number, enrolments(classes(name))), academic_periods(name), schools(name)")
+        .select("*, students(first_name, last_name, student_id_number, enrolments(classes(name))), academic_periods(name), schools(name, address, email, phone, logo_url)")
         .eq("id", id!)
         .maybeSingle();
       return data;
@@ -68,6 +69,38 @@ export default function InvoiceDetail() {
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 
+  const handlePrint = () => {
+    printInvoice({
+      invoiceNumber: invoice.invoice_number,
+      status: invoice.status,
+      issuedAt: invoice.issued_at,
+      dueDate: invoice.due_date,
+      schoolName: invoice.schools?.name || "School",
+      schoolAddress: invoice.schools?.address,
+      schoolEmail: invoice.schools?.email,
+      schoolPhone: invoice.schools?.phone,
+      logoUrl: invoice.schools?.logo_url,
+      studentName,
+      studentId: student?.student_id_number || "—",
+      className,
+      periodName: invoice.academic_periods?.name || "—",
+      lineItems: (lineItems || []).map((i: any) => ({
+        description: i.description,
+        category: i.fee_categories?.name || "—",
+        amount: i.amount,
+      })),
+      totalAmount: invoice.total_amount || 0,
+      totalPaid,
+      balance,
+      payments: (paymentHistory || []).map((pa: any) => ({
+        date: pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—",
+        amount: pa.amount,
+        method: pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—",
+        reference: pa.payments?.reference_number || "—",
+      })),
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -88,8 +121,8 @@ export default function InvoiceDetail() {
             <p className="text-sm text-muted-foreground">{invoice.schools?.name || "—"}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5"><Printer className="h-3.5 w-3.5" /> Print</Button>
-            <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-3.5 w-3.5" /> Download PDF</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Printer className="h-3.5 w-3.5" /> Print</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Download className="h-3.5 w-3.5" /> Download PDF</Button>
             <Link to="/payments/new"><Button size="sm" className="gap-1.5">Record Payment</Button></Link>
           </div>
         </div>
