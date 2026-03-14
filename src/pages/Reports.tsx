@@ -29,7 +29,7 @@ const CHART_COLORS = [
 
 export default function Reports() {
   const { schoolId, orgId } = useAuth();
-  const { formatMoney } = useCurrency();
+  const { formatMoney, formatMoneyCompact } = useCurrency();
 
   // Overall stats
   const { data: overallStats, isLoading: loadingStats } = useQuery({

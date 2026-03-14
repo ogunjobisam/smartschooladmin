@@ -144,7 +144,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount per student:</span>
-                  <span className="font-mono font-medium">{formatNaira(selectedSchedule.total_amount)}</span>
+                  <span className="font-mono font-medium">{formatMoney(selectedSchedule.total_amount)}</span>
                 </div>
               </div>
             )}
