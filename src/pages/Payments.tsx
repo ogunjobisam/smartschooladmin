@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CreditCard, Plus, Search } from "lucide-react";
+import { CreditCard, Plus, Search, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
