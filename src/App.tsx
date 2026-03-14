@@ -67,7 +67,8 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
             {/* Protected app routes */}
-            <Route path="/" element={<HomeRoute />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={withLayout(<Index />)} />
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />
