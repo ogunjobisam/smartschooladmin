@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     if (action === "delete_role") {
       const { user_id } = body;
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
-      if (callerIsSchoolAdmin) {
+      if (callerIsSchoolLevel) {
         const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
         if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
         if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole?.role)) return jsonResponse({ error: "Cannot remove this role" }, 403);
