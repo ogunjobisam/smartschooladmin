@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 import { FileText, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import {
