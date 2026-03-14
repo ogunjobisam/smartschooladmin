@@ -90,10 +90,12 @@ export default function Students() {
           if (!data?.students?.length) return;
           exportToCsv("students", ["Student ID", "First Name", "Last Name", "Class", "Type", "Status"],
             data.students.map((s: any) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
-        }}><Download className="h-4 w-4" /> Export CSV</Button>
+        }}><Download className="h-4 w-4" /> Export</Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
       </PageHeader>
       <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />
+      <CsvImportDialog open={showImport} onOpenChange={setShowImport} mode="students" />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
