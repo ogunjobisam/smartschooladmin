@@ -135,6 +135,7 @@ export function AppSidebar() {
   const access = roleNavAccess[userRole || "teacher"];
   const overviewNav = filterNav(allNav.overview, access.overview);
   const financeNav = filterNav(allNav.finance, access.finance);
+  const communicationsNav = filterNav(allNav.communications, access.communications);
   const operationsNav = filterNav(allNav.operations, access.operations);
   const systemNav = filterNav(allNav.system, access.system);
 
