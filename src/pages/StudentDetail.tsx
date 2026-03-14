@@ -331,6 +331,10 @@ export default function StudentDetail() {
           </div>
         </TabsContent>
 
+        <TabsContent value="history" className="mt-4">
+          {schoolId && <StudentHistoryTab studentId={id!} schoolId={schoolId} />}
+        </TabsContent>
+
         <TabsContent value="documents" className="mt-4">
           {schoolId && orgId && (
             <DocumentsTab entityType="student" entityId={id!} schoolId={schoolId} orgId={orgId} />
