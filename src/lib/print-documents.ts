@@ -47,7 +47,7 @@ export function printInvoice(data: InvoicePrintData) {
       <tbody>${data.payments.map(p => `
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${p.date}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(p.amount)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(p.amount)}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${p.method}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;color:#64748b">${p.reference}</td>
         </tr>
