@@ -433,7 +433,7 @@ serve(async (req) => {
               amount: invoiceInserts[i].amount_paid,
               payment_method: methods[i % methods.length],
               reference_number: `PAY-${String(i + 1).padStart(5, "0")}`,
-              recorded_by: user.id,
+              recorded_by: userId,
               payment_date: `2026-0${Math.min(i % 3 + 1, 3)}-${String((i % 28) + 1).padStart(2, "0")}`,
             });
           }
