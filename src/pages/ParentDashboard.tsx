@@ -22,6 +22,7 @@ import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 export default function ParentDashboard() {
   const { user } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const [payInvoice, setPayInvoice] = useState<any>(null);
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
