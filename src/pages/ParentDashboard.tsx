@@ -161,8 +161,8 @@ export default function ParentDashboard() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Children Enrolled" value={(children?.length || 0).toString()} icon={GraduationCap} />
-        <StatCard title="Total Outstanding" value={formatNaira(totalBilled - totalPaid)} icon={Receipt} mono subtitle={`${pendingInvoices} pending invoices`} />
-        <StatCard title="Total Paid" value={formatNaira(totalPaid)} icon={CreditCard} mono />
+        <StatCard title="Total Outstanding" value={formatMoney(totalBilled - totalPaid)} icon={Receipt} mono subtitle={`${pendingInvoices} pending invoices`} />
+        <StatCard title="Total Paid" value={formatMoney(totalPaid)} icon={CreditCard} mono />
       </div>
 
       {/* Children */}
