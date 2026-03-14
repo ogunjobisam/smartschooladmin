@@ -120,6 +120,11 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; com
   },
 };
 
+// Map parent dashboard to /parent
+const parentDashboardOverride: Record<string, string> = {
+  "/dashboard": "/parent",
+};
+
 function filterNav(items: NavItem[], allowedTitles: string[]): NavItem[] {
   return items.filter(item => allowedTitles.includes(item.title));
 }
