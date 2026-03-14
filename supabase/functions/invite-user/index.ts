@@ -154,6 +154,12 @@ Deno.serve(async (req) => {
     if (!VALID_ROLES.includes(role)) return jsonResponse({ error: "Invalid role" }, 400);
     if (full_name && full_name.length > 200) return jsonResponse({ error: "Name too long" }, 400);
 
+    // School admins can only invite school-level roles into their own school
+    if (callerIsSchoolAdmin) {
+      if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(role)) return jsonResponse({ error: "School admins can only assign school-level roles" }, 403);
+      if (school_id && school_id !== callerSchoolId) return jsonResponse({ error: "Cannot invite users to other schools" }, 403);
+    }
+
     // Check if user already exists
     const { data: existingUsers } = await adminClient.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
