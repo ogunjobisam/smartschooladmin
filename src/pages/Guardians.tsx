@@ -15,6 +15,7 @@ import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 export default function Guardians() {
   const { orgId } = useAuth();
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: guardians, isLoading } = useQuery({
     queryKey: ["guardians", orgId, search],
