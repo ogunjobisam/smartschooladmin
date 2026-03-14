@@ -334,8 +334,8 @@ export default function Reports() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base"><Calculator className="h-4 w-4 text-accent" /> Payroll History</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs">Period</TableHead>
