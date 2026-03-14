@@ -47,6 +47,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, userRole, signOut } = useAuth();
+  const { branding } = useSchoolBranding();
   const isActive = (path: string) => location.pathname === path;
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'User';
