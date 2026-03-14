@@ -26,6 +26,7 @@ export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId } = useAuth();
   const { formatMoney } = useCurrency();
+  const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
