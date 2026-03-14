@@ -14,6 +14,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
