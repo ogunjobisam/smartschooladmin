@@ -99,13 +99,38 @@ export default function StudentDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("student_scores")
-        .select("id, score, grade, remarks, exams(name, max_score, exam_date), subjects(name)")
+        .select("id, score, grade, remarks, exams(name, max_score, exam_date, academic_periods(name)), subjects(name)")
         .eq("student_id", id!)
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
+  });
+
+  const { data: awards } = useQuery({
+    queryKey: ["student-awards", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("student_awards")
+        .select("id, title, description, award_date, academic_periods(name)")
+        .eq("student_id", id!)
+        .order("award_date", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: school } = useQuery({
+    queryKey: ["school-detail", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("schools")
+        .select("name, address, email, phone, logo_url")
+        .eq("id", schoolId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
   });
 
   if (isLoading || !student) {
