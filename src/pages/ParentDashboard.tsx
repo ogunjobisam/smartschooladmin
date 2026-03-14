@@ -225,8 +225,8 @@ export default function ParentDashboard() {
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                       <TableCell className="font-medium text-sm">{inv.students?.first_name} {inv.students?.last_name}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount)}</TableCell>
-                      <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatNaira(balance)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
+                      <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatMoney(balance)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintInvoice(inv)}>
