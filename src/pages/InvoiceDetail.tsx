@@ -155,7 +155,7 @@ export default function InvoiceDetail() {
                 <TableRow key={item.id}>
                   <TableCell>{item.description}</TableCell>
                   <TableCell className="text-muted-foreground">{item.fee_categories?.name || "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(item.amount)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(item.amount)}</TableCell>
                 </TableRow>
               ))
             )}
