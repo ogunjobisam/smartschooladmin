@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -13,10 +14,12 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId } = useAuth();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ["student", id],
@@ -109,7 +112,7 @@ export default function StudentDetail() {
               <p className="text-sm text-muted-foreground">{className} • {student.student_type || "Day"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5"><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
         </div>
 
         <Separator className="my-4" />
@@ -240,6 +243,8 @@ export default function StudentDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {student && <EditStudentDialog open={editOpen} onOpenChange={setEditOpen} student={student} />}
     </div>
   );
 }

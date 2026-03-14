@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -12,9 +13,11 @@ import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: staff, isLoading } = useQuery({
     queryKey: ["staff-detail", id],
@@ -111,7 +114,7 @@ export default function StaffDetail() {
               <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5"><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
         </div>
         <Separator className="my-4" />
         <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -199,6 +202,8 @@ export default function StaffDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {staff && <EditStaffDialog open={editOpen} onOpenChange={setEditOpen} staff={staff} />}
     </div>
   );
 }
