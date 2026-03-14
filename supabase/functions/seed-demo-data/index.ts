@@ -537,7 +537,7 @@ serve(async (req) => {
 
     // ===== AUDIT LOG =====
     await supabase.from("audit_logs").insert([
-      { org_id, action: "seed", entity_type: "system", detail: "Seeded comprehensive demo data for all features", user_id: user.id },
+      { org_id, action: "seed", entity_type: "system", detail: "Seeded comprehensive demo data for all features", user_id: userId },
     ]);
 
     return new Response(JSON.stringify({
