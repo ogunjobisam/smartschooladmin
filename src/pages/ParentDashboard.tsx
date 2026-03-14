@@ -233,9 +233,16 @@ export default function ParentDashboard() {
                       <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatMoney(balance)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintInvoice(inv)}>
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-1">
+                          {balance > 0 && (
+                            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setPayInvoice(inv)}>
+                              <Wallet className="h-3 w-3" /> Pay
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintInvoice(inv)}>
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
