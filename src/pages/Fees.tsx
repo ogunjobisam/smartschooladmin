@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Receipt, Plus } from "lucide-react";
+import { AddFeeScheduleDialog } from "@/components/forms/AddFeeScheduleDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
