@@ -56,7 +56,7 @@ export default function Login() {
               <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
           )}
-          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "SchoolFlow"}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "Smart School Admin"}</h1>
           <p className="text-sm text-muted-foreground">Sign in to manage your schools</p>
         </div>
 

@@ -42,7 +42,7 @@ export default function Signup() {
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-          <p className="text-sm text-muted-foreground">Start managing your schools with SchoolFlow</p>
+          <p className="text-sm text-muted-foreground">Start managing your schools with Smart School Admin</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
