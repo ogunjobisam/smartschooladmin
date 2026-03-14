@@ -3,7 +3,17 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
+
+// Auth pages
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
+// App pages
 import Index from "./pages/Index";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
@@ -26,7 +36,11 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const withLayout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;
+const withLayout = (page: React.ReactNode) => (
+  <ProtectedRoute>
+    <AppLayout>{page}</AppLayout>
+  </ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,27 +48,36 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={withLayout(<Index />)} />
-          <Route path="/students" element={withLayout(<Students />)} />
-          <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
-          <Route path="/guardians" element={withLayout(<Guardians />)} />
-          <Route path="/staff" element={withLayout(<Staff />)} />
-          <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
-          <Route path="/fees" element={withLayout(<Fees />)} />
-          <Route path="/invoices" element={withLayout(<Invoices />)} />
-          <Route path="/invoices/:id" element={withLayout(<InvoiceDetail />)} />
-          <Route path="/payments" element={withLayout(<Payments />)} />
-          <Route path="/payments/new" element={withLayout(<RecordPayment />)} />
-          <Route path="/arrears" element={withLayout(<Arrears />)} />
-          <Route path="/payroll" element={withLayout(<Payroll />)} />
-          <Route path="/payroll/:id" element={withLayout(<PayrollRunDetail />)} />
-          <Route path="/approvals" element={withLayout(<Approvals />)} />
-          <Route path="/reports" element={withLayout(<Reports />)} />
-          <Route path="/audit-log" element={withLayout(<AuditLog />)} />
-          <Route path="/settings" element={withLayout(<SettingsPage />)} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public auth routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Protected app routes */}
+            <Route path="/" element={withLayout(<Index />)} />
+            <Route path="/students" element={withLayout(<Students />)} />
+            <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
+            <Route path="/guardians" element={withLayout(<Guardians />)} />
+            <Route path="/staff" element={withLayout(<Staff />)} />
+            <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
+            <Route path="/fees" element={withLayout(<Fees />)} />
+            <Route path="/invoices" element={withLayout(<Invoices />)} />
+            <Route path="/invoices/:id" element={withLayout(<InvoiceDetail />)} />
+            <Route path="/payments" element={withLayout(<Payments />)} />
+            <Route path="/payments/new" element={withLayout(<RecordPayment />)} />
+            <Route path="/arrears" element={withLayout(<Arrears />)} />
+            <Route path="/payroll" element={withLayout(<Payroll />)} />
+            <Route path="/payroll/:id" element={withLayout(<PayrollRunDetail />)} />
+            <Route path="/approvals" element={withLayout(<Approvals />)} />
+            <Route path="/reports" element={withLayout(<Reports />)} />
+            <Route path="/audit-log" element={withLayout(<AuditLog />)} />
+            <Route path="/settings" element={withLayout(<SettingsPage />)} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
