@@ -426,6 +426,11 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* ── Subjects Tab ── */}
+        <TabsContent value="subjects" className="space-y-6 pt-4">
+          <SubjectsTab schoolId={schoolId} canManage={canManage} />
+        </TabsContent>
+
         {/* ── Fee Categories Tab ── */}
         <TabsContent value="fees" className="space-y-6 pt-4">
           <Card>
