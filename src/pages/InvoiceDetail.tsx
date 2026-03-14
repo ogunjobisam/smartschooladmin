@@ -188,7 +188,7 @@ export default function InvoiceDetail() {
               paymentHistory?.map((pa: any) => (
                 <TableRow key={pa.id}>
                   <TableCell className="tabular-nums">{pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(pa.amount)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(pa.amount)}</TableCell>
                   <TableCell>{pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—"}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{pa.payments?.reference_number || "—"}</TableCell>
                 </TableRow>
