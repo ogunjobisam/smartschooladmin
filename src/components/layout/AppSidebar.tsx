@@ -81,7 +81,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; com
     finance: ["Invoices", "Arrears"],
     communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Approvals", "Reports"],
-    system: [],
+    system: ["Users"],
   },
   school_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
