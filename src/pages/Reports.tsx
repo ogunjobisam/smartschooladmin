@@ -181,10 +181,10 @@ export default function Reports() {
           ))
         ) : (
           <>
-            <StatCard title="Total Billed" value={formatNaira(overallStats?.totalBilled || 0)} icon={FileText} mono />
-            <StatCard title="Total Collected" value={formatNaira(overallStats?.totalCollected || 0)} icon={CreditCard} mono />
+            <StatCard title="Total Billed" value={formatMoney(overallStats?.totalBilled || 0)} icon={FileText} mono />
+            <StatCard title="Total Collected" value={formatMoney(overallStats?.totalCollected || 0)} icon={CreditCard} mono />
             <StatCard title="Collection Rate" value={`${overallStats?.collectionRate || 0}%`} icon={TrendingUp} subtitle={`${overallStats?.studentCount} students`} />
-            <StatCard title="Total Payroll" value={formatNaira(overallStats?.totalPayroll || 0)} icon={Calculator} mono />
+            <StatCard title="Total Payroll" value={formatMoney(overallStats?.totalPayroll || 0)} icon={Calculator} mono />
             <StatCard title="Active Staff" value={(overallStats?.staffCount || 0).toLocaleString()} icon={Users} />
           </>
         )}
