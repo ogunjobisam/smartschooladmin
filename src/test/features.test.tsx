@@ -84,6 +84,9 @@ describe("PromoteStudentsDialog", () => {
   });
 
   it("should render when open", async () => {
+    // Override useQuery to return empty arrays instead of null
+    const rq = await import("@tanstack/react-query");
+    vi.spyOn(rq, "useQuery").mockReturnValue({ data: [], isLoading: false } as any);
     const { PromoteStudentsDialog } = await import("@/components/students/PromoteStudentsDialog");
     render(<PromoteStudentsDialog open={true} onOpenChange={() => {}} />);
     expect(screen.getByText("Promote Students")).toBeInTheDocument();
