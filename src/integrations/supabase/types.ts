@@ -776,6 +776,50 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          org_id: string
+          subject: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          org_id: string
+          subject?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          org_id?: string
+          subject?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -865,6 +909,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      outbound_message_queue: {
+        Row: {
+          attempts: number
+          body: string
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          org_id: string
+          processed_at: string | null
+          recipient: string
+          related_notification_id: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          org_id: string
+          processed_at?: string | null
+          recipient: string
+          related_notification_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          org_id?: string
+          processed_at?: string | null
+          recipient?: string
+          related_notification_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outbound_message_queue_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_message_queue_related_notification_id_fkey"
+            columns: ["related_notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_allocations: {
         Row: {
@@ -1380,6 +1484,76 @@ export type Database = {
           },
         ]
       }
+      school_announcements: {
+        Row: {
+          audience: string
+          body: string
+          channels: string[]
+          created_at: string
+          id: string
+          org_id: string
+          school_id: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          target_class_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          body?: string
+          channels?: string[]
+          created_at?: string
+          id?: string
+          org_id: string
+          school_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          target_class_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          body?: string
+          channels?: string[]
+          created_at?: string
+          id?: string
+          org_id?: string
+          school_id?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          target_class_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_announcements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_announcements_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_announcements_target_class_id_fkey"
+            columns: ["target_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           accent_color: string | null
@@ -1846,6 +2020,9 @@ export type Database = {
         | "staff_invite"
         | "payroll_pending"
         | "approval_result"
+        | "fee_reminder"
+        | "payment_confirmation"
+        | "school_announcement"
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
@@ -2013,6 +2190,9 @@ export const Constants = {
         "staff_invite",
         "payroll_pending",
         "approval_result",
+        "fee_reminder",
+        "payment_confirmation",
+        "school_announcement",
       ],
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
