@@ -30,6 +30,7 @@ const ROLES = [
   { value: "super_admin", label: "Super Admin" },
   { value: "proprietor", label: "Proprietor" },
   { value: "group_admin", label: "Group Admin" },
+  { value: "school_admin", label: "School Admin" },
   { value: "principal", label: "Principal" },
   { value: "bursar", label: "Bursar" },
   { value: "finance_officer", label: "Finance Officer" },
