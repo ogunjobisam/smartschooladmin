@@ -61,12 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     const fetchRole = async () => {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role, org_id, school_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
+      const { data } = await supabase.rpc('get_my_role');
+      const row = Array.isArray(data) ? data[0] : data;
 
       setUserRole(data?.role ?? null);
       setOrgId(data?.org_id ?? null);
