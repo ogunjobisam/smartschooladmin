@@ -81,6 +81,7 @@ const App = () => (
             <Route path="/reports" element={withLayout(<Reports />)} />
             <Route path="/audit-log" element={withLayout(<AuditLog />)} />
             <Route path="/settings" element={withLayout(<SettingsPage />)} />
+            <Route path="/users" element={withLayout(<UserManagement />)} />
             <Route path="/parent" element={withLayout(<ParentDashboard />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
