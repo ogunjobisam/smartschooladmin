@@ -21,7 +21,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, schools: [], setSchoolId: () => {}, signOut: async () => {},
+  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, currency: "NGN", schools: [], setSchoolId: () => {}, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
