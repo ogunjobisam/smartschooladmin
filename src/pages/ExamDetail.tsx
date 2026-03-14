@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 function computeGrade(score: number, maxScore: number): string {
   const pct = (score / maxScore) * 100;
