@@ -401,7 +401,7 @@ serve(async (req) => {
           status,
           academic_period_id: currentPeriod?.id || null,
           due_date: status === "overdue" ? "2025-12-15" : "2026-03-30",
-          created_by: user.id,
+          created_by: userId,
         });
       }
       const { data: invoices } = await supabase.from("invoices").insert(invoiceInserts).select("id");
