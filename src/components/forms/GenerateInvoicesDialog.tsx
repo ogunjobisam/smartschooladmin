@@ -22,6 +22,7 @@ interface Props {
 
 export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
   const [scheduleId, setScheduleId] = useState("");
   const [dueDate, setDueDate] = useState("");
