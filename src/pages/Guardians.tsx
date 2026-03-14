@@ -24,7 +24,7 @@ export default function Guardians() {
       if (!orgId) return [];
       let query = supabase
         .from("guardians")
-        .select("id, first_name, last_name, phone, email, student_guardians(id)")
+        .select("id, first_name, last_name, phone, email, user_id, student_guardians(id)")
         .eq("org_id", orgId)
         .order("last_name");
 
