@@ -148,6 +148,7 @@ export default function StudentDetail() {
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="guardians" className="mt-4">
