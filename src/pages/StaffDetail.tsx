@@ -14,6 +14,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
+import { InviteStaffButton } from "@/components/staff/InviteStaffButton";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
