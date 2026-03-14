@@ -1,26 +1,127 @@
 import { useState } from "react";
 import { ArrowLeft, Search, CreditCard, CheckCircle } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/mock-data";
+import { toast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
-const searchResults = [
-  { id: 'STU-002', name: 'Fatima Suleiman', class: 'JSS3', school: 'Ikeja', balance: 110_000_00, invoiceId: 'INV-2026-0002' },
-  { id: 'STU-003', name: 'David Okoro', class: 'SS2', school: 'Lekki', balance: 360_000_00, invoiceId: 'INV-2026-0003' },
-  { id: 'STU-005', name: 'Ibrahim Musa', class: 'SS3', school: 'Lekki', balance: 280_000_00, invoiceId: 'INV-2026-0005' },
-  { id: 'STU-007', name: 'Tunde Bakare', class: 'SS1', school: 'Ikeja', balance: 350_000_00, invoiceId: 'INV-2026-0007' },
-];
-
 export default function RecordPayment() {
-  const [selectedStudent, setSelectedStudent] = useState<typeof searchResults[0] | null>(null);
+  const navigate = useNavigate();
+  const { schoolId, user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [search, setSearch] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("");
+  const [reference, setReference] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [notes, setNotes] = useState("");
+
+  // Search students with outstanding invoices
+  const { data: students, isLoading: searchLoading } = useQuery({
+    queryKey: ["payment-search", schoolId, search],
+    queryFn: async () => {
+      if (!schoolId || search.length < 2) return [];
+      const { data } = await supabase
+        .from("students")
+        .select("id, first_name, last_name, student_id_number, enrolments(classes(name))")
+        .eq("school_id", schoolId)
+        .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,student_id_number.ilike.%${search}%`)
+        .limit(10);
+      return data || [];
+    },
+    enabled: !!schoolId && search.length >= 2,
+  });
+
+  // Fetch outstanding invoices for selected student
+  const { data: studentInvoices } = useQuery({
+    queryKey: ["student-outstanding", selectedStudentId],
+    queryFn: async () => {
+      if (!selectedStudentId) return [];
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, total_amount, amount_paid, status")
+        .eq("student_id", selectedStudentId)
+        .in("status", ["pending", "overdue"])
+        .order("issued_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!selectedStudentId,
+  });
+
+  const selectedStudent = students?.find(s => s.id === selectedStudentId);
+  const selectedInvoice = studentInvoices?.find(i => i.id === selectedInvoiceId);
+  const totalOutstanding = studentInvoices?.reduce((s, i) => s + ((i.total_amount || 0) - (i.amount_paid || 0)), 0) || 0;
+
+  const recordPayment = useMutation({
+    mutationFn: async () => {
+      if (!schoolId || !selectedStudentId || !amount || !method) throw new Error("Missing fields");
+      const amountKobo = Math.round(parseFloat(amount) * 100);
+
+      // Insert payment
+      const { data: payment, error: payError } = await supabase
+        .from("payments")
+        .insert({
+          school_id: schoolId,
+          student_id: selectedStudentId,
+          amount: amountKobo,
+          payment_method: method as any,
+          reference_number: reference || null,
+          payment_date: paymentDate,
+          notes: notes || null,
+          recorded_by: user?.id,
+        })
+        .select("id")
+        .single();
+
+      if (payError) throw payError;
+
+      // Allocate to invoice if selected
+      if (selectedInvoiceId && payment) {
+        const invoiceBalance = selectedInvoice ? (selectedInvoice.total_amount - selectedInvoice.amount_paid) : amountKobo;
+        const allocateAmount = Math.min(amountKobo, invoiceBalance);
+
+        await supabase.from("payment_allocations").insert({
+          payment_id: payment.id,
+          invoice_id: selectedInvoiceId,
+          amount: allocateAmount,
+        });
+
+        // Update invoice amount_paid
+        const newPaid = (selectedInvoice?.amount_paid || 0) + allocateAmount;
+        const newStatus = newPaid >= (selectedInvoice?.total_amount || 0) ? "paid" : "pending";
+        await supabase
+          .from("invoices")
+          .update({ amount_paid: newPaid, status: newStatus as any })
+          .eq("id", selectedInvoiceId);
+      }
+
+      return payment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-stats"] });
+      toast({ title: "Payment recorded", description: `₦${parseFloat(amount).toLocaleString()} payment successfully recorded.` });
+      navigate("/payments");
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Failed to record payment.", variant: "destructive" });
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -40,22 +141,32 @@ export default function RecordPayment() {
             <h3 className="text-sm font-semibold">Find Student</h3>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search by name or ID…" className="pl-9" />
+              <Input placeholder="Search by name or ID…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              {searchResults.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedStudent(s)}
-                  className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted ${selectedStudent?.id === s.id ? 'bg-accent/10 ring-1 ring-accent' : ''}`}
-                >
-                  <div>
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.id} • {s.class} • {s.school}</p>
-                  </div>
-                  <span className="font-mono text-xs tabular-nums text-destructive">{formatNaira(s.balance)}</span>
-                </button>
-              ))}
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {searchLoading ? (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
+              ) : search.length < 2 ? (
+                <p className="text-xs text-muted-foreground py-2">Type at least 2 characters to search.</p>
+              ) : students?.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No students found.</p>
+              ) : (
+                students?.map((s: any) => {
+                  const cn = s.enrolments?.[0]?.classes?.name || "—";
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => { setSelectedStudentId(s.id); setSelectedInvoiceId(""); }}
+                      className={`flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted ${selectedStudentId === s.id ? 'bg-accent/10 ring-1 ring-accent' : ''}`}
+                    >
+                      <div>
+                        <p className="font-medium">{s.first_name} {s.last_name}</p>
+                        <p className="text-xs text-muted-foreground">{s.student_id_number || "—"} • {cn}</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -69,27 +180,28 @@ export default function RecordPayment() {
               <>
                 <div className="rounded-md bg-muted/50 p-3 space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="font-medium">{selectedStudent.name}</span>
-                    <StatusBadge status="overdue" />
+                    <span className="font-medium">{selectedStudent.first_name} {selectedStudent.last_name}</span>
+                    {totalOutstanding > 0 && <StatusBadge status="overdue" />}
                   </div>
-                  <p className="text-xs text-muted-foreground">{selectedStudent.id} • {selectedStudent.class} • {selectedStudent.school}</p>
-                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatNaira(selectedStudent.balance)}</span></p>
+                  <p className="text-xs text-muted-foreground">{selectedStudent.student_id_number || "—"}</p>
+                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatNaira(totalOutstanding)}</span></p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Amount (₦)</Label>
-                    <Input type="number" placeholder="0" className="font-mono tabular-nums" />
+                    <Input type="number" placeholder="0" className="font-mono tabular-nums" value={amount} onChange={(e) => setAmount(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Method</Label>
-                    <Select>
+                    <Select value={method} onValueChange={setMethod}>
                       <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="pos">POS</SelectItem>
                         <SelectItem value="online">Online</SelectItem>
+                        <SelectItem value="cheque">Cheque</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -98,34 +210,46 @@ export default function RecordPayment() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Reference Number</Label>
-                    <Input placeholder="e.g. TRF-12345" className="font-mono" />
+                    <Input placeholder="e.g. TRF-12345" className="font-mono" value={reference} onChange={(e) => setReference(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Date</Label>
-                    <Input type="date" defaultValue="2026-03-14" className="tabular-nums" />
+                    <Input type="date" className="tabular-nums" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Allocate to Invoice</Label>
-                  <Select defaultValue={selectedStudent.invoiceId}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={selectedStudent.invoiceId}>{selectedStudent.invoiceId} — {formatNaira(selectedStudent.balance)}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {studentInvoices && studentInvoices.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Allocate to Invoice</Label>
+                    <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId}>
+                      <SelectTrigger><SelectValue placeholder="Select invoice (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        {studentInvoices.map((inv: any) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.invoice_number} — Balance: {formatNaira((inv.total_amount || 0) - (inv.amount_paid || 0))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Notes (optional)</Label>
-                  <Input placeholder="Additional payment notes…" />
+                  <Input placeholder="Additional payment notes…" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </div>
 
                 <Separator />
 
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline">Cancel</Button>
-                  <Button className="gap-1.5"><CheckCircle className="h-4 w-4" /> Record Payment</Button>
+                  <Button variant="outline" onClick={() => navigate("/payments")}>Cancel</Button>
+                  <Button
+                    className="gap-1.5"
+                    disabled={!amount || !method || recordPayment.isPending}
+                    onClick={() => recordPayment.mutate()}
+                  >
+                    <CheckCircle className="h-4 w-4" /> {recordPayment.isPending ? "Recording…" : "Record Payment"}
+                  </Button>
                 </div>
               </>
             ) : (
