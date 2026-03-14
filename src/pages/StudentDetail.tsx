@@ -112,7 +112,7 @@ export default function StudentDetail() {
               <p className="text-sm text-muted-foreground">{className} • {student.student_type || "Day"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5"><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
         </div>
 
         <Separator className="my-4" />
