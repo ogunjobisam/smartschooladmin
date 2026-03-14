@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
