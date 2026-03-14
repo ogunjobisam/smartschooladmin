@@ -37,11 +37,12 @@ Deno.serve(async (req) => {
 
     // Check caller is super_admin, proprietor, or school_admin
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
     const { data: callerRole } = await adminClient
       .from("user_roles")
       .select("role, school_id")
       .eq("user_id", caller.id)
-      .in("role", ["super_admin", "proprietor", "school_admin"])
+      .in("role", ADMIN_ROLES)
       .limit(1)
       .maybeSingle();
 
