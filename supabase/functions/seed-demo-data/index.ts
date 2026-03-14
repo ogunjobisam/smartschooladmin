@@ -500,7 +500,7 @@ serve(async (req) => {
           org_id, school_id,
           title: "Welcome Back to Term 2!",
           body: "We are excited to welcome all students back for the second term. Please ensure all outstanding fees are paid before the end of the first week.",
-          audience: "all", channels: ["in_app"], status: "sent", sent_by: user.id, sent_at: "2026-01-13T09:00:00Z",
+          audience: "all", channels: ["in_app"], status: "sent", sent_by: userId, sent_at: "2026-01-13T09:00:00Z",
         },
         {
           org_id, school_id,
