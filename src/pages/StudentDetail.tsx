@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
+import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
