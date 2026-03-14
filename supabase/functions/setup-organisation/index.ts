@@ -21,7 +21,7 @@ serve(async (req) => {
     const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
     if (!user) throw new Error("Unauthorized");
 
-    const { orgName, country, currency, schoolName, campusName, academicYear, terms } = await req.json();
+    const { orgName, country, currency, schoolName, campusName, academicYear, terms, classes: customClasses } = await req.json();
     if (!orgName || !schoolName) throw new Error("orgName and schoolName required");
 
     // 1. Create organisation
@@ -87,10 +87,12 @@ serve(async (req) => {
       });
     }
 
-    // 8. Create default classes
-    const defaultClasses = ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"];
-    for (let i = 0; i < defaultClasses.length; i++) {
-      await supabase.from("classes").insert({ school_id: school.id, name: defaultClasses[i], level_order: i + 1 });
+    // 8. Create classes — use custom classes if provided, otherwise default Nigerian classes
+    const classNames = (customClasses && customClasses.length > 0)
+      ? customClasses
+      : ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"];
+    for (let i = 0; i < classNames.length; i++) {
+      await supabase.from("classes").insert({ school_id: school.id, name: classNames[i], level_order: i + 1 });
     }
 
     // 9. Create default fee categories

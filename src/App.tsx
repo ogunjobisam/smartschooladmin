@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,6 +49,14 @@ const withLayout = (page: React.ReactNode) => (
   </ProtectedRoute>
 );
 
+// Show landing for unauthenticated users, dashboard for authenticated
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+  if (!user) return <Landing />;
+  return withLayout(<Index />);
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -61,11 +71,10 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/landing" element={<Landing />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
             {/* Protected app routes */}
-            <Route path="/" element={withLayout(<Index />)} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />

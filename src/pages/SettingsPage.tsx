@@ -251,6 +251,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* ── Add School ── */}
+          {(userRole === "super_admin" || userRole === "proprietor") && (
+            <AddSchoolCard orgId={orgId} queryClient={queryClient} />
+          )}
+
           {/* ── Danger Zone ── */}
           {(userRole === "super_admin" || userRole === "proprietor") && (
             <DangerZoneCard schoolId={schoolId} orgId={orgId} schoolName={school?.name || schoolName} queryClient={queryClient} />
@@ -632,6 +637,61 @@ function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId
             </AlertDialogContent>
           </AlertDialog>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AddSchoolCard({ orgId, queryClient }: { orgId: string | null; queryClient: ReturnType<typeof useQueryClient> }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    if (!orgId || !name.trim()) return;
+    setAdding(true);
+    try {
+      const { error } = await supabase.from("schools").insert({ org_id: orgId, name: name.trim() });
+      if (error) throw error;
+      toast.success(`School "${name.trim()}" created`);
+      queryClient.invalidateQueries();
+      setOpen(false);
+      setName("");
+      // Reload to pick up new school in switcher
+      window.location.reload();
+    } catch (err: any) {
+      toast.error("Failed to add school: " + (err.message || "Unknown error"));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Plus className="h-4 w-4" /> Multi-School Management
+        </CardTitle>
+        <CardDescription>Add another school to your organisation</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!open ? (
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Add School
+          </Button>
+        ) : (
+          <div className="flex items-end gap-3">
+            <div className="flex-1 space-y-1.5">
+              <Label>School Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bright Stars Primary" />
+            </div>
+            <Button onClick={handleAdd} disabled={adding || !name.trim()} size="sm">
+              {adding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setName(""); }}>Cancel</Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
