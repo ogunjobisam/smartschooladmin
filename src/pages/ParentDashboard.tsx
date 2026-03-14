@@ -19,7 +19,7 @@ import { Link } from "react-router-dom";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
-  const { formatMoney } = useCurrency();
+  const { formatMoney, currency } = useCurrency();
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
