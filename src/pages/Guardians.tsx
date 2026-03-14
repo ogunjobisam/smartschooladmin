@@ -72,7 +72,7 @@ export default function Guardians() {
               ))
             ) : guardians?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No guardians found.</TableCell>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No guardians found.</TableCell>
               </TableRow>
             ) : (
               guardians?.map((g: any) => (
