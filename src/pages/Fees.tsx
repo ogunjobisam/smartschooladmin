@@ -1,22 +1,34 @@
+import { useState } from "react";
 import { Receipt, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/mock-data";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
-const feeSchedules = [
-  { id: 'FS-001', name: 'JSS1 Term 2 2026', class: 'JSS1', term: 'Term 2', total: 285_000_00, status: 'active' as const, students: 18 },
-  { id: 'FS-002', name: 'JSS2 Term 2 2026', class: 'JSS2', term: 'Term 2', total: 295_000_00, status: 'active' as const, students: 22 },
-  { id: 'FS-003', name: 'JSS3 Term 2 2026', class: 'JSS3', term: 'Term 2', total: 310_000_00, status: 'active' as const, students: 15 },
-  { id: 'FS-004', name: 'SS1 Term 2 2026', class: 'SS1', term: 'Term 2', total: 350_000_00, status: 'active' as const, students: 20 },
-  { id: 'FS-005', name: 'SS2 Term 2 2026', class: 'SS2', term: 'Term 2', total: 360_000_00, status: 'active' as const, students: 18 },
-  { id: 'FS-006', name: 'SS3 Term 2 2026', class: 'SS3', term: 'Term 2', total: 380_000_00, status: 'active' as const, students: 17 },
-];
-
 export default function Fees() {
+  const { schoolId } = useAuth();
+
+  const { data: schedules, isLoading } = useQuery({
+    queryKey: ["fee-schedules", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase
+        .from("fee_schedules")
+        .select("id, name, total_amount, is_active, class_id, classes(name), academic_period_id, academic_periods(name)")
+        .eq("school_id", schoolId)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader title="Fee Schedules" description="Configure fee structures by class and term.">
@@ -27,27 +39,37 @@ export default function Fees() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs">Schedule ID</TableHead>
               <TableHead className="text-xs">Name</TableHead>
               <TableHead className="text-xs">Class</TableHead>
-              <TableHead className="text-xs">Term</TableHead>
+              <TableHead className="text-xs">Period</TableHead>
               <TableHead className="text-xs text-right">Amount</TableHead>
-              <TableHead className="text-xs text-right">Students</TableHead>
               <TableHead className="text-xs">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {feeSchedules.map((f) => (
-              <TableRow key={f.id} className="cursor-pointer">
-                <TableCell className="font-mono text-xs text-muted-foreground">{f.id}</TableCell>
-                <TableCell className="font-medium">{f.name}</TableCell>
-                <TableCell>{f.class}</TableCell>
-                <TableCell className="text-muted-foreground">{f.term}</TableCell>
-                <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(f.total)}</TableCell>
-                <TableCell className="text-right font-mono tabular-nums">{f.students}</TableCell>
-                <TableCell><StatusBadge status={f.status} /></TableCell>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : schedules?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No fee schedules found.</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              schedules?.map((f: any) => (
+                <TableRow key={f.id} className="cursor-pointer">
+                  <TableCell className="font-medium">{f.name}</TableCell>
+                  <TableCell>{f.classes?.name || "All"}</TableCell>
+                  <TableCell className="text-muted-foreground">{f.academic_periods?.name || "—"}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(f.total_amount)}</TableCell>
+                  <TableCell><StatusBadge status={f.is_active ? "active" : "inactive"} /></TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
