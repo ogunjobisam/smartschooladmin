@@ -84,11 +84,11 @@ Deno.serve(async (req) => {
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (callerIsSchoolLevel) {
-        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
-        const { data: targetRole } = await adminClient.from("user_roles").select("school_id").eq("user_id", user_id).maybeSingle();
-        if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
-      }
+      if (!canAssignRole(callerRole.role, new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
+      // Also check caller outranks the target's current role
+      const { data: targetRole } = await adminClient.from("user_roles").select("role, school_id").eq("user_id", user_id).maybeSingle();
+      if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot manage a ${targetRole.role}` }, 403);
+      if (callerIsSchoolLevel && targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
       const { error } = await adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
