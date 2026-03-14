@@ -1,4 +1,5 @@
 import { GraduationCap, Plus, Search, Filter } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
