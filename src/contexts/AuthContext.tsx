@@ -71,14 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(data?.role ?? null);
       setOrgId(data?.org_id ?? null);
 
-      // Fetch all schools in org for the switcher
+      // Fetch all schools in org for the switcher + org currency
       if (data?.org_id) {
-        const { data: orgSchools } = await supabase
-          .from('schools')
-          .select('id, name')
-          .eq('org_id', data.org_id)
-          .order('name');
+        const [{ data: orgSchools }, { data: orgData }] = await Promise.all([
+          supabase.from('schools').select('id, name').eq('org_id', data.org_id).order('name'),
+          supabase.from('organisation_groups').select('currency').eq('id', data.org_id).maybeSingle(),
+        ]);
         setSchools(orgSchools || []);
+        if (orgData?.currency) setCurrency(orgData.currency);
 
         // Set initial school
         if (data?.school_id) {
