@@ -204,6 +204,38 @@ export default function SettingsPage() {
     else { toast.success("Academic year added"); setNewYearName(""); setNewYearStart(""); setNewYearEnd(""); queryClient.invalidateQueries({ queryKey: ["academic-years"] }); }
   };
 
+  const handleAddPeriod = async (yearId: string) => {
+    if (!newPeriodName.trim() || !newPeriodStart || !newPeriodEnd) return;
+    setAddingPeriod(true);
+    const { error } = await supabase.from("academic_periods").insert({
+      academic_year_id: yearId, name: newPeriodName.trim(), start_date: newPeriodStart, end_date: newPeriodEnd,
+    });
+    setAddingPeriod(false);
+    if (error) toast.error("Failed to add period");
+    else {
+      toast.success("Period added");
+      setNewPeriodName(""); setNewPeriodStart(""); setNewPeriodEnd(""); setNewPeriodYearId(null);
+      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+    }
+  };
+
+  const handleToggleCurrentPeriod = async (periodId: string, yearId: string) => {
+    setTogglingCurrent(periodId);
+    // Clear all is_current for this year's periods first
+    const year = academicYears?.find((y: any) => y.id === yearId);
+    if (year?.academic_periods) {
+      for (const p of year.academic_periods) {
+        if (p.is_current) {
+          await supabase.from("academic_periods").update({ is_current: false }).eq("id", p.id);
+        }
+      }
+    }
+    await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+    setTogglingCurrent(null);
+    toast.success("Current period updated");
+    queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Configure your school and platform settings." />
