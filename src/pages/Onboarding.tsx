@@ -73,7 +73,7 @@ export default function Onboarding() {
         }
       }
 
-      toast.success("Setup complete! Welcome to SchoolFlow.");
+      toast.success("Setup complete! Welcome to Smart School Admin.");
       window.location.href = "/";
     } catch (err: any) {
       toast.error(err.message || "Setup failed. Please try again.");
