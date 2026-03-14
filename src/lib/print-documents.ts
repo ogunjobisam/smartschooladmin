@@ -105,9 +105,9 @@ export function printInvoice(data: InvoicePrintData) {
   </table>
 
   <div style="margin-top:16px;text-align:right;font-size:14px">
-    <p style="margin:4px 0"><span style="color:#64748b">Total:</span> <strong style="font-family:monospace">${formatNaira(data.totalAmount)}</strong></p>
-    <p style="margin:4px 0"><span style="color:#64748b">Paid:</span> <span style="font-family:monospace;color:#16a34a">${formatNaira(data.totalPaid)}</span></p>
-    <p style="margin:4px 0;font-size:16px"><span style="color:#64748b">Balance Due:</span> <strong style="font-family:monospace;color:${data.balance > 0 ? '#dc2626' : '#16a34a'}">${formatNaira(data.balance)}</strong></p>
+    <p style="margin:4px 0"><span style="color:#64748b">Total:</span> <strong style="font-family:monospace">${fmt(data.totalAmount)}</strong></p>
+    <p style="margin:4px 0"><span style="color:#64748b">Paid:</span> <span style="font-family:monospace;color:#16a34a">${fmt(data.totalPaid)}</span></p>
+    <p style="margin:4px 0;font-size:16px"><span style="color:#64748b">Balance Due:</span> <strong style="font-family:monospace;color:${data.balance > 0 ? '#dc2626' : '#16a34a'}">${fmt(data.balance)}</strong></p>
   </div>
 
   ${paymentsHtml}
