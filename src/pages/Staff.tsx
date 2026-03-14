@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
 
 export default function Staff() {
   const navigate = useNavigate();
