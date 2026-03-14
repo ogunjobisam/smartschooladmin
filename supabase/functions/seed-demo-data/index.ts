@@ -518,7 +518,7 @@ serve(async (req) => {
           org_id, school_id,
           title: "Staff Professional Development Day",
           body: "All teaching staff are required to attend the professional development workshop on March 15th. The workshop will cover new curriculum updates and teaching methodologies.",
-          audience: "staff", channels: ["in_app"], status: "draft", sent_by: user.id,
+          audience: "staff", channels: ["in_app"], status: "draft", sent_by: userId,
         },
       ]);
     }
