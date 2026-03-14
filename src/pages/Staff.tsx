@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
 import { exportToCsv } from "@/lib/csv-export";
+import { CsvImportDialog } from "@/components/import/CsvImportDialog";
 
 export default function Staff() {
   const navigate = useNavigate();
