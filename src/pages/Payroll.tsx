@@ -60,8 +60,8 @@ export default function Payroll() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Pending Payroll" value={formatNaira(dueThisMonth)} icon={Calculator} mono />
-        <StatCard title="Paid Payroll" value={formatNaira(paidThisMonth)} icon={Calculator} mono />
+        <StatCard title="Pending Payroll" value={formatMoney(dueThisMonth)} icon={Calculator} mono />
+        <StatCard title="Paid Payroll" value={formatMoney(paidThisMonth)} icon={Calculator} mono />
         <StatCard title="Active Staff" value={(staffCount || 0).toString()} icon={Calculator} subtitle="In this school" />
       </div>
 

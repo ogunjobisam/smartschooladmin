@@ -91,7 +91,7 @@ export default function Arrears() {
                   <TableCell className="font-medium">{s.studentName}</TableCell>
                   <TableCell>{s.className}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.invoice_number}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(s.balance)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
                 </TableRow>
               ))

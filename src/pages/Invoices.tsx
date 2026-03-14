@@ -112,9 +112,9 @@ export default function Invoices() {
                   <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                     <TableCell className="font-medium">{studentName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.amount_paid)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount - inv.amount_paid)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.amount_paid)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount - inv.amount_paid)}</TableCell>
                     <TableCell><StatusBadge status={inv.status} /></TableCell>
                   </TableRow>
                 );

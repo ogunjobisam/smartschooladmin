@@ -158,7 +158,7 @@ export default function Dashboard() {
                   <TableRow key={a.id}>
                     <TableCell><StatusBadge status="pending" /></TableCell>
                     <TableCell className="text-sm">{a.description}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(a.amount || 0)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(a.amount || 0)}</TableCell>
                   </TableRow>
                 ))
               )}
