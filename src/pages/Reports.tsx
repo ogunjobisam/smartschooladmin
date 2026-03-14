@@ -242,9 +242,9 @@ export default function Reports() {
       </div>
 
       {/* Class-wise breakdown + Arrears */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 xl:grid-cols-5">
         {/* Class billing */}
-        <Card className="lg:col-span-3">
+        <Card className="xl:col-span-3 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><GraduationCap className="h-4 w-4 text-accent" /> Billing by Class</CardTitle>
           </CardHeader>
