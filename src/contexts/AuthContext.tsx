@@ -14,6 +14,7 @@ interface AuthContextType {
   userRole: string | null;
   orgId: string | null;
   schoolId: string | null;
+  currency: string;
   schools: SchoolOption[];
   setSchoolId: (id: string) => void;
   signOut: () => Promise<void>;
