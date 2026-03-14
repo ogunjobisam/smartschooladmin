@@ -61,11 +61,10 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/landing" element={<Landing />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
             {/* Protected app routes */}
-            <Route path="/" element={withLayout(<Index />)} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />

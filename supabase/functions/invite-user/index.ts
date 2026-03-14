@@ -81,9 +81,9 @@ Deno.serve(async (req) => {
       const existingUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
       let userId: string;
+      let isNew = false;
       if (existingUser) {
         userId = existingUser.id;
-        // Check if already has parent role
         const { data: existingRole } = await adminClient
           .from("user_roles")
           .select("id")
@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
         });
         if (createError || !newUser?.user) return jsonResponse({ error: createError?.message || "Failed to create user" }, 400);
         userId = newUser.user.id;
+        isNew = true;
       }
 
       // Assign parent role
@@ -118,7 +119,12 @@ Deno.serve(async (req) => {
         .eq("id", guardian_id);
       if (linkError) return jsonResponse({ error: linkError.message }, 400);
 
-      return jsonResponse({ success: true, user_id: userId, is_new: !existingUser });
+      // Send password reset email so user can set their own password
+      if (isNew) {
+        await adminClient.auth.admin.generateLink({ type: "recovery", email });
+      }
+
+      return jsonResponse({ success: true, user_id: userId, is_new: isNew });
     }
 
     // Handle standard invite
@@ -136,6 +142,7 @@ Deno.serve(async (req) => {
     const existingUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
     let userId: string;
+    let isNew = false;
 
     if (existingUser) {
       const { data: existingRole } = await adminClient
@@ -156,6 +163,7 @@ Deno.serve(async (req) => {
       });
       if (createError || !newUser?.user) return jsonResponse({ error: createError?.message || "Failed to create user" }, 400);
       userId = newUser.user.id;
+      isNew = true;
     }
 
     // Assign role
@@ -169,11 +177,9 @@ Deno.serve(async (req) => {
 
     // Auto-create staff record for staff roles
     if (STAFF_ROLES.includes(role) && school_id) {
-      // Check if a staff_id was passed (linking existing staff record)
       if (staff_id) {
         await adminClient.from("staff").update({ user_id: userId }).eq("id", staff_id);
       } else {
-        // Create a new staff record
         const nameParts = (full_name || email.split("@")[0]).split(" ");
         const firstName = nameParts[0] || "";
         const lastName = nameParts.slice(1).join(" ") || "";
@@ -187,7 +193,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    return jsonResponse({ success: true, user_id: userId, is_new: !existingUser });
+    // Send password reset email so invited user can set their own password
+    if (isNew) {
+      await adminClient.auth.admin.generateLink({ type: "recovery", email });
+    }
+
+    return jsonResponse({ success: true, user_id: userId, is_new: isNew });
   } catch (err) {
     return jsonResponse({ error: (err as Error).message }, 500);
   }

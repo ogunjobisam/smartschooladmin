@@ -4,14 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ChevronRight, ChevronLeft, Check, Loader2, Database } from "lucide-react";
+import { Building2, ChevronRight, ChevronLeft, Check, Loader2, Database, Plus, X } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const steps = ["Organisation", "School", "Academic Year"];
+const steps = ["Organisation", "School", "Classes", "Academic Year"];
 
 const countries = [
   { code: "NG", name: "Nigeria", currency: "NGN" },
@@ -32,6 +32,15 @@ const countries = [
   { code: "RW", name: "Rwanda", currency: "RWF" },
 ];
 
+const CLASS_PRESETS: Record<string, string[]> = {
+  NG: ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"],
+  GB: ["Year 7", "Year 8", "Year 9", "Year 10", "Year 11", "Year 12", "Year 13"],
+  US: ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
+  GH: ["JHS 1", "JHS 2", "JHS 3", "SHS 1", "SHS 2", "SHS 3"],
+  KE: ["Form 1", "Form 2", "Form 3", "Form 4"],
+  DEFAULT: ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6"],
+};
+
 export default function Onboarding() {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
@@ -45,6 +54,9 @@ export default function Onboarding() {
   const [schoolName, setSchoolName] = useState("");
   const [campusName, setCampusName] = useState("Main Campus");
 
+  const [classes, setClasses] = useState<string[]>(CLASS_PRESETS["NG"]);
+  const [newClass, setNewClass] = useState("");
+
   const [academicYear, setAcademicYear] = useState("2025/2026");
   const [terms, setTerms] = useState(["Term 1", "Term 2", "Term 3"]);
 
@@ -52,6 +64,19 @@ export default function Onboarding() {
     setCountry(code);
     const c = countries.find((c) => c.code === code);
     if (c) setCurrency(c.currency);
+    // Update class presets based on country
+    setClasses(CLASS_PRESETS[code] || CLASS_PRESETS["DEFAULT"]);
+  };
+
+  const handleAddClass = () => {
+    if (newClass.trim() && !classes.includes(newClass.trim())) {
+      setClasses([...classes, newClass.trim()]);
+      setNewClass("");
+    }
+  };
+
+  const handleRemoveClass = (index: number) => {
+    setClasses(classes.filter((_, i) => i !== index));
   };
 
   const handleComplete = async () => {
@@ -59,16 +84,14 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      // Call edge function to set up org, school, role (bypasses RLS)
       const { data: setupData, error: setupErr } = await supabase.functions.invoke("setup-organisation", {
-        body: { orgName, country, currency, schoolName, campusName, academicYear, terms },
+        body: { orgName, country, currency, schoolName, campusName, academicYear, terms, classes },
       });
       if (setupErr) throw setupErr;
       if (setupData?.error) throw new Error(setupData.error);
 
       const { org_id, school_id } = setupData;
 
-      // Seed demo data if requested
       if (seedDemo) {
         toast.info("Seeding demo data…");
         const resp = await supabase.functions.invoke("seed-demo-data", {
@@ -91,6 +114,8 @@ export default function Onboarding() {
       setLoading(false);
     }
   };
+
+  const canNext = (step === 0 && orgName) || (step === 1 && schoolName) || (step === 2 && classes.length > 0) || step === 3;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -162,6 +187,42 @@ export default function Onboarding() {
 
           {step === 2 && (
             <div className="space-y-4">
+              <div>
+                <Label>Classes / Grade Levels</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  We've pre-filled classes based on your country. Add, remove, or rename as needed.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {classes.map((c, i) => (
+                  <div key={i} className="flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1.5 text-sm">
+                    <span>{c}</span>
+                    <button onClick={() => handleRemoveClass(i)} className="ml-1 rounded-sm hover:bg-muted p-0.5">
+                      <X className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a class…"
+                  value={newClass}
+                  onChange={(e) => setNewClass(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddClass())}
+                  className="flex-1"
+                />
+                <Button variant="outline" size="icon" onClick={handleAddClass} disabled={!newClass.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {classes.length === 0 && (
+                <p className="text-xs text-destructive">Add at least one class to continue.</p>
+              )}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Academic Year</Label>
                 <Input placeholder="e.g. 2025/2026" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} />
@@ -185,11 +246,10 @@ export default function Onboarding() {
                 <Checkbox id="seed" checked={seedDemo} onCheckedChange={(c) => setSeedDemo(!!c)} />
                 <div className="flex-1">
                   <label htmlFor="seed" className="text-sm font-medium cursor-pointer">Load demo data</label>
-                  <p className="text-xs text-muted-foreground">Add 60 students, 15 staff, invoices, payments & payroll for testing.</p>
+                  <p className="text-xs text-muted-foreground">Add sample students, staff, invoices, payments & payroll for testing.</p>
                 </div>
                 <Database className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">Default Nigerian secondary school classes (JSS1–SS3) and fee categories will be created automatically.</p>
             </div>
           )}
 
@@ -198,9 +258,7 @@ export default function Onboarding() {
               <ChevronLeft className="mr-1 h-4 w-4" /> Back
             </Button>
             {step < steps.length - 1 ? (
-              <Button onClick={() => setStep(step + 1)} disabled={
-                (step === 0 && !orgName) || (step === 1 && !schoolName)
-              }>
+              <Button onClick={() => setStep(step + 1)} disabled={!canNext}>
                 Next <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
