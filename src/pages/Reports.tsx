@@ -358,9 +358,9 @@ export default function Reports() {
                   <TableRow key={r.period_label}>
                     <TableCell className="font-medium">{r.period_label}</TableCell>
                     <TableCell className="text-right font-mono tabular-nums">{r.staff_count}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_gross)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(r.total_deductions)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_net)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_gross)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(r.total_deductions)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_net)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[11px] capitalize ${
                         r.status === 'paid' || r.status === 'approved' ? 'bg-success/10 text-success border-success/20' :
