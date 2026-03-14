@@ -20,6 +20,16 @@ const countries = [
   { code: "GH", name: "Ghana", currency: "GHS" },
   { code: "KE", name: "Kenya", currency: "KES" },
   { code: "ZA", name: "South Africa", currency: "ZAR" },
+  { code: "IN", name: "India", currency: "INR" },
+  { code: "CA", name: "Canada", currency: "CAD" },
+  { code: "AU", name: "Australia", currency: "AUD" },
+  { code: "DE", name: "Germany", currency: "EUR" },
+  { code: "FR", name: "France", currency: "EUR" },
+  { code: "AE", name: "United Arab Emirates", currency: "AED" },
+  { code: "EG", name: "Egypt", currency: "EGP" },
+  { code: "TZ", name: "Tanzania", currency: "TZS" },
+  { code: "UG", name: "Uganda", currency: "UGX" },
+  { code: "RW", name: "Rwanda", currency: "RWF" },
 ];
 
 export default function Onboarding() {

@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+  const { formatMoney } = useCurrency();
 
   // Redirect parents to their portal
   if (userRole === "parent") return <Navigate to="/parent" replace />;
@@ -120,8 +121,8 @@ export default function Dashboard() {
         ) : (
           <>
             <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" />
-            <StatCard title="Fees Collected" value={formatNaira(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
-            <StatCard title="Outstanding Fees" value={formatNaira(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
+            <StatCard title="Fees Collected" value={formatMoney(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
+            <StatCard title="Outstanding Fees" value={formatMoney(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
             <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
           </>
         )}
@@ -157,7 +158,7 @@ export default function Dashboard() {
                   <TableRow key={a.id}>
                     <TableCell><StatusBadge status="pending" /></TableCell>
                     <TableCell className="text-sm">{a.description}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(a.amount || 0)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(a.amount || 0)}</TableCell>
                   </TableRow>
                 ))
               )}

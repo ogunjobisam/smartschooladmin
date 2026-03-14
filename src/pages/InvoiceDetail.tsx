@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -14,6 +14,7 @@ import {
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
+  const { formatMoney, currency } = useCurrency();
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -98,6 +99,7 @@ export default function InvoiceDetail() {
         method: pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—",
         reference: pa.payments?.reference_number || "—",
       })),
+      currency,
     });
   };
 
@@ -154,16 +156,16 @@ export default function InvoiceDetail() {
                 <TableRow key={item.id}>
                   <TableCell>{item.description}</TableCell>
                   <TableCell className="text-muted-foreground">{item.fee_categories?.name || "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(item.amount)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(item.amount)}</TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
         <div className="border-t px-5 py-3 space-y-1">
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatNaira(invoice.total_amount)}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatNaira(totalPaid)}</span></div>
-          <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatNaira(balance)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatMoney(invoice.total_amount)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatMoney(totalPaid)}</span></div>
+          <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatMoney(balance)}</span></div>
         </div>
       </div>
 
@@ -187,7 +189,7 @@ export default function InvoiceDetail() {
               paymentHistory?.map((pa: any) => (
                 <TableRow key={pa.id}>
                   <TableCell className="tabular-nums">{pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(pa.amount)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(pa.amount)}</TableCell>
                   <TableCell>{pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—"}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{pa.payments?.reference_number || "—"}</TableCell>
                 </TableRow>

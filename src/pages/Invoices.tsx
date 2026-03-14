@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -23,6 +23,7 @@ const PAGE_SIZE = 20;
 export default function Invoices() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
@@ -111,9 +112,9 @@ export default function Invoices() {
                   <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                     <TableCell className="font-medium">{studentName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.amount_paid)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount - inv.amount_paid)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.amount_paid)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount - inv.amount_paid)}</TableCell>
                     <TableCell><StatusBadge status={inv.status} /></TableCell>
                   </TableRow>
                 );

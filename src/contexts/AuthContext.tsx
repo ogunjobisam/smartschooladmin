@@ -14,13 +14,14 @@ interface AuthContextType {
   userRole: string | null;
   orgId: string | null;
   schoolId: string | null;
+  currency: string;
   schools: SchoolOption[];
   setSchoolId: (id: string) => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, schools: [], setSchoolId: () => {}, signOut: async () => {},
+  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, currency: "NGN", schools: [], setSchoolId: () => {}, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [currency, setCurrency] = useState("NGN");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -69,14 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(data?.role ?? null);
       setOrgId(data?.org_id ?? null);
 
-      // Fetch all schools in org for the switcher
+      // Fetch all schools in org for the switcher + org currency
       if (data?.org_id) {
-        const { data: orgSchools } = await supabase
-          .from('schools')
-          .select('id, name')
-          .eq('org_id', data.org_id)
-          .order('name');
+        const [{ data: orgSchools }, { data: orgData }] = await Promise.all([
+          supabase.from('schools').select('id, name').eq('org_id', data.org_id).order('name'),
+          supabase.from('organisation_groups').select('currency').eq('id', data.org_id).maybeSingle(),
+        ]);
         setSchools(orgSchools || []);
+        if (orgData?.currency) setCurrency(orgData.currency);
 
         // Set initial school
         if (data?.school_id) {
@@ -101,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, schools, setSchoolId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, currency, schools, setSchoolId, signOut }}>
       {children}
     </AuthContext.Provider>
   );

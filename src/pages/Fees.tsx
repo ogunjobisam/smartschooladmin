@@ -7,13 +7,14 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
 export default function Fees() {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data: schedules, isLoading } = useQuery({
     queryKey: ["fee-schedules", schoolId],
@@ -65,7 +66,7 @@ export default function Fees() {
                   <TableCell className="font-medium">{f.name}</TableCell>
                   <TableCell>{f.classes?.name || "All"}</TableCell>
                   <TableCell className="text-muted-foreground">{f.academic_periods?.name || "—"}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(f.total_amount)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(f.total_amount)}</TableCell>
                   <TableCell><StatusBadge status={f.is_active ? "active" : "inactive"} /></TableCell>
                 </TableRow>
               ))

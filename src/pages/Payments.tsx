@@ -10,7 +10,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { exportToCsv } from "@/lib/csv-export";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -19,6 +19,7 @@ import {
 export default function Payments() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const [search, setSearch] = useState("");
 
   const { data: payments, isLoading } = useQuery({
@@ -78,9 +79,9 @@ export default function Payments() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Today's Collections" value={formatNaira(stats?.today || 0)} icon={CreditCard} mono />
-        <StatCard title="This Week" value={formatNaira(stats?.week || 0)} icon={CreditCard} mono />
-        <StatCard title="This Month" value={formatNaira(stats?.month || 0)} icon={CreditCard} mono />
+        <StatCard title="Today's Collections" value={formatMoney(stats?.today || 0)} icon={CreditCard} mono />
+        <StatCard title="This Week" value={formatMoney(stats?.week || 0)} icon={CreditCard} mono />
+        <StatCard title="This Month" value={formatMoney(stats?.month || 0)} icon={CreditCard} mono />
       </div>
 
       <div className="relative max-w-sm">
@@ -119,7 +120,7 @@ export default function Payments() {
                   <TableRow key={p.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{p.reference_number || "—"}</TableCell>
                     <TableCell className="font-medium">{student ? `${student.first_name} ${student.last_name}` : "—"}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(p.amount)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(p.amount)}</TableCell>
                     <TableCell>{formatMethod(p.payment_method)}</TableCell>
                     <TableCell className="tabular-nums">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
                   </TableRow>

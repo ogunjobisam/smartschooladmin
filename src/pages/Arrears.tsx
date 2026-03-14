@@ -7,7 +7,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -20,6 +20,7 @@ function ageingBadge(days: number) {
 
 export default function Arrears() {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data, isLoading } = useQuery({
     queryKey: ["arrears", schoolId],
@@ -53,7 +54,7 @@ export default function Arrears() {
       <PageHeader title="Arrears & Controls" description="Monitor overdue balances and manage exceptions." />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard title="Total Outstanding" value={formatNaira(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />
+        <StatCard title="Total Outstanding" value={formatMoney(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />
         <StatCard title="Overdue Students" value={(data?.overdueCount || 0).toString()} icon={Users} subtitle="With overdue invoices" />
       </div>
 
@@ -90,7 +91,7 @@ export default function Arrears() {
                   <TableCell className="font-medium">{s.studentName}</TableCell>
                   <TableCell>{s.className}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.invoice_number}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(s.balance)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
                 </TableRow>
               ))

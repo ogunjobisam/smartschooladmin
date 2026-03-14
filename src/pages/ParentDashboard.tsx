@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
+  const { formatMoney, currency } = useCurrency();
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
@@ -121,6 +122,7 @@ export default function ParentDashboard() {
       totalPaid: inv.amount_paid || 0,
       balance: (inv.total_amount || 0) - (inv.amount_paid || 0),
       payments: [],
+      currency,
     });
   };
 
@@ -160,8 +162,8 @@ export default function ParentDashboard() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard title="Children Enrolled" value={(children?.length || 0).toString()} icon={GraduationCap} />
-        <StatCard title="Total Outstanding" value={formatNaira(totalBilled - totalPaid)} icon={Receipt} mono subtitle={`${pendingInvoices} pending invoices`} />
-        <StatCard title="Total Paid" value={formatNaira(totalPaid)} icon={CreditCard} mono />
+        <StatCard title="Total Outstanding" value={formatMoney(totalBilled - totalPaid)} icon={Receipt} mono subtitle={`${pendingInvoices} pending invoices`} />
+        <StatCard title="Total Paid" value={formatMoney(totalPaid)} icon={CreditCard} mono />
       </div>
 
       {/* Children */}
@@ -224,8 +226,8 @@ export default function ParentDashboard() {
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                       <TableCell className="font-medium text-sm">{inv.students?.first_name} {inv.students?.last_name}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount)}</TableCell>
-                      <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatNaira(balance)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
+                      <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatMoney(balance)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintInvoice(inv)}>
@@ -269,7 +271,7 @@ export default function ParentDashboard() {
                   <TableRow key={p.id}>
                     <TableCell className="tabular-nums text-sm">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
                     <TableCell className="font-medium text-sm">{p.students?.first_name} {p.students?.last_name}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(p.amount)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(p.amount)}</TableCell>
                     <TableCell className="text-sm">{formatMethod(p.payment_method)}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{p.reference_number || "—"}</TableCell>
                   </TableRow>

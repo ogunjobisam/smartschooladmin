@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 export default function RecordPayment() {
   const navigate = useNavigate();
   const { schoolId, user } = useAuth();
+  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -184,12 +185,12 @@ export default function RecordPayment() {
                     {totalOutstanding > 0 && <StatusBadge status="overdue" />}
                   </div>
                   <p className="text-xs text-muted-foreground">{selectedStudent.student_id_number || "—"}</p>
-                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatNaira(totalOutstanding)}</span></p>
+                  <p className="text-xs">Outstanding: <span className="font-mono font-semibold tabular-nums text-destructive">{formatMoney(totalOutstanding)}</span></p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Amount (₦)</Label>
+                    <Label>Amount</Label>
                     <Input type="number" placeholder="0" className="font-mono tabular-nums" value={amount} onChange={(e) => setAmount(e.target.value)} />
                   </div>
                   <div className="space-y-2">
@@ -226,7 +227,7 @@ export default function RecordPayment() {
                       <SelectContent>
                         {studentInvoices.map((inv: any) => (
                           <SelectItem key={inv.id} value={inv.id}>
-                            {inv.invoice_number} — Balance: {formatNaira((inv.total_amount || 0) - (inv.amount_paid || 0))}
+                            {inv.invoice_number} — Balance: {formatMoney((inv.total_amount || 0) - (inv.amount_paid || 0))}
                           </SelectItem>
                         ))}
                       </SelectContent>

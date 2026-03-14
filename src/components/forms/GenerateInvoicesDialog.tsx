@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
 import { FileText, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import {
@@ -22,6 +22,7 @@ interface Props {
 
 export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
   const [scheduleId, setScheduleId] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -104,7 +105,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 )}
                 {result.total_amount ? (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Total billed: <span className="font-mono font-medium">{formatNaira(result.total_amount)}</span>
+                    Total billed: <span className="font-mono font-medium">{formatMoney(result.total_amount)}</span>
                   </p>
                 ) : null}
               </div>
@@ -124,7 +125,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 <SelectContent>
                   {schedules?.map((s: any) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.classes?.name || "All Classes"} ({formatNaira(s.total_amount)})
+                      {s.name} — {s.classes?.name || "All Classes"} ({formatMoney(s.total_amount)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -143,7 +144,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount per student:</span>
-                  <span className="font-mono font-medium">{formatNaira(selectedSchedule.total_amount)}</span>
+                  <span className="font-mono font-medium">{formatMoney(selectedSchedule.total_amount)}</span>
                 </div>
               </div>
             )}

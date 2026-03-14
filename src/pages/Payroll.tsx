@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { exportToCsv } from "@/lib/csv-export";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -17,6 +17,7 @@ import {
 export default function Payroll() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data: runs, isLoading } = useQuery({
     queryKey: ["payroll-runs", schoolId],
@@ -59,8 +60,8 @@ export default function Payroll() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Pending Payroll" value={formatNaira(dueThisMonth)} icon={Calculator} mono />
-        <StatCard title="Paid Payroll" value={formatNaira(paidThisMonth)} icon={Calculator} mono />
+        <StatCard title="Pending Payroll" value={formatMoney(dueThisMonth)} icon={Calculator} mono />
+        <StatCard title="Paid Payroll" value={formatMoney(paidThisMonth)} icon={Calculator} mono />
         <StatCard title="Active Staff" value={(staffCount || 0).toString()} icon={Calculator} subtitle="In this school" />
       </div>
 
@@ -94,9 +95,9 @@ export default function Payroll() {
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${r.id}`)}>
                   <TableCell className="font-medium">{r.period_label}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums">{r.staff_count}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_gross)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(r.total_deductions)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_net)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_gross)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(r.total_deductions)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_net)}</TableCell>
                   <TableCell><StatusBadge status={r.status} /></TableCell>
                 </TableRow>
               ))

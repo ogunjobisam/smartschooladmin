@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -17,6 +17,7 @@ import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
+  const { formatMoney } = useCurrency();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: staff, isLoading } = useQuery({
@@ -137,16 +138,16 @@ export default function StaffDetail() {
               <h3 className="text-sm font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-accent" /> Salary Breakdown</h3>
               {pp ? (
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatNaira(pp.basic_salary)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.housing_allowance || 0)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatNaira(pp.transport_allowance || 0)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Other Allowances</span><span className="font-mono tabular-nums">{formatNaira(pp.other_allowances || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Basic Salary</span><span className="font-mono tabular-nums">{formatMoney(pp.basic_salary)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Housing Allowance</span><span className="font-mono tabular-nums">{formatMoney(pp.housing_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Transport Allowance</span><span className="font-mono tabular-nums">{formatMoney(pp.transport_allowance || 0)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Other Allowances</span><span className="font-mono tabular-nums">{formatMoney(pp.other_allowances || 0)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatNaira(grossPay)}</span></div>
-                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension ({pp.pension_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(pensionDeduction)}</span></div>
-                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax ({pp.tax_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatNaira(taxDeduction)}</span></div>
+                  <div className="flex justify-between font-semibold"><span>Gross Pay</span><span className="font-mono tabular-nums">{formatMoney(grossPay)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Pension ({pp.pension_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatMoney(pensionDeduction)}</span></div>
+                  <div className="flex justify-between text-destructive"><span className="text-muted-foreground">Tax ({pp.tax_rate || 0}%)</span><span className="font-mono tabular-nums">-{formatMoney(taxDeduction)}</span></div>
                   <Separator />
-                  <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatNaira(netPay)}</span></div>
+                  <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatMoney(netPay)}</span></div>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground py-4">No payroll profile configured.</p>
@@ -189,10 +190,10 @@ export default function StaffDetail() {
                   payslips?.map((ps: any) => (
                     <TableRow key={ps.id}>
                       <TableCell className="font-medium">{ps.payroll_runs?.period_label || "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.basic)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(ps.allowances)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(ps.deductions)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatNaira(ps.net_pay)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(ps.basic)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(ps.allowances)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(ps.deductions)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatMoney(ps.net_pay)}</TableCell>
                       <TableCell><StatusBadge status={ps.payroll_runs?.status || "draft"} /></TableCell>
                     </TableRow>
                   ))

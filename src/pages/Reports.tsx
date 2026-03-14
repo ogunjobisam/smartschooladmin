@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -29,6 +29,7 @@ const CHART_COLORS = [
 
 export default function Reports() {
   const { schoolId, orgId } = useAuth();
+  const { formatMoney, formatMoneyCompact } = useCurrency();
 
   // Overall stats
   const { data: overallStats, isLoading: loadingStats } = useQuery({
@@ -154,7 +155,7 @@ export default function Reports() {
       <div className="rounded-lg border bg-card px-3 py-2 shadow-lg">
         <p className="text-xs font-medium text-card-foreground">{label}</p>
         {payload.map((p: any, i: number) => (
-          <p key={i} className="text-xs tabular-nums" style={{ color: p.color }}>{p.name}: {formatNaira(p.value)}</p>
+          <p key={i} className="text-xs tabular-nums" style={{ color: p.color }}>{p.name}: {formatMoney(p.value)}</p>
         ))}
       </div>
     );
@@ -180,10 +181,10 @@ export default function Reports() {
           ))
         ) : (
           <>
-            <StatCard title="Total Billed" value={formatNaira(overallStats?.totalBilled || 0)} icon={FileText} mono />
-            <StatCard title="Total Collected" value={formatNaira(overallStats?.totalCollected || 0)} icon={CreditCard} mono />
+            <StatCard title="Total Billed" value={formatMoney(overallStats?.totalBilled || 0)} icon={FileText} mono />
+            <StatCard title="Total Collected" value={formatMoney(overallStats?.totalCollected || 0)} icon={CreditCard} mono />
             <StatCard title="Collection Rate" value={`${overallStats?.collectionRate || 0}%`} icon={TrendingUp} subtitle={`${overallStats?.studentCount} students`} />
-            <StatCard title="Total Payroll" value={formatNaira(overallStats?.totalPayroll || 0)} icon={Calculator} mono />
+            <StatCard title="Total Payroll" value={formatMoney(overallStats?.totalPayroll || 0)} icon={Calculator} mono />
             <StatCard title="Active Staff" value={(overallStats?.staffCount || 0).toLocaleString()} icon={Users} />
           </>
         )}
@@ -206,7 +207,7 @@ export default function Reports() {
                 <BarChart data={monthlyRevenue} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `₦${v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}`} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => formatMoneyCompact(v)} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -231,7 +232,7 @@ export default function Reports() {
                   <Pie data={paymentsByMethod} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
                     {paymentsByMethod?.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatNaira(v)} />
+                  <Tooltip formatter={(v: number) => formatMoney(v)} />
                   <Legend iconSize={10} wrapperStyle={{ fontSize: "11px" }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -258,7 +259,7 @@ export default function Reports() {
                   <BarChart data={classBilling} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `₦${v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}`} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => formatMoneyCompact(v)} />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="billed" name="Billed" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="collected" name="Collected" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
@@ -277,9 +278,9 @@ export default function Reports() {
                     {classBilling?.map((c) => (
                       <TableRow key={c.name}>
                         <TableCell className="font-medium">{c.name}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(c.billed)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums text-success">{formatNaira(c.collected)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(c.balance)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(c.billed)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums text-success">{formatMoney(c.collected)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(c.balance)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -310,7 +311,7 @@ export default function Reports() {
                     <div key={bucket.label} className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{bucket.label}</span>
-                        <span className="font-mono tabular-nums text-destructive">{formatNaira(bucket.value)}</span>
+                        <span className="font-mono tabular-nums text-destructive">{formatMoney(bucket.value)}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted">
                         <div className={`h-full rounded-full ${bucket.color}`} style={{ width: `${pct}%` }} />
@@ -320,7 +321,7 @@ export default function Reports() {
                 })}
                 <div className="flex justify-between text-sm font-bold border-t pt-3">
                   <span>Total Outstanding</span>
-                  <span className="font-mono tabular-nums text-destructive">{formatNaira(arrearsAging?.total || 0)}</span>
+                  <span className="font-mono tabular-nums text-destructive">{formatMoney(arrearsAging?.total || 0)}</span>
                 </div>
               </div>
             )}
@@ -357,9 +358,9 @@ export default function Reports() {
                   <TableRow key={r.period_label}>
                     <TableCell className="font-medium">{r.period_label}</TableCell>
                     <TableCell className="text-right font-mono tabular-nums">{r.staff_count}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_gross)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(r.total_deductions)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(r.total_net)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_gross)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(r.total_deductions)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.total_net)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`text-[11px] capitalize ${
                         r.status === 'paid' || r.status === 'approved' ? 'bg-success/10 text-success border-success/20' :

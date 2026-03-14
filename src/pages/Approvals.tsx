@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "@/hooks/use-toast";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -13,6 +13,7 @@ import {
 
 export default function Approvals() {
   const { orgId, user } = useAuth();
+  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
 
   const { data: approvals, isLoading } = useQuery({
@@ -84,7 +85,7 @@ export default function Approvals() {
                   <TableCell className="font-medium">{formatType(a.type)}</TableCell>
                   <TableCell className="max-w-xs text-sm">{a.description}</TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(a.amount || 0)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(a.amount || 0)}</TableCell>
                   <TableCell><StatusBadge status={a.status} /></TableCell>
                   <TableCell className="text-right">
                     {a.status === "pending" ? (

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -19,6 +19,7 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
@@ -128,15 +129,15 @@ export default function StudentDetail() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Billed</p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums">{formatNaira(totalBilled)}</p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums">{formatMoney(totalBilled)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Paid</p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-success">{formatNaira(totalPaid)}</p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-success">{formatMoney(totalPaid)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
-          <p className={`mt-1 font-mono text-xl font-bold tabular-nums ${totalBilled - totalPaid > 0 ? 'text-destructive' : ''}`}>{formatNaira(totalBilled - totalPaid)}</p>
+          <p className={`mt-1 font-mono text-xl font-bold tabular-nums ${totalBilled - totalPaid > 0 ? 'text-destructive' : ''}`}>{formatMoney(totalBilled - totalPaid)}</p>
         </div>
       </div>
 
@@ -198,8 +199,8 @@ export default function StudentDetail() {
                     <TableRow key={inv.id} className="cursor-pointer" onClick={() => window.location.href = `/invoices/${inv.id}`}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.academic_periods?.name || "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.total_amount)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(inv.amount_paid)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.amount_paid)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                     </TableRow>
                   ))
@@ -230,7 +231,7 @@ export default function StudentDetail() {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="tabular-nums">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(p.amount)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(p.amount)}</TableCell>
                         <TableCell>{formatMethod(p.payment_method)}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{p.reference_number || "—"}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{invoiceNum}</TableCell>

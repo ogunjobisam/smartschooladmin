@@ -1,4 +1,4 @@
-import { formatNaira } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 
 interface InvoicePrintData {
   invoiceNumber: string;
@@ -19,9 +19,11 @@ interface InvoicePrintData {
   totalPaid: number;
   balance: number;
   payments: { date: string; amount: number; method: string; reference: string }[];
+  currency?: string;
 }
 
 export function printInvoice(data: InvoicePrintData) {
+  const fmt = (v: number) => formatCurrency(v, data.currency || "NGN");
   const win = window.open("", "_blank");
   if (!win) return;
 
@@ -29,7 +31,7 @@ export function printInvoice(data: InvoicePrintData) {
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${i.description}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b">${i.category}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(i.amount)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(i.amount)}</td>
     </tr>
   `).join("");
 
@@ -45,7 +47,7 @@ export function printInvoice(data: InvoicePrintData) {
       <tbody>${data.payments.map(p => `
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${p.date}</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(p.amount)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(p.amount)}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${p.method}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:12px;color:#64748b">${p.reference}</td>
         </tr>
@@ -103,9 +105,9 @@ export function printInvoice(data: InvoicePrintData) {
   </table>
 
   <div style="margin-top:16px;text-align:right;font-size:14px">
-    <p style="margin:4px 0"><span style="color:#64748b">Total:</span> <strong style="font-family:monospace">${formatNaira(data.totalAmount)}</strong></p>
-    <p style="margin:4px 0"><span style="color:#64748b">Paid:</span> <span style="font-family:monospace;color:#16a34a">${formatNaira(data.totalPaid)}</span></p>
-    <p style="margin:4px 0;font-size:16px"><span style="color:#64748b">Balance Due:</span> <strong style="font-family:monospace;color:${data.balance > 0 ? '#dc2626' : '#16a34a'}">${formatNaira(data.balance)}</strong></p>
+    <p style="margin:4px 0"><span style="color:#64748b">Total:</span> <strong style="font-family:monospace">${fmt(data.totalAmount)}</strong></p>
+    <p style="margin:4px 0"><span style="color:#64748b">Paid:</span> <span style="font-family:monospace;color:#16a34a">${fmt(data.totalPaid)}</span></p>
+    <p style="margin:4px 0;font-size:16px"><span style="color:#64748b">Balance Due:</span> <strong style="font-family:monospace;color:${data.balance > 0 ? '#dc2626' : '#16a34a'}">${fmt(data.balance)}</strong></p>
   </div>
 
   ${paymentsHtml}
@@ -132,9 +134,11 @@ interface ReceiptPrintData {
   method: string;
   referenceNumber: string;
   invoiceAllocations: { invoiceNumber: string; amount: number }[];
+  currency?: string;
 }
 
 export function printReceipt(data: ReceiptPrintData) {
+  const fmt = (v: number) => formatCurrency(v, data.currency || "NGN");
   const win = window.open("", "_blank");
   if (!win) return;
 
@@ -152,7 +156,7 @@ export function printReceipt(data: ReceiptPrintData) {
       <tbody>${data.invoiceAllocations.map(a => `
         <tr>
           <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-family:monospace">${a.invoiceNumber}</td>
-          <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(a.amount)}</td>
+          <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(a.amount)}</td>
         </tr>
       `).join("")}</tbody>
     </table>
@@ -184,7 +188,7 @@ export function printReceipt(data: ReceiptPrintData) {
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:2px solid #e2e8f0;text-align:center">
       <span style="color:#64748b;font-size:11px;text-transform:uppercase;font-weight:600">Amount Paid</span>
-      <p style="margin:4px 0;font-size:28px;font-weight:700;font-family:monospace;color:#16a34a">${formatNaira(data.amount)}</p>
+      <p style="margin:4px 0;font-size:28px;font-weight:700;font-family:monospace;color:#16a34a">${fmt(data.amount)}</p>
     </div>
   </div>
 
