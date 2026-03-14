@@ -79,9 +79,9 @@ export default function PayrollRunDetail() {
         <Separator className="my-4" />
         <div className="grid gap-4 sm:grid-cols-4">
           <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Staff</p><p className="mt-1 text-lg font-bold">{run.staff_count}</p></div>
-          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Gross Total</p><p className="mt-1 font-mono text-lg font-bold tabular-nums">{formatNaira(run.total_gross)}</p></div>
-          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Deductions</p><p className="mt-1 font-mono text-lg font-bold tabular-nums text-destructive">{formatNaira(run.total_deductions)}</p></div>
-          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Net Payable</p><p className="mt-1 font-mono text-lg font-bold tabular-nums text-success">{formatNaira(run.total_net)}</p></div>
+          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Gross Total</p><p className="mt-1 font-mono text-lg font-bold tabular-nums">{formatMoney(run.total_gross)}</p></div>
+          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Deductions</p><p className="mt-1 font-mono text-lg font-bold tabular-nums text-destructive">{formatMoney(run.total_deductions)}</p></div>
+          <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Net Payable</p><p className="mt-1 font-mono text-lg font-bold tabular-nums text-success">{formatMoney(run.total_net)}</p></div>
         </div>
       </div>
 
