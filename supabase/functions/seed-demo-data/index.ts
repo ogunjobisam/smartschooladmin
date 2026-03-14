@@ -506,7 +506,7 @@ serve(async (req) => {
           org_id, school_id,
           title: "Inter-House Sports Competition",
           body: "The annual Inter-House Sports Competition will hold on March 28th, 2026. All students are required to participate. House captains should register their teams with the Sports Department.",
-          audience: "students", channels: ["in_app", "email"], status: "sent", sent_by: user.id, sent_at: "2026-03-01T10:00:00Z",
+          audience: "students", channels: ["in_app", "email"], status: "sent", sent_by: userId, sent_at: "2026-03-01T10:00:00Z",
         },
         {
           org_id, school_id,
