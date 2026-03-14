@@ -14,6 +14,7 @@ import {
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
+  const { formatMoney } = useCurrency();
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
