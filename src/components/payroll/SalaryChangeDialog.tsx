@@ -33,7 +33,7 @@ interface SalaryChangeDialogProps {
 export function SalaryChangeDialog({ open, onOpenChange, staffId, staffName, schoolId, currentValues }: SalaryChangeDialogProps) {
   const { user, orgId } = useAuth();
   const queryClient = useQueryClient();
-  const { formatAmount } = useCurrency();
+  const { formatMoney } = useCurrency();
   const [field, setField] = useState("basic_salary");
   const [newValue, setNewValue] = useState("");
   const [reason, setReason] = useState("");

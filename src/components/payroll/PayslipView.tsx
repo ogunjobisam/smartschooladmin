@@ -21,7 +21,7 @@ interface PayslipData {
 }
 
 export function PayslipView({ data }: { data: PayslipData }) {
-  const { formatAmount } = useCurrency();
+  const { formatMoney: formatAmount } = useCurrency();
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
