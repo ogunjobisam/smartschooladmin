@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/mock-data";
+import { formatNaira } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,

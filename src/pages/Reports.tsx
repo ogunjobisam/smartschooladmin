@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { formatNaira } from "@/lib/mock-data";
+import { formatNaira } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   GraduationCap, CreditCard, AlertTriangle, Calculator,

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/mock-data";
+import { formatNaira } from "@/lib/format";
 import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
