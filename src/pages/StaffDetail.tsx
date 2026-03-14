@@ -140,6 +140,7 @@ export default function StaffDetail() {
         <TabsList>
           <TabsTrigger value="salary">Salary & Payroll</TabsTrigger>
           <TabsTrigger value="payslips">Payslips</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="salary" className="mt-4 space-y-4">
