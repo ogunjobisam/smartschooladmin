@@ -131,6 +131,8 @@ export default function Invoices() {
           </div>
         </div>
       </div>
+
+      <GenerateInvoicesDialog open={generateOpen} onOpenChange={setGenerateOpen} />
     </div>
   );
 }
