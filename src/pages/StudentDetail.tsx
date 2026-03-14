@@ -129,15 +129,15 @@ export default function StudentDetail() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Billed</p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums">{formatNaira(totalBilled)}</p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums">{formatMoney(totalBilled)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Paid</p>
-          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-success">{formatNaira(totalPaid)}</p>
+          <p className="mt-1 font-mono text-xl font-bold tabular-nums text-success">{formatMoney(totalPaid)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
-          <p className={`mt-1 font-mono text-xl font-bold tabular-nums ${totalBilled - totalPaid > 0 ? 'text-destructive' : ''}`}>{formatNaira(totalBilled - totalPaid)}</p>
+          <p className={`mt-1 font-mono text-xl font-bold tabular-nums ${totalBilled - totalPaid > 0 ? 'text-destructive' : ''}`}>{formatMoney(totalBilled - totalPaid)}</p>
         </div>
       </div>
 
