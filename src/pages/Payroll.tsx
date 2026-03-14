@@ -18,6 +18,7 @@ const payrollRuns = [
 ];
 
 export default function Payroll() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Payroll" description="Manage payroll runs, approvals and payslips.">
