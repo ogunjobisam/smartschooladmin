@@ -2,7 +2,7 @@ import {
   Users, GraduationCap, Receipt, CreditCard, AlertTriangle,
   CheckSquare, Clock, FileText, ArrowRight
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,8 +17,11 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-  const { user, orgId, schoolId } = useAuth();
+  const { user, orgId, schoolId, userRole } = useAuth();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
+
+  // Redirect parents to their portal
+  if (userRole === "parent") return <Navigate to="/parent" replace />;
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", schoolId, orgId],
