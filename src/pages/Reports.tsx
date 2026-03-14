@@ -291,7 +291,7 @@ export default function Reports() {
         </Card>
 
         {/* Arrears Aging */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" /> Arrears Aging</CardTitle>
           </CardHeader>
