@@ -193,7 +193,7 @@ export default function Reports() {
       {/* Charts Row */}
       <div className="grid gap-6 xl:grid-cols-5">
         {/* Revenue Trend */}
-        <Card className="lg:col-span-3">
+        <Card className="xl:col-span-3 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-accent" /> Monthly Revenue</CardTitle>
           </CardHeader>
