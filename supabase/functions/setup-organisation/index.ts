@@ -17,7 +17,8 @@ serve(async (req) => {
     // Verify the calling user
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!).auth.getUser(token);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
     if (!user) throw new Error("Unauthorized");
 
     const { orgName, country, currency, schoolName, campusName, academicYear, terms } = await req.json();
