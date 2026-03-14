@@ -52,7 +52,6 @@ export default function Staff() {
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
       </PageHeader>
       <AddStaffDialog open={showAdd} onOpenChange={setShowAdd} />
-      </PageHeader>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
