@@ -125,7 +125,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 <SelectContent>
                   {schedules?.map((s: any) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.classes?.name || "All Classes"} ({formatNaira(s.total_amount)})
+                      {s.name} — {s.classes?.name || "All Classes"} ({formatMoney(s.total_amount)})
                     </SelectItem>
                   ))}
                 </SelectContent>
