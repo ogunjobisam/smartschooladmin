@@ -114,10 +114,21 @@ export default function RecordPayment() {
 
       return payment;
     },
-    onSuccess: () => {
+    onSuccess: (payment) => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["payment-stats"] });
       toast({ title: "Payment recorded", description: `₦${parseFloat(amount).toLocaleString()} payment successfully recorded.` });
+      // Send payment confirmation notification
+      if (orgId && schoolId && selectedStudentId && payment) {
+        sendPaymentConfirmation({
+          orgId,
+          schoolId,
+          studentId: selectedStudentId,
+          amount: Math.round(parseFloat(amount) * 100),
+          paymentId: payment.id,
+          invoiceNumber: selectedInvoice?.invoice_number,
+        }).catch(console.error);
+      }
       navigate("/payments");
     },
     onError: (err: any) => {
