@@ -18,6 +18,8 @@ import {
 import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
 import { exportToCsv } from "@/lib/csv-export";
 import { CsvImportDialog } from "@/components/import/CsvImportDialog";
+import { PromoteStudentsDialog } from "@/components/students/PromoteStudentsDialog";
+import { ArrowRight } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
