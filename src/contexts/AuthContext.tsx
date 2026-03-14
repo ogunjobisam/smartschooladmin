@@ -2,6 +2,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
+interface SchoolOption {
+  id: string;
+  name: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -9,11 +14,13 @@ interface AuthContextType {
   userRole: string | null;
   orgId: string | null;
   schoolId: string | null;
+  schools: SchoolOption[];
+  setSchoolId: (id: string) => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, signOut: async () => {},
+  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, schools: [], setSchoolId: () => {}, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -23,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [schools, setSchools] = useState<SchoolOption[]>([]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -32,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserRole(null);
         setOrgId(null);
         setSchoolId(null);
+        setSchools([]);
         setLoading(false);
       }
     });
@@ -45,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch role, org & school when user changes
+  // Fetch role, org, schools when user changes
   useEffect(() => {
     if (!user) return;
     
@@ -60,17 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(data?.role ?? null);
       setOrgId(data?.org_id ?? null);
 
-      // If no school_id on role, fetch first school in org
-      if (data?.school_id) {
-        setSchoolId(data.school_id);
-      } else if (data?.org_id) {
-        const { data: school } = await supabase
+      // Fetch all schools in org for the switcher
+      if (data?.org_id) {
+        const { data: orgSchools } = await supabase
           .from('schools')
-          .select('id')
+          .select('id, name')
           .eq('org_id', data.org_id)
-          .limit(1)
-          .maybeSingle();
-        setSchoolId(school?.id ?? null);
+          .order('name');
+        setSchools(orgSchools || []);
+
+        // Set initial school
+        if (data?.school_id) {
+          setSchoolId(data.school_id);
+        } else if (orgSchools && orgSchools.length > 0) {
+          setSchoolId(orgSchools[0].id);
+        }
       }
       setLoading(false);
     };
@@ -84,10 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserRole(null);
     setOrgId(null);
     setSchoolId(null);
+    setSchools([]);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, schools, setSchoolId, signOut }}>
       {children}
     </AuthContext.Provider>
   );
