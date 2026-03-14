@@ -76,6 +76,34 @@ export default function StudentDetail() {
     enabled: !!id,
   });
 
+  const { data: attendance } = useQuery({
+    queryKey: ["student-attendance", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance_records")
+        .select("id, date, status, notes, classes(name)")
+        .eq("student_id", id!)
+        .order("date", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: scores } = useQuery({
+    queryKey: ["student-scores", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("student_scores")
+        .select("id, score, grade, remarks, exams(name, max_score, exam_date), subjects(name)")
+        .eq("student_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
   if (isLoading || !student) {
     return (
       <div className="space-y-6">
