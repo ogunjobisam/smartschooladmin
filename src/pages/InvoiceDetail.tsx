@@ -162,9 +162,9 @@ export default function InvoiceDetail() {
           </TableBody>
         </Table>
         <div className="border-t px-5 py-3 space-y-1">
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatNaira(invoice.total_amount)}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatNaira(totalPaid)}</span></div>
-          <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatNaira(balance)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-mono font-bold tabular-nums">{formatMoney(invoice.total_amount)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid</span><span className="font-mono tabular-nums text-success">{formatMoney(totalPaid)}</span></div>
+          <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatMoney(balance)}</span></div>
         </div>
       </div>
 
