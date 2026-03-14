@@ -529,9 +529,9 @@ serve(async (req) => {
 
     if ((existingApprovalCount || 0) === 0) {
       await supabase.from("approval_requests").insert([
-        { org_id, type: "fee_waiver", description: "Fee waiver request for Chinedu Okafor - hardship case", amount: 5000000, status: "pending", requested_by: user.id },
-        { org_id, type: "payroll_run", description: "March 2026 payroll run approval", amount: 450000000, status: "pending", requested_by: user.id },
-        { org_id, type: "discount", description: "Sibling discount for Adaeze Nwosu (20%)", amount: 3000000, status: "approved", requested_by: user.id, reviewed_by: user.id, reviewed_at: new Date().toISOString(), review_notes: "Approved - sibling discount policy applies" },
+        { org_id, type: "fee_waiver", description: "Fee waiver request for Chinedu Okafor - hardship case", amount: 5000000, status: "pending", requested_by: userId },
+        { org_id, type: "payroll_run", description: "March 2026 payroll run approval", amount: 450000000, status: "pending", requested_by: userId },
+        { org_id, type: "discount", description: "Sibling discount for Adaeze Nwosu (20%)", amount: 3000000, status: "approved", requested_by: userId, reviewed_by: userId, reviewed_at: new Date().toISOString(), review_notes: "Approved - sibling discount policy applies" },
       ]);
     }
 
