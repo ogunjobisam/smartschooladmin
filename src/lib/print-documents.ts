@@ -134,9 +134,11 @@ interface ReceiptPrintData {
   method: string;
   referenceNumber: string;
   invoiceAllocations: { invoiceNumber: string; amount: number }[];
+  currency?: string;
 }
 
 export function printReceipt(data: ReceiptPrintData) {
+  const fmt = (v: number) => formatCurrency(v, data.currency || "NGN");
   const win = window.open("", "_blank");
   if (!win) return;
 
