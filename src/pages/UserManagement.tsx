@@ -43,6 +43,7 @@ const roleBadgeClass: Record<string, string> = {
   super_admin: "bg-destructive/10 text-destructive border-destructive/20",
   proprietor: "bg-accent/10 text-accent border-accent/20",
   group_admin: "bg-accent/10 text-accent border-accent/20",
+  school_admin: "bg-primary/10 text-primary border-primary/20",
   principal: "bg-success/10 text-success border-success/20",
   bursar: "bg-warning/10 text-warning border-warning/20",
   finance_officer: "bg-warning/10 text-warning border-warning/20",
