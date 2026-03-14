@@ -60,6 +60,26 @@ export default function InvoiceDetail() {
     enabled: !!id,
   });
 
+  const { data: receipts } = useQuery({
+    queryKey: ["invoice-receipts", id],
+    queryFn: async () => {
+      // Get payment ids from allocations, then find receipts
+      const { data: allocations } = await supabase
+        .from("payment_allocations")
+        .select("payment_id")
+        .eq("invoice_id", id!);
+      const paymentIds = (allocations || []).map((a) => a.payment_id);
+      if (paymentIds.length === 0) return [];
+      const { data } = await supabase
+        .from("receipts")
+        .select("id, receipt_number, amount, issued_at")
+        .in("payment_id", paymentIds)
+        .order("issued_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
   if (isLoading || !invoice) {
     return (
       <div className="space-y-6">
