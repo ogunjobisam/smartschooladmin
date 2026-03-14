@@ -311,7 +311,7 @@ export default function Reports() {
                     <div key={bucket.label} className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{bucket.label}</span>
-                        <span className="font-mono tabular-nums text-destructive">{formatNaira(bucket.value)}</span>
+                        <span className="font-mono tabular-nums text-destructive">{formatMoney(bucket.value)}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted">
                         <div className={`h-full rounded-full ${bucket.color}`} style={{ width: `${pct}%` }} />
