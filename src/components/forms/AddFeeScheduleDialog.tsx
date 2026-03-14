@@ -89,7 +89,7 @@ export function AddFeeScheduleDialog({ children }: { children: React.ReactNode }
           school_id: schoolId,
           class_id: classId || null,
           academic_period_id: periodId || null,
-          total_amount: Math.round(totalAmount * 100), // store in minor units
+          total_amount: Math.round(totalAmount),
           is_active: true,
         })
         .select("id")
