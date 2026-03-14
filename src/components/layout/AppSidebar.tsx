@@ -54,58 +54,67 @@ const allNav = {
 };
 
 // Role-based visibility rules
-const roleNavAccess: Record<string, { overview: string[]; finance: string[]; operations: string[]; system: string[] }> = {
+const roleNavAccess: Record<string, { overview: string[]; finance: string[]; communications: string[]; operations: string[]; system: string[] }> = {
   super_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   proprietor: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   group_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings"],
   },
   principal: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Invoices", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Approvals", "Reports"],
     system: [],
   },
   bursar: {
     overview: ["Dashboard", "Students", "Guardians"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "My Preferences"],
     operations: ["Payroll", "Reports"],
     system: [],
   },
   finance_officer: {
     overview: ["Dashboard", "Students"],
     finance: ["Invoices", "Payments", "Arrears"],
+    communications: ["My Preferences"],
     operations: ["Reports"],
     system: [],
   },
   hr_admin: {
     overview: ["Dashboard", "Staff"],
     finance: [],
+    communications: ["Announcements", "My Preferences"],
     operations: ["Payroll", "Reports"],
     system: [],
   },
   teacher: {
     overview: ["Dashboard", "Students", "Attendance", "Exams"],
     finance: [],
+    communications: ["Announcements", "My Preferences"],
     operations: [],
     system: [],
   },
   parent: {
     overview: ["Dashboard"],
     finance: ["Invoices", "Payments"],
+    communications: ["My Preferences"],
     operations: [],
     system: [],
   },
