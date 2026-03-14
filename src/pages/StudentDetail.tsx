@@ -173,10 +173,12 @@ export default function StudentDetail() {
       </div>
 
       <Tabs defaultValue="guardians">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="grades">Grades</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
