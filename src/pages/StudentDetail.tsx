@@ -150,34 +150,11 @@ export default function StudentDetail() {
         </TabsList>
 
         <TabsContent value="guardians" className="mt-4">
-          <div className="rounded-lg border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Name</TableHead>
-                  <TableHead className="text-xs">Relationship</TableHead>
-                  <TableHead className="text-xs">Phone</TableHead>
-                  <TableHead className="text-xs">Email</TableHead>
-                  <TableHead className="text-xs">Primary</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {guardians?.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No guardians linked.</TableCell></TableRow>
-                ) : (
-                  guardians?.map((sg: any) => (
-                    <TableRow key={sg.id}>
-                      <TableCell className="font-medium">{sg.guardians?.first_name} {sg.guardians?.last_name}</TableCell>
-                      <TableCell className="capitalize">{sg.relationship || "—"}</TableCell>
-                      <TableCell className="font-mono text-sm tabular-nums">{sg.guardians?.phone || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{sg.guardians?.email || "—"}</TableCell>
-                      <TableCell>{sg.is_primary ? <StatusBadge status="active" /> : "—"}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <LinkGuardianSection
+            studentId={id!}
+            guardians={guardians || []}
+            onRefresh={() => refetchGuardians()}
+          />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">

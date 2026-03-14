@@ -110,6 +110,9 @@ export default function Dashboard() {
         description="Here's an overview of your schools today."
       />
 
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist />
+
       {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         {isLoading ? (
