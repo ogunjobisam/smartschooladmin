@@ -102,14 +102,12 @@ export default function ProprietorDashboard() {
 
   const handleExport = () => {
     if (schoolComparison.length === 0) return;
-    exportToCsv(schoolComparison.map(s => ({
-      School: s.name,
-      Students: s.students,
-      Staff: s.staff,
-      "Total Invoiced": s.invoiced,
-      "Total Collected": s.collected,
-      Outstanding: s.outstanding,
-    })), "school-comparison-report");
+    const headers = ["School", "Students", "Staff", "Total Invoiced", "Total Collected", "Outstanding"];
+    const rows = schoolComparison.map(s => [
+      s.name, String(s.students), String(s.staff),
+      String(s.invoiced), String(s.collected), String(s.outstanding),
+    ]);
+    exportToCsv("school-comparison-report", headers, rows);
   };
 
   return (
