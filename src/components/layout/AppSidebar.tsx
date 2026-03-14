@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -10,10 +10,10 @@ import {
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
-import { currentUser } from "@/lib/mock-data";
+import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
 const mainNav = [
@@ -45,7 +45,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user, userRole, signOut } = useAuth();
   const isActive = (path: string) => location.pathname === path;
+
+  const displayName = user?.user_metadata?.full_name || user?.email || 'User';
+  const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   const renderGroup = (label: string, items: typeof mainNav) => (
     <SidebarGroup>
@@ -84,7 +88,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-accent-foreground">SchoolFlow</span>
-              <span className="text-[11px] text-sidebar-muted">{currentUser.orgName}</span>
+              <span className="text-[11px] text-sidebar-muted capitalize">{userRole || 'User'}</span>
             </div>
           )}
         </NavLink>
@@ -103,14 +107,14 @@ export function AppSidebar() {
             <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-medium">
-                  {currentUser.avatarInitials}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <>
                   <div className="flex flex-1 flex-col overflow-hidden">
-                    <span className="truncate text-sm font-medium text-sidebar-accent-foreground">{currentUser.name}</span>
-                    <span className="truncate text-[11px] text-sidebar-muted capitalize">{currentUser.role}</span>
+                    <span className="truncate text-sm font-medium text-sidebar-accent-foreground">{displayName}</span>
+                    <span className="truncate text-[11px] text-sidebar-muted">{user?.email}</span>
                   </div>
                   <ChevronDown className="h-4 w-4 text-sidebar-muted" />
                 </>
@@ -120,7 +124,10 @@ export function AppSidebar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Switch School</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">Log out</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut} className="text-destructive">
+              <LogOut className="mr-2 h-4 w-4" /> Log out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>
