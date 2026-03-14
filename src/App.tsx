@@ -41,6 +41,7 @@ import AuditLog from "./pages/AuditLog";
 import SettingsPage from "./pages/SettingsPage";
 import ParentDashboard from "./pages/ParentDashboard";
 import UserManagement from "./pages/UserManagement";
+import NotificationHistory from "./pages/NotificationHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

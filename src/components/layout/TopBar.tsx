@@ -1,10 +1,11 @@
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function TopBar() {
   const { schools, schoolId, setSchoolId } = useAuth();
@@ -38,9 +39,7 @@ export function TopBar() {
         <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
       </Button>
 
-      <Button variant="ghost" size="icon" className="relative">
-        <Bell className="h-4 w-4" />
-      </Button>
+      <NotificationBell />
     </header>
   );
 }
