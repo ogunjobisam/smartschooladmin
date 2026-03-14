@@ -89,7 +89,7 @@ export default function Onboarding() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Set up SchoolFlow</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Set up Smart School Admin</h1>
           <p className="text-sm text-muted-foreground">Let's get your school management platform ready</p>
         </div>
 
