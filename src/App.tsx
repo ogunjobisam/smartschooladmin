@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -49,13 +49,6 @@ const withLayout = (page: React.ReactNode) => (
   </ProtectedRoute>
 );
 
-// Show landing for unauthenticated users, dashboard for authenticated
-function HomeRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
-  if (!user) return <Landing />;
-  return withLayout(<Index />);
-}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -74,7 +67,8 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
             {/* Protected app routes */}
-            <Route path="/" element={<HomeRoute />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={withLayout(<Index />)} />
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />
