@@ -188,7 +188,7 @@ export function printReceipt(data: ReceiptPrintData) {
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:2px solid #e2e8f0;text-align:center">
       <span style="color:#64748b;font-size:11px;text-transform:uppercase;font-weight:600">Amount Paid</span>
-      <p style="margin:4px 0;font-size:28px;font-weight:700;font-family:monospace;color:#16a34a">${formatNaira(data.amount)}</p>
+      <p style="margin:4px 0;font-size:28px;font-weight:700;font-family:monospace;color:#16a34a">${fmt(data.amount)}</p>
     </div>
   </div>
 
