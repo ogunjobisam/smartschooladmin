@@ -15,6 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
 
 const PAGE_SIZE = 20;
 
