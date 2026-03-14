@@ -51,6 +51,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <SchoolBrandingProvider>
           <Routes>
             {/* Public auth routes */}
             <Route path="/login" element={<Login />} />
