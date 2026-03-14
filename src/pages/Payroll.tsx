@@ -1,4 +1,4 @@
-import { Calculator, Plus } from "lucide-react";
+import { Calculator, Plus, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/mock-data";
+import { exportToCsv } from "@/lib/csv-export";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -49,6 +50,11 @@ export default function Payroll() {
   return (
     <div className="space-y-6">
       <PageHeader title="Payroll" description="Manage payroll runs, approvals and payslips.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!runs?.length) return;
+          exportToCsv("payroll", ["Period", "Staff Count", "Gross", "Deductions", "Net", "Status", "Date"],
+            runs.map((r: any) => [r.period_label, String(r.staff_count), String(r.total_gross), String(r.total_deductions), String(r.total_net), r.status, r.run_date]));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New Payroll Run</Button>
       </PageHeader>
 

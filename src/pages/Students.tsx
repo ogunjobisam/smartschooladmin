@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GraduationCap, Plus, Search } from "lucide-react";
+import { GraduationCap, Plus, Search, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
+import { exportToCsv } from "@/lib/csv-export";
 
 const PAGE_SIZE = 20;
 
@@ -83,6 +84,11 @@ export default function Students() {
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!data?.students?.length) return;
+          exportToCsv("students", ["Student ID", "First Name", "Last Name", "Class", "Type", "Status"],
+            data.students.map((s: any) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
       </PageHeader>
       <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />

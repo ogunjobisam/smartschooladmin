@@ -13,6 +13,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
+import { exportToCsv } from "@/lib/csv-export";
 
 export default function Staff() {
   const navigate = useNavigate();
@@ -48,7 +49,11 @@ export default function Staff() {
   return (
     <div className="space-y-6">
       <PageHeader title="Staff" description="Manage staff records and positions.">
-        <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Export CSV</Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!staffList?.length) return;
+          exportToCsv("staff", ["Staff ID", "First Name", "Last Name", "Email", "Position", "Department", "Status"],
+            staffList.map((s: any) => { const p = getPosition(s); return [s.staff_id_number || "", s.first_name, s.last_name, s.email || "", p.title, p.department, s.employment_status]; }));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
       </PageHeader>
       <AddStaffDialog open={showAdd} onOpenChange={setShowAdd} />

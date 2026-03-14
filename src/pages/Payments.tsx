@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CreditCard, Plus, Search } from "lucide-react";
+import { CreditCard, Plus, Search, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatNaira } from "@/lib/mock-data";
+import { exportToCsv } from "@/lib/csv-export";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -66,6 +67,11 @@ export default function Payments() {
   return (
     <div className="space-y-6">
       <PageHeader title="Payments" description="Record and manage fee payments.">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          if (!payments?.length) return;
+          exportToCsv("payments", ["Reference", "Student", "Amount", "Method", "Date"],
+            payments.map((p: any) => [p.reference_number || "", p.students ? `${p.students.first_name} ${p.students.last_name}` : "", String(p.amount), formatMethod(p.payment_method), new Date(p.payment_date).toLocaleDateString()]));
+        }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
           <Plus className="h-4 w-4" /> Record Payment
         </Button>
