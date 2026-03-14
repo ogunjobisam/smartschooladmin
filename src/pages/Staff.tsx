@@ -13,6 +13,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
+import { exportToCsv } from "@/lib/csv-export";
 
 export default function Staff() {
   const navigate = useNavigate();
