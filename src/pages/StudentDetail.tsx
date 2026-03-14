@@ -20,7 +20,7 @@ import { DocumentsTab } from "@/components/documents/DocumentsTab";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
-  const { schoolId } = useAuth();
+  const { schoolId, orgId } = useAuth();
   const { formatMoney } = useCurrency();
   const [editOpen, setEditOpen] = useState(false);
 
