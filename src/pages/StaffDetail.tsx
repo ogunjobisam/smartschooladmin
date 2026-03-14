@@ -114,7 +114,7 @@ export default function StaffDetail() {
               <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5"><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
         </div>
         <Separator className="my-4" />
         <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
