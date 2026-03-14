@@ -44,6 +44,8 @@ import UserManagement from "./pages/UserManagement";
 import NotificationHistory from "./pages/NotificationHistory";
 import ProprietorDashboard from "./pages/ProprietorDashboard";
 import Attendance from "./pages/Attendance";
+import Exams from "./pages/Exams";
+import ExamDetail from "./pages/ExamDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -98,6 +100,8 @@ const App = () => (
             <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
             <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
             <Route path="/attendance" element={withLayout(<Attendance />)} />
+            <Route path="/exams" element={withLayout(<Exams />)} />
+            <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SchoolBrandingProvider>

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle } from "lucide-react";
+import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -204,6 +204,7 @@ export default function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
+          <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
         </TabsList>
@@ -423,6 +424,11 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Subjects Tab ── */}
+        <TabsContent value="subjects" className="space-y-6 pt-4">
+          <SubjectsTab schoolId={schoolId} canManage={canManage} />
         </TabsContent>
 
         {/* ── Fee Categories Tab ── */}
@@ -691,6 +697,106 @@ function AddSchoolCard({ orgId, queryClient }: { orgId: string | null; queryClie
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setName(""); }}>Cancel</Button>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Subjects Tab Component ──
+function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const { data: subjects = [], isLoading } = useQuery({
+    queryKey: ["subjects", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase.from("subjects").select("*").eq("school_id", schoolId).order("name");
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const handleAdd = async () => {
+    if (!schoolId || !newName.trim()) return;
+    setAdding(true);
+    const { error } = await supabase.from("subjects").insert({
+      school_id: schoolId, name: newName.trim(), short_code: newCode.trim() || null,
+    });
+    setAdding(false);
+    if (error) toast.error("Failed to add subject");
+    else { toast.success("Subject added"); setNewName(""); setNewCode(""); queryClient.invalidateQueries({ queryKey: ["subjects"] }); }
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("subjects").delete().eq("id", id);
+    if (error) toast.error("Cannot delete — subject may be in use");
+    else { toast.success("Subject deleted"); queryClient.invalidateQueries({ queryKey: ["subjects"] }); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" /> Subjects</CardTitle>
+        <CardDescription>Manage subjects taught in this school</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : (
+          <>
+            {subjects.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Subject Name</TableHead>
+                    <TableHead className="text-xs">Code</TableHead>
+                    {canManage && <TableHead className="text-xs w-16" />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subjects.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.short_code || "—"}</TableCell>
+                      {canManage && (
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">No subjects configured yet.</p>
+            )}
+
+            {canManage && (
+              <>
+                <Separator />
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Label>Subject Name</Label>
+                    <Input placeholder="e.g. Mathematics" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                  </div>
+                  <div className="w-24 space-y-2">
+                    <Label>Code</Label>
+                    <Input placeholder="MATH" value={newCode} onChange={(e) => setNewCode(e.target.value)} />
+                  </div>
+                  <Button onClick={handleAdd} disabled={adding || !newName.trim()} size="sm" className="gap-1.5">
+                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Add
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
