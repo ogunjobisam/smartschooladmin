@@ -19,6 +19,8 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
+import { printTranscript, TranscriptData } from "@/lib/print-documents";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
