@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { Bell, FileText, CreditCard, AlertTriangle, UserPlus, Calculator, CheckSquare } from "lucide-react";
+import { Bell, FileText, CreditCard, AlertTriangle, UserPlus, Calculator, CheckSquare, Megaphone, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NotificationItemProps {
@@ -15,11 +15,14 @@ interface NotificationItemProps {
 const typeIcons: Record<string, typeof Bell> = {
   invoice_generated: FileText,
   payment_received: CreditCard,
+  payment_confirmation: Receipt,
   overdue_reminder: AlertTriangle,
+  fee_reminder: AlertTriangle,
   guardian_invite: UserPlus,
   staff_invite: UserPlus,
   payroll_pending: Calculator,
   approval_result: CheckSquare,
+  school_announcement: Megaphone,
 };
 
 export function NotificationItem({ type, title, message, isRead, createdAt, onClick }: NotificationItemProps) {

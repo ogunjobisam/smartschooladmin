@@ -71,9 +71,12 @@ export default function NotificationHistory() {
               <SelectItem value="unread">Unread</SelectItem>
               <SelectItem value="invoice_generated">Invoices</SelectItem>
               <SelectItem value="payment_received">Payments</SelectItem>
+              <SelectItem value="payment_confirmation">Payment Confirmations</SelectItem>
               <SelectItem value="overdue_reminder">Overdue</SelectItem>
+              <SelectItem value="fee_reminder">Fee Reminders</SelectItem>
               <SelectItem value="payroll_pending">Payroll</SelectItem>
               <SelectItem value="approval_result">Approvals</SelectItem>
+              <SelectItem value="school_announcement">Announcements</SelectItem>
             </SelectContent>
           </Select>
           {unreadCount > 0 && (

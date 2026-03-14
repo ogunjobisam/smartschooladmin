@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
+  Megaphone, Bell, MessageSquareText
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,6 +35,11 @@ const allNav = {
     { title: "Payments", url: "/payments", icon: CreditCard },
     { title: "Arrears", url: "/arrears", icon: AlertTriangle },
   ] as NavItem[],
+  communications: [
+    { title: "Announcements", url: "/announcements", icon: Megaphone },
+    { title: "Templates", url: "/notification-templates", icon: MessageSquareText },
+    { title: "My Preferences", url: "/notification-settings", icon: Bell },
+  ] as NavItem[],
   operations: [
     { title: "Payroll", url: "/payroll", icon: Calculator },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
@@ -48,58 +54,67 @@ const allNav = {
 };
 
 // Role-based visibility rules
-const roleNavAccess: Record<string, { overview: string[]; finance: string[]; operations: string[]; system: string[] }> = {
+const roleNavAccess: Record<string, { overview: string[]; finance: string[]; communications: string[]; operations: string[]; system: string[] }> = {
   super_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   proprietor: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings", "Users"],
   },
   group_admin: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
     system: ["Settings"],
   },
   principal: {
     overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
     finance: ["Invoices", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
     operations: ["Approvals", "Reports"],
     system: [],
   },
   bursar: {
     overview: ["Dashboard", "Students", "Guardians"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "My Preferences"],
     operations: ["Payroll", "Reports"],
     system: [],
   },
   finance_officer: {
     overview: ["Dashboard", "Students"],
     finance: ["Invoices", "Payments", "Arrears"],
+    communications: ["My Preferences"],
     operations: ["Reports"],
     system: [],
   },
   hr_admin: {
     overview: ["Dashboard", "Staff"],
     finance: [],
+    communications: ["Announcements", "My Preferences"],
     operations: ["Payroll", "Reports"],
     system: [],
   },
   teacher: {
     overview: ["Dashboard", "Students", "Attendance", "Exams"],
     finance: [],
+    communications: ["Announcements", "My Preferences"],
     operations: [],
     system: [],
   },
   parent: {
     overview: ["Dashboard"],
     finance: ["Invoices", "Payments"],
+    communications: ["My Preferences"],
     operations: [],
     system: [],
   },
@@ -120,6 +135,7 @@ export function AppSidebar() {
   const access = roleNavAccess[userRole || "teacher"];
   const overviewNav = filterNav(allNav.overview, access.overview);
   const financeNav = filterNav(allNav.finance, access.finance);
+  const communicationsNav = filterNav(allNav.communications, access.communications);
   const operationsNav = filterNav(allNav.operations, access.operations);
   const systemNav = filterNav(allNav.system, access.system);
 
@@ -184,6 +200,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-2">
         {renderGroup("Overview", overviewNav)}
         {renderGroup("Finance", financeNav)}
+        {renderGroup("Communications", communicationsNav)}
         {renderGroup("Operations", operationsNav)}
         {renderGroup("System", systemNav)}
       </SidebarContent>

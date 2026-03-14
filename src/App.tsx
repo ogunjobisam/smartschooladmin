@@ -46,6 +46,9 @@ import ProprietorDashboard from "./pages/ProprietorDashboard";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import ExamDetail from "./pages/ExamDetail";
+import Announcements from "./pages/Announcements";
+import NotificationSettings from "./pages/NotificationSettings";
+import NotificationTemplates from "./pages/NotificationTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -102,6 +105,9 @@ const App = () => (
             <Route path="/attendance" element={withLayout(<Attendance />)} />
             <Route path="/exams" element={withLayout(<Exams />)} />
             <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
+            <Route path="/announcements" element={withLayout(<Announcements />)} />
+            <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
+            <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SchoolBrandingProvider>

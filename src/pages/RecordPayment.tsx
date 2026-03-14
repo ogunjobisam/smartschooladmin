@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendPaymentConfirmation } from "@/lib/notification-dispatcher";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 
 export default function RecordPayment() {
   const navigate = useNavigate();
-  const { schoolId, user } = useAuth();
+  const { schoolId, user, orgId } = useAuth();
   const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
 
@@ -113,10 +114,21 @@ export default function RecordPayment() {
 
       return payment;
     },
-    onSuccess: () => {
+    onSuccess: (payment) => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["payment-stats"] });
       toast({ title: "Payment recorded", description: `₦${parseFloat(amount).toLocaleString()} payment successfully recorded.` });
+      // Send payment confirmation notification
+      if (orgId && schoolId && selectedStudentId && payment) {
+        sendPaymentConfirmation({
+          orgId,
+          schoolId,
+          studentId: selectedStudentId,
+          amount: Math.round(parseFloat(amount) * 100),
+          paymentId: payment.id,
+          invoiceNumber: selectedInvoice?.invoice_number,
+        }).catch(console.error);
+      }
       navigate("/payments");
     },
     onError: (err: any) => {
