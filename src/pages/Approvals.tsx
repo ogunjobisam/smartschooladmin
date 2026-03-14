@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "@/hooks/use-toast";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
