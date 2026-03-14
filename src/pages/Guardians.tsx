@@ -11,6 +11,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
+import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
 
 export default function Guardians() {
   const { orgId } = useAuth();
