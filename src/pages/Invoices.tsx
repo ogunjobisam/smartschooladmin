@@ -42,7 +42,7 @@ export default function Invoices() {
         query = query.or(`invoice_number.ilike.%${search}%`);
       }
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+        query = query.eq("status", statusFilter as any);
       }
 
       const { data: invoices, count } = await query;
