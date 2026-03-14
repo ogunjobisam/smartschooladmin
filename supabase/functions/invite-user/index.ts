@@ -53,10 +53,19 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // School admins can only manage users in their own school
+    const SCHOOL_ADMIN_ALLOWED_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+
     // Handle role update
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
+      if (callerIsSchoolAdmin) {
+        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School admins can only assign school-level roles" }, 403);
+        // Verify target user is in same school
+        const { data: targetRole } = await adminClient.from("user_roles").select("school_id").eq("user_id", user_id).maybeSingle();
+        if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
+      }
       const { error } = await adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
@@ -66,6 +75,11 @@ Deno.serve(async (req) => {
     if (action === "delete_role") {
       const { user_id } = body;
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
+      if (callerIsSchoolAdmin) {
+        const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
+        if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
+        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole?.role)) return jsonResponse({ error: "Cannot remove this role" }, 403);
+      }
       const { error } = await adminClient.from("user_roles").delete().eq("user_id", user_id);
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
