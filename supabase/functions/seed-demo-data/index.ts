@@ -293,7 +293,7 @@ serve(async (req) => {
                 subject_id: subject.id,
                 score,
                 grade,
-                entered_by: user.id,
+                entered_by: userId,
               });
             }
           }
