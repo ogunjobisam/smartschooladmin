@@ -54,7 +54,7 @@ export default function Arrears() {
       <PageHeader title="Arrears & Controls" description="Monitor overdue balances and manage exceptions." />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard title="Total Outstanding" value={formatNaira(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />
+        <StatCard title="Total Outstanding" value={formatMoney(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />
         <StatCard title="Overdue Students" value={(data?.overdueCount || 0).toString()} icon={Users} subtitle="With overdue invoices" />
       </div>
 
