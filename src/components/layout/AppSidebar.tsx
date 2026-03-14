@@ -83,6 +83,13 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; com
     operations: ["Approvals", "Reports"],
     system: [],
   },
+  school_admin: {
+    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
+    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
+    communications: ["Announcements", "Templates", "My Preferences"],
+    operations: ["Approvals", "Reports"],
+    system: ["Settings", "Users"],
+  },
   bursar: {
     overview: ["Dashboard", "Students", "Guardians"],
     finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
