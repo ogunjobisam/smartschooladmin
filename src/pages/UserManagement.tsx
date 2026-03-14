@@ -318,7 +318,7 @@ export default function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {u.user_id !== currentUser?.id && (
+                        {u.user_id !== currentUser?.id && (ROLE_RANK[u.role] ?? 99) > callerRank && (
                           <>
                             <Button
                               variant="ghost"
