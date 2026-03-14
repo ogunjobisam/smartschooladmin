@@ -105,7 +105,7 @@ export default function StaffDetail() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-card-foreground">{staff.first_name} {staff.last_name}</h2>
-                <StatusBadge status={staff.employment_status === "active" ? "active" : staff.employment_status === "on_leave" ? "pending" : "inactive"} />
+                <StatusBadge status={staff.employment_status as any} />
               </div>
               <p className="font-mono text-xs text-muted-foreground">{staff.staff_id_number || "—"}</p>
               <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>

@@ -88,7 +88,7 @@ export default function Staff() {
                     <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
                     <TableCell>{pos.title}</TableCell>
                     <TableCell className="text-muted-foreground">{pos.department}</TableCell>
-                    <TableCell><StatusBadge status={s.employment_status === "active" ? "active" : s.employment_status === "on_leave" ? "pending" : "inactive"} /></TableCell>
+                    <TableCell><StatusBadge status={s.employment_status as any} /></TableCell>
                   </TableRow>
                 );
               })
