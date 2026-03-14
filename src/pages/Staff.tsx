@@ -49,7 +49,9 @@ export default function Staff() {
     <div className="space-y-6">
       <PageHeader title="Staff" description="Manage staff records and positions.">
         <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Export CSV</Button>
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Staff</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
+      </PageHeader>
+      <AddStaffDialog open={showAdd} onOpenChange={setShowAdd} />
       </PageHeader>
 
       <div className="relative max-w-sm">

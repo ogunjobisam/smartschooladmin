@@ -40,7 +40,9 @@ export default function Guardians() {
   return (
     <div className="space-y-6">
       <PageHeader title="Guardians" description="Manage parent and guardian records.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Guardian</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Guardian</Button>
+      </PageHeader>
+      <AddGuardianDialog open={showAdd} onOpenChange={setShowAdd} />
       </PageHeader>
 
       <div className="relative max-w-sm">
