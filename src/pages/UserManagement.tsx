@@ -54,11 +54,6 @@ export default function UserManagement() {
   const { userRole, orgId, schoolId, schools, user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
-  // Only super_admin and proprietor can access this page
-  if (userRole !== "super_admin" && userRole !== "proprietor") {
-    return <Navigate to="/" replace />;
-  }
-
   const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -83,7 +78,6 @@ export default function UserManagement() {
 
       if (!data) return [];
 
-      // Fetch profiles for all users
       const userIds = data.map((r: any) => r.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -99,6 +93,11 @@ export default function UserManagement() {
     },
     enabled: !!orgId,
   });
+
+  // Only super_admin and proprietor can access this page
+  if (userRole !== "super_admin" && userRole !== "proprietor") {
+    return <Navigate to="/" replace />;
+  }
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {
