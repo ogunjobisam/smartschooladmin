@@ -83,7 +83,9 @@ export default function Students() {
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Student</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
+      </PageHeader>
+      <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />
       </PageHeader>
 
       <div className="flex flex-col gap-3 sm:flex-row">
