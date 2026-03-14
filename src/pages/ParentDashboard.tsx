@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,9 +14,10 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import {
-  GraduationCap, CreditCard, FileText, Receipt, Printer, Eye
+  GraduationCap, CreditCard, FileText, Receipt, Printer, Eye, Wallet
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
