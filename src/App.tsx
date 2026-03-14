@@ -97,6 +97,7 @@ const App = () => (
             <Route path="/parent" element={withLayout(<ParentDashboard />)} />
             <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
             <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
+            <Route path="/attendance" element={withLayout(<Attendance />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SchoolBrandingProvider>
