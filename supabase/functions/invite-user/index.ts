@@ -62,9 +62,8 @@ Deno.serve(async (req) => {
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (callerIsSchoolAdmin) {
-        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School admins can only assign school-level roles" }, 403);
-        // Verify target user is in same school
+      if (callerIsSchoolLevel) {
+        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
         const { data: targetRole } = await adminClient.from("user_roles").select("school_id").eq("user_id", user_id).maybeSingle();
         if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
       }
