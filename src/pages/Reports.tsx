@@ -191,7 +191,7 @@ export default function Reports() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 xl:grid-cols-5">
         {/* Revenue Trend */}
         <Card className="lg:col-span-3">
           <CardHeader className="pb-2">
