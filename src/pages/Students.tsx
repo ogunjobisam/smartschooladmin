@@ -32,6 +32,7 @@ export default function Students() {
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showPromote, setShowPromote] = useState(false);
 
   const { data: classes } = useQuery({
     queryKey: ["classes", schoolId],
