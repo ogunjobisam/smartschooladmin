@@ -21,7 +21,7 @@ type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
 
 const allNav = {
   overview: [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard },
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Students", url: "/students", icon: GraduationCap },
     { title: "Guardians", url: "/guardians", icon: Users },
     { title: "Staff", url: "/staff", icon: UserCog },
