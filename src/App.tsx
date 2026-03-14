@@ -47,6 +47,14 @@ const withLayout = (page: React.ReactNode) => (
   </ProtectedRoute>
 );
 
+// Show landing for unauthenticated users, dashboard for authenticated
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+  if (!user) return <Landing />;
+  return withLayout(<Index />);
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
