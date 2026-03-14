@@ -202,6 +202,8 @@ export default function StaffDetail() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {staff && <EditStaffDialog open={editOpen} onOpenChange={setEditOpen} staff={staff} />}
     </div>
   );
 }
