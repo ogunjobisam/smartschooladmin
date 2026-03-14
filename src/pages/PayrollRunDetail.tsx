@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
