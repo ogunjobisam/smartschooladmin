@@ -1,9 +1,14 @@
-import { GraduationCap, Plus, Search, Filter } from "lucide-react";
+import { useState } from "react";
+import { GraduationCap, Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -11,19 +16,68 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
-const students = [
-  { id: 'STU-001', name: 'Chukwuemeka Obi', class: 'SS1', school: 'Lekki', status: 'active' as const, guardian: 'Mr. Obi' },
-  { id: 'STU-002', name: 'Fatima Suleiman', class: 'JSS3', school: 'Ikeja', status: 'active' as const, guardian: 'Mrs. Suleiman' },
-  { id: 'STU-003', name: 'David Okoro', class: 'SS2', school: 'Lekki', status: 'active' as const, guardian: 'Dr. Okoro' },
-  { id: 'STU-004', name: 'Grace Ademola', class: 'JSS1', school: 'Ikeja', status: 'active' as const, guardian: 'Mrs. Ademola' },
-  { id: 'STU-005', name: 'Ibrahim Musa', class: 'SS3', school: 'Lekki', status: 'active' as const, guardian: 'Alhaji Musa' },
-  { id: 'STU-006', name: 'Blessing Eze', class: 'JSS2', school: 'Lekki', status: 'inactive' as const, guardian: 'Mr. Eze' },
-  { id: 'STU-007', name: 'Aisha Mohammed', class: 'JSS1', school: 'Lekki', status: 'active' as const, guardian: 'Mrs. Mohammed' },
-  { id: 'STU-008', name: 'Tunde Bakare', class: 'SS1', school: 'Ikeja', status: 'active' as const, guardian: 'Pastor Bakare' },
-];
+const PAGE_SIZE = 20;
 
 export default function Students() {
   const navigate = useNavigate();
+  const { schoolId } = useAuth();
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(0);
+
+  const { data: classes } = useQuery({
+    queryKey: ["classes", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["students", schoolId, search, classFilter, statusFilter, page],
+    queryFn: async () => {
+      if (!schoolId) return { students: [], count: 0 };
+
+      let query = supabase
+        .from("students")
+        .select("id, first_name, last_name, student_id_number, status, gender, student_type, enrolments(class_id, classes(name))", { count: "exact" })
+        .eq("school_id", schoolId)
+        .order("last_name")
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (search) {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,student_id_number.ilike.%${search}%`);
+      }
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter as any);
+      }
+
+      const { data: students, count } = await query;
+
+      // Filter by class if needed (client-side since it's a nested relation)
+      let filtered = students || [];
+      if (classFilter !== "all" && classes) {
+        const classId = classes.find(c => c.name.toLowerCase() === classFilter)?.id;
+        if (classId) {
+          filtered = filtered.filter((s: any) => s.enrolments?.some((e: any) => e.class_id === classId));
+        }
+      }
+
+      return { students: filtered, count: count || 0 };
+    },
+    enabled: !!schoolId,
+  });
+
+  const getClassName = (student: any) => {
+    const enrolment = student.enrolments?.[0];
+    return enrolment?.classes?.name || "—";
+  };
+
+  const totalPages = Math.ceil((data?.count || 0) / PAGE_SIZE);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
@@ -33,26 +87,24 @@ export default function Students() {
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search students…" className="pl-9" />
+          <Input placeholder="Search students…" className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
         </div>
-        <Select defaultValue="all">
+        <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(0); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Class" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Classes</SelectItem>
-            <SelectItem value="jss1">JSS1</SelectItem>
-            <SelectItem value="jss2">JSS2</SelectItem>
-            <SelectItem value="jss3">JSS3</SelectItem>
-            <SelectItem value="ss1">SS1</SelectItem>
-            <SelectItem value="ss2">SS2</SelectItem>
-            <SelectItem value="ss3">SS3</SelectItem>
+            {classes?.map(c => (
+              <SelectItem key={c.id} value={c.name.toLowerCase()}>{c.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <Select defaultValue="all">
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -64,29 +116,43 @@ export default function Students() {
               <TableHead className="text-xs">Student ID</TableHead>
               <TableHead className="text-xs">Name</TableHead>
               <TableHead className="text-xs">Class</TableHead>
-              <TableHead className="text-xs">School</TableHead>
-              <TableHead className="text-xs">Guardian</TableHead>
+              <TableHead className="text-xs">Type</TableHead>
               <TableHead className="text-xs">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {students.map((s) => (
-              <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
-                <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
-                <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{s.class}</TableCell>
-                <TableCell className="text-muted-foreground">{s.school}</TableCell>
-                <TableCell className="text-muted-foreground">{s.guardian}</TableCell>
-                <TableCell><StatusBadge status={s.status} /></TableCell>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : data?.students?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No students found.</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              data?.students?.map((s: any) => (
+                <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{s.student_id_number || "—"}</TableCell>
+                  <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
+                  <TableCell>{getClassName(s)}</TableCell>
+                  <TableCell className="capitalize text-muted-foreground">{s.student_type || "—"}</TableCell>
+                  <TableCell><StatusBadge status={s.status} /></TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         <div className="flex items-center justify-between border-t px-4 py-3">
-          <p className="text-xs text-muted-foreground">Showing 8 of 110 students</p>
+          <p className="text-xs text-muted-foreground">
+            Showing {Math.min((page * PAGE_SIZE) + 1, data?.count || 0)}–{Math.min((page + 1) * PAGE_SIZE, data?.count || 0)} of {data?.count || 0} students
+          </p>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
           </div>
         </div>
       </div>

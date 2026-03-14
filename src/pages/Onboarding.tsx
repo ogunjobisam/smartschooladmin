@@ -5,11 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ChevronRight, ChevronLeft, Check, Loader2 } from "lucide-react";
+import { Building2, ChevronRight, ChevronLeft, Check, Loader2, Database } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const steps = ["Organisation", "School", "Academic Year"];
 
@@ -27,6 +28,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [seedDemo, setSeedDemo] = useState(true);
 
   const [orgName, setOrgName] = useState("");
   const [country, setCountry] = useState("NG");
@@ -123,8 +125,23 @@ export default function Onboarding() {
         await supabase.from("fee_categories").insert({ org_id: org.id, name });
       }
 
+      // 9. Seed demo data if requested
+      if (seedDemo) {
+        toast.info("Seeding demo data…");
+        const { data: { session } } = await supabase.auth.getSession();
+        const resp = await supabase.functions.invoke("seed-demo-data", {
+          body: { org_id: org.id, school_id: school.id },
+        });
+        if (resp.error) {
+          console.error("Seed error:", resp.error);
+          toast.warning("Demo data seeding had issues, but your account is ready.");
+        } else {
+          const counts = resp.data?.counts;
+          toast.success(`Seeded ${counts?.students} students, ${counts?.staff} staff, ${counts?.invoices} invoices`);
+        }
+      }
+
       toast.success("Setup complete! Welcome to SchoolFlow.");
-      // Force refresh to pick up new role
       window.location.href = "/";
     } catch (err: any) {
       toast.error(err.message || "Setup failed. Please try again.");
@@ -221,6 +238,14 @@ export default function Onboarding() {
                     placeholder={`Term ${i + 1}`}
                   />
                 ))}
+              </div>
+              <div className="flex items-center space-x-2 rounded-md border border-dashed p-3">
+                <Checkbox id="seed" checked={seedDemo} onCheckedChange={(c) => setSeedDemo(!!c)} />
+                <div className="flex-1">
+                  <label htmlFor="seed" className="text-sm font-medium cursor-pointer">Load demo data</label>
+                  <p className="text-xs text-muted-foreground">Add 60 students, 15 staff, invoices, payments & payroll for testing.</p>
+                </div>
+                <Database className="h-4 w-4 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">Default Nigerian secondary school classes (JSS1–SS3) and fee categories will be created automatically.</p>
             </div>
