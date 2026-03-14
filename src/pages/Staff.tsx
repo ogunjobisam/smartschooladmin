@@ -46,7 +46,7 @@ export default function Staff() {
           </TableHeader>
           <TableBody>
             {staff.map((s) => (
-              <TableRow key={s.id} className="cursor-pointer">
+              <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/staff/${s.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>{s.position}</TableCell>

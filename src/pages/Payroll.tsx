@@ -46,7 +46,7 @@ export default function Payroll() {
           </TableHeader>
           <TableBody>
             {payrollRuns.map((r) => (
-              <TableRow key={r.id} className="cursor-pointer">
+              <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${r.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
                 <TableCell className="font-medium">{r.period}</TableCell>
                 <TableCell className="text-muted-foreground">{r.school}</TableCell>

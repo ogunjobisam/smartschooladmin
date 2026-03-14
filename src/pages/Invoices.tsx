@@ -61,7 +61,7 @@ export default function Invoices() {
           </TableHeader>
           <TableBody>
             {invoices.map((inv) => (
-              <TableRow key={inv.id} className="cursor-pointer">
+              <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{inv.id}</TableCell>
                 <TableCell className="font-medium">{inv.student}</TableCell>
                 <TableCell>{inv.class}</TableCell>

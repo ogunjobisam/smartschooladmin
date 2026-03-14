@@ -71,7 +71,7 @@ export default function Students() {
           </TableHeader>
           <TableBody>
             {students.map((s) => (
-              <TableRow key={s.id} className="cursor-pointer">
+              <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.id}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell>{s.class}</TableCell>
