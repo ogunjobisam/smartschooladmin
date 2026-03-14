@@ -35,17 +35,20 @@ Deno.serve(async (req) => {
     const { data: { user: caller } } = await callerClient.auth.getUser();
     if (!caller) return jsonResponse({ error: "Invalid token" }, 401);
 
-    // Check caller is super_admin or proprietor
+    // Check caller is super_admin, proprietor, or school_admin
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const { data: callerRole } = await adminClient
       .from("user_roles")
-      .select("role")
+      .select("role, school_id")
       .eq("user_id", caller.id)
-      .in("role", ["super_admin", "proprietor"])
+      .in("role", ["super_admin", "proprietor", "school_admin"])
       .limit(1)
       .maybeSingle();
 
     if (!callerRole) return jsonResponse({ error: "Insufficient permissions" }, 403);
+
+    const callerIsSchoolAdmin = callerRole.role === "school_admin";
+    const callerSchoolId = callerRole.school_id;
 
     const body = await req.json();
     const { action } = body;
