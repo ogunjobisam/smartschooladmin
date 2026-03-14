@@ -25,6 +25,7 @@ import Index from "./pages/Index";
 import Students from "./pages/Students";
 import StudentDetail from "./pages/StudentDetail";
 import Guardians from "./pages/Guardians";
+import GuardianDetail from "./pages/GuardianDetail";
 import Staff from "./pages/Staff";
 import StaffDetail from "./pages/StaffDetail";
 import Fees from "./pages/Fees";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/students" element={withLayout(<Students />)} />
             <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
             <Route path="/guardians" element={withLayout(<Guardians />)} />
+            <Route path="/guardians/:id" element={withLayout(<GuardianDetail />)} />
             <Route path="/staff" element={withLayout(<Staff />)} />
             <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
             <Route path="/fees" element={withLayout(<Fees />)} />

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -70,6 +71,34 @@ export default function StudentDetail() {
         .select("id, amount, payment_method, payment_date, reference_number, payment_allocations(invoice_id, invoices(invoice_number))")
         .eq("student_id", id!)
         .order("payment_date", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: attendance } = useQuery({
+    queryKey: ["student-attendance", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance_records")
+        .select("id, date, status, notes, classes(name)")
+        .eq("student_id", id!)
+        .order("date", { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: scores } = useQuery({
+    queryKey: ["student-scores", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("student_scores")
+        .select("id, score, grade, remarks, exams(name, max_score, exam_date), subjects(name)")
+        .eq("student_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(100);
       return data || [];
     },
     enabled: !!id,
@@ -144,10 +173,12 @@ export default function StudentDetail() {
       </div>
 
       <Tabs defaultValue="guardians">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="guardians">Guardians</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="grades">Grades</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
@@ -218,6 +249,80 @@ export default function StudentDetail() {
                       </TableRow>
                     );
                   })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <div className="rounded-lg border bg-card">
+            {(() => {
+              const total = attendance?.length || 0;
+              const present = attendance?.filter((a: any) => a.status === "present").length || 0;
+              const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+              return total > 0 ? (
+                <div className="border-b px-5 py-3 flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">Attendance Rate:</span>
+                  <Badge variant={pct >= 80 ? "default" : "destructive"}>{pct}%</Badge>
+                  <span className="text-xs text-muted-foreground">({present}/{total} days present)</span>
+                </div>
+              ) : null;
+            })()}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Class</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendance?.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No attendance records.</TableCell></TableRow>
+                ) : (
+                  attendance?.map((a: any) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="tabular-nums">{a.date}</TableCell>
+                      <TableCell>{a.classes?.name || "—"}</TableCell>
+                      <TableCell><StatusBadge status={a.status} /></TableCell>
+                      <TableCell className="text-muted-foreground">{a.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="grades" className="mt-4">
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Exam</TableHead>
+                  <TableHead className="text-xs">Subject</TableHead>
+                  <TableHead className="text-xs text-right">Score</TableHead>
+                  <TableHead className="text-xs">Grade</TableHead>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Remarks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scores?.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No exam scores.</TableCell></TableRow>
+                ) : (
+                  scores?.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.exams?.name || "—"}</TableCell>
+                      <TableCell>{s.subjects?.name || "—"}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{s.score ?? "—"}/{s.exams?.max_score || "—"}</TableCell>
+                      <TableCell><Badge variant="outline">{s.grade || "—"}</Badge></TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">{s.exams?.exam_date || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.remarks || "—"}</TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

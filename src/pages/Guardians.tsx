@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Users, Plus, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,7 @@ import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
 
 export default function Guardians() {
+  const navigate = useNavigate();
   const { orgId } = useAuth();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -76,7 +78,7 @@ export default function Guardians() {
               </TableRow>
             ) : (
               guardians?.map((g: any) => (
-                <TableRow key={g.id} className="cursor-pointer">
+                <TableRow key={g.id} className="cursor-pointer" onClick={() => navigate(`/guardians/${g.id}`)}>
                   <TableCell className="font-medium">{g.first_name} {g.last_name}</TableCell>
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{g.email || "—"}</TableCell>

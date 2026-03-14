@@ -10,6 +10,10 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 export function TopBar() {
   const { schools, schoolId, setSchoolId } = useAuth();
 
+  const openCommandPalette = () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4">
       <SidebarTrigger className="shrink-0" />
@@ -33,7 +37,7 @@ export function TopBar() {
 
       <div className="flex-1" />
 
-      <Button variant="outline" size="sm" className="hidden gap-2 text-xs text-muted-foreground md:flex">
+      <Button variant="outline" size="sm" className="hidden gap-2 text-xs text-muted-foreground md:flex" onClick={openCommandPalette}>
         <Search className="h-3.5 w-3.5" />
         <span>Search…</span>
         <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>

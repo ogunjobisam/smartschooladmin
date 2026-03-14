@@ -120,6 +120,11 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; com
   },
 };
 
+// Map parent dashboard to /parent
+const parentDashboardOverride: Record<string, string> = {
+  "/dashboard": "/parent",
+};
+
 function filterNav(items: NavItem[], allowedTitles: string[]): NavItem[] {
   return items.filter(item => allowedTitles.includes(item.title));
 }
@@ -142,6 +147,10 @@ export function AppSidebar() {
   const displayName = user?.user_metadata?.full_name || user?.email || 'User';
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
+  const isParent = userRole === "parent";
+
+  const resolveUrl = (url: string) => isParent && parentDashboardOverride[url] ? parentDashboardOverride[url] : url;
+
   const renderGroup = (label: string, items: NavItem[]) => {
     if (items.length === 0) return null;
     return (
@@ -151,21 +160,24 @@ export function AppSidebar() {
         </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            {items.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                  <NavLink
-                    to={item.url}
-                    end={item.url === "/"}
-                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span>{item.title}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {items.map((item) => {
+              const url = resolveUrl(item.url);
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(url)}>
+                    <NavLink
+                      to={url}
+                      end={url === "/"}
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
@@ -226,8 +238,7 @@ export function AppSidebar() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Switch School</DropdownMenuItem>
+            <DropdownMenuItem asChild><NavLink to="/settings" className="w-full">Profile & Settings</NavLink></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" /> Log out
