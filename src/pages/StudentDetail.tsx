@@ -255,6 +255,80 @@ export default function StudentDetail() {
           </div>
         </TabsContent>
 
+        <TabsContent value="attendance" className="mt-4">
+          <div className="rounded-lg border bg-card">
+            {(() => {
+              const total = attendance?.length || 0;
+              const present = attendance?.filter((a: any) => a.status === "present").length || 0;
+              const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+              return total > 0 ? (
+                <div className="border-b px-5 py-3 flex items-center gap-4">
+                  <span className="text-sm text-muted-foreground">Attendance Rate:</span>
+                  <Badge variant={pct >= 80 ? "default" : "destructive"}>{pct}%</Badge>
+                  <span className="text-xs text-muted-foreground">({present}/{total} days present)</span>
+                </div>
+              ) : null;
+            })()}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Class</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendance?.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No attendance records.</TableCell></TableRow>
+                ) : (
+                  attendance?.map((a: any) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="tabular-nums">{a.date}</TableCell>
+                      <TableCell>{a.classes?.name || "—"}</TableCell>
+                      <TableCell><StatusBadge status={a.status} /></TableCell>
+                      <TableCell className="text-muted-foreground">{a.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="grades" className="mt-4">
+          <div className="rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Exam</TableHead>
+                  <TableHead className="text-xs">Subject</TableHead>
+                  <TableHead className="text-xs text-right">Score</TableHead>
+                  <TableHead className="text-xs">Grade</TableHead>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Remarks</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scores?.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No exam scores.</TableCell></TableRow>
+                ) : (
+                  scores?.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.exams?.name || "—"}</TableCell>
+                      <TableCell>{s.subjects?.name || "—"}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{s.score ?? "—"}/{s.exams?.max_score || "—"}</TableCell>
+                      <TableCell><Badge variant="outline">{s.grade || "—"}</Badge></TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">{s.exams?.exam_date || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.remarks || "—"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
         <TabsContent value="documents" className="mt-4">
           {schoolId && orgId && (
             <DocumentsTab entityType="student" entityId={id!} schoolId={schoolId} orgId={orgId} />
