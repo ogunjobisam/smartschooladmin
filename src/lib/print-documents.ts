@@ -204,3 +204,207 @@ export function printReceipt(data: ReceiptPrintData) {
   win.document.write(html);
   win.document.close();
 }
+
+// ─── Student Transcript ───────────────────────────────────────
+
+interface TranscriptScore {
+  examName: string;
+  examDate: string | null;
+  subjectName: string;
+  score: number | null;
+  maxScore: number;
+  grade: string | null;
+  periodName: string;
+}
+
+interface TranscriptAward {
+  title: string;
+  description: string | null;
+  date: string;
+  periodName: string | null;
+}
+
+export interface TranscriptData {
+  schoolName: string;
+  schoolAddress?: string | null;
+  schoolEmail?: string | null;
+  schoolPhone?: string | null;
+  logoUrl?: string | null;
+  studentName: string;
+  studentIdNumber: string;
+  className: string;
+  dateOfBirth: string | null;
+  gender: string | null;
+  enrolmentDate: string;
+  scores: TranscriptScore[];
+  attendanceTotal: number;
+  attendancePresent: number;
+  awards: TranscriptAward[];
+  generatedAt?: string;
+}
+
+export function printTranscript(data: TranscriptData) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+
+  const logoHtml = data.logoUrl
+    ? `<img src="${data.logoUrl}" alt="Logo" style="height:56px;width:56px;object-fit:contain;border-radius:8px" />`
+    : `<div style="height:56px;width:56px;background:#1e293b;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:24px">${data.schoolName[0]}</div>`;
+
+  const attendancePct = data.attendanceTotal > 0
+    ? Math.round((data.attendancePresent / data.attendanceTotal) * 100)
+    : 0;
+  const attendanceColor = attendancePct >= 80 ? "#16a34a" : attendancePct >= 60 ? "#f59e0b" : "#dc2626";
+
+  // Group scores by period
+  const periodMap = new Map<string, TranscriptScore[]>();
+  data.scores.forEach(s => {
+    const key = s.periodName || "Unassigned";
+    if (!periodMap.has(key)) periodMap.set(key, []);
+    periodMap.get(key)!.push(s);
+  });
+
+  let scoresHtml = "";
+  periodMap.forEach((scores, period) => {
+    const totalScore = scores.reduce((a, s) => a + (s.score || 0), 0);
+    const totalMax = scores.reduce((a, s) => a + s.maxScore, 0);
+    const avgPct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+
+    scoresHtml += `
+      <div style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">${period}</h3>
+          <span style="font-size:12px;color:#64748b">Average: <strong>${avgPct}%</strong></span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f1f5f9">
+            <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Subject</th>
+            <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Exam</th>
+            <th style="padding:6px 10px;text-align:right;font-weight:600;border-bottom:2px solid #e2e8f0">Score</th>
+            <th style="padding:6px 10px;text-align:center;font-weight:600;border-bottom:2px solid #e2e8f0">Grade</th>
+            <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Date</th>
+          </tr></thead>
+          <tbody>${scores.map(s => `
+            <tr>
+              <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0">${s.subjectName}</td>
+              <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b">${s.examName}</td>
+              <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${s.score ?? "—"}/${s.maxScore}</td>
+              <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;text-align:center"><span style="display:inline-block;padding:1px 8px;border-radius:10px;background:#f1f5f9;font-weight:600;font-size:11px">${s.grade || "—"}</span></td>
+              <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b">${s.examDate || "—"}</td>
+            </tr>
+          `).join("")}</tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  if (data.scores.length === 0) {
+    scoresHtml = `<p style="color:#94a3b8;text-align:center;padding:16px">No exam records found.</p>`;
+  }
+
+  const awardsHtml = data.awards.length > 0 ? `
+    <div style="margin-top:24px">
+      <h3 style="margin:0 0 8px;font-size:14px;font-weight:700;border-bottom:2px solid #1e293b;padding-bottom:4px">Awards & Achievements</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Title</th>
+          <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Description</th>
+          <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Period</th>
+          <th style="padding:6px 10px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0">Date</th>
+        </tr></thead>
+        <tbody>${data.awards.map(a => `
+          <tr>
+            <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;font-weight:600">${a.title}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b">${a.description || "—"}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0">${a.periodName || "—"}</td>
+            <td style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b">${a.date}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    </div>
+  ` : "";
+
+  const generated = data.generatedAt || new Date().toLocaleDateString();
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Student Transcript — ${data.studentName}</title>
+<style>
+  @media print { body { margin: 0; } @page { margin: 15mm 20mm; } .no-print { display: none; } }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; max-width: 800px; margin: 0 auto; padding: 32px 24px; }
+</style></head><body>
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:3px solid #1e293b;padding-bottom:16px">
+    <div style="display:flex;gap:12px;align-items:center">
+      ${logoHtml}
+      <div>
+        <h1 style="margin:0;font-size:22px;font-weight:800">${data.schoolName}</h1>
+        ${data.schoolAddress ? `<p style="margin:2px 0;font-size:11px;color:#64748b">${data.schoolAddress}</p>` : ""}
+        ${data.schoolEmail ? `<p style="margin:2px 0;font-size:11px;color:#64748b">${data.schoolEmail}${data.schoolPhone ? ` • ${data.schoolPhone}` : ""}</p>` : ""}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <h2 style="margin:0;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#1e293b">Student Transcript</h2>
+      <p style="margin:4px 0 0;font-size:11px;color:#94a3b8">Generated: ${generated}</p>
+    </div>
+  </div>
+
+  <!-- Student Info -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;padding:16px;background:#f8fafc;border-radius:8px;font-size:13px">
+    <div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Student Name</p>
+      <p style="margin:4px 0 0;font-weight:700;font-size:15px">${data.studentName}</p>
+    </div>
+    <div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Student ID</p>
+      <p style="margin:4px 0 0;font-family:monospace;font-weight:600">${data.studentIdNumber || "—"}</p>
+    </div>
+    <div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Current Class</p>
+      <p style="margin:4px 0 0;font-weight:600">${data.className}</p>
+    </div>
+    ${data.dateOfBirth ? `<div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Date of Birth</p>
+      <p style="margin:4px 0 0">${data.dateOfBirth}</p>
+    </div>` : ""}
+    ${data.gender ? `<div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Gender</p>
+      <p style="margin:4px 0 0">${data.gender}</p>
+    </div>` : ""}
+    <div>
+      <p style="margin:0;color:#64748b;font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:1px">Enrolled Since</p>
+      <p style="margin:4px 0 0">${new Date(data.enrolmentDate).toLocaleDateString()}</p>
+    </div>
+  </div>
+
+  <!-- Attendance Summary -->
+  <div style="margin-bottom:24px;padding:12px 16px;border:1px solid #e2e8f0;border-radius:8px;display:flex;align-items:center;gap:16px">
+    <div style="flex:1">
+      <p style="margin:0;font-size:13px;font-weight:700">Attendance Summary</p>
+      <p style="margin:2px 0 0;font-size:12px;color:#64748b">${data.attendancePresent} present out of ${data.attendanceTotal} recorded days</p>
+    </div>
+    <div style="text-align:center">
+      <span style="display:inline-block;padding:4px 16px;border-radius:20px;font-size:18px;font-weight:800;font-family:monospace;color:white;background:${attendanceColor}">${attendancePct}%</span>
+    </div>
+  </div>
+
+  <!-- Exam Scores by Period -->
+  <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;border-bottom:2px solid #1e293b;padding-bottom:4px">Academic Performance</h2>
+  ${scoresHtml}
+
+  ${awardsHtml}
+
+  <!-- Footer -->
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px;color:#94a3b8">
+    <span>This transcript is issued by ${data.schoolName}.</span>
+    <span>Page 1</span>
+  </div>
+
+  <div class="no-print" style="margin-top:24px;text-align:center">
+    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer">Print Transcript</button>
+  </div>
+</body></html>`;
+
+  win.document.write(html);
+  win.document.close();
+}

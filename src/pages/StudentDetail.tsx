@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,11 +19,14 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
+import { printTranscript, TranscriptData } from "@/lib/print-documents";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId } = useAuth();
   const { formatMoney } = useCurrency();
+  const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
@@ -96,13 +99,38 @@ export default function StudentDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("student_scores")
-        .select("id, score, grade, remarks, exams(name, max_score, exam_date), subjects(name)")
+        .select("id, score, grade, remarks, exams(name, max_score, exam_date, academic_periods(name)), subjects(name)")
         .eq("student_id", id!)
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
+  });
+
+  const { data: awards } = useQuery({
+    queryKey: ["student-awards", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("student_awards")
+        .select("id, title, description, award_date, academic_periods(name)")
+        .eq("student_id", id!)
+        .order("award_date", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: school } = useQuery({
+    queryKey: ["school-detail", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("schools")
+        .select("name, address, email, phone, logo_url")
+        .eq("id", schoolId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
   });
 
   if (isLoading || !student) {
@@ -120,6 +148,46 @@ export default function StudentDetail() {
   const totalPaid = invoices?.reduce((s, i) => s + (i.amount_paid || 0), 0) || 0;
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+
+  const handlePrintTranscript = () => {
+    const transcriptScores = (scores || []).map((s: any) => ({
+      examName: s.exams?.name || "—",
+      examDate: s.exams?.exam_date || null,
+      subjectName: s.subjects?.name || "—",
+      score: s.score,
+      maxScore: s.exams?.max_score || 100,
+      grade: s.grade,
+      periodName: s.exams?.academic_periods?.name || "Unassigned",
+    }));
+
+    const transcriptAwards = (awards || []).map((a: any) => ({
+      title: a.title,
+      description: a.description,
+      date: a.award_date,
+      periodName: a.academic_periods?.name || null,
+    }));
+
+    const attTotal = attendance?.length || 0;
+    const attPresent = attendance?.filter((a: any) => a.status === "present").length || 0;
+
+    printTranscript({
+      schoolName: school?.name || branding.name,
+      schoolAddress: school?.address,
+      schoolEmail: school?.email,
+      schoolPhone: school?.phone,
+      logoUrl: school?.logo_url || branding.logoUrl,
+      studentName: `${student.first_name} ${student.last_name}`,
+      studentIdNumber: student.student_id_number || "—",
+      className,
+      dateOfBirth: student.date_of_birth,
+      gender: student.gender,
+      enrolmentDate: student.created_at,
+      scores: transcriptScores,
+      attendanceTotal: attTotal,
+      attendancePresent: attPresent,
+      awards: transcriptAwards,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -145,7 +213,10 @@ export default function StudentDetail() {
               <p className="text-sm text-muted-foreground">{className} • {student.student_type || "Day"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintTranscript}><Printer className="h-3.5 w-3.5" /> Transcript</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          </div>
         </div>
 
         <Separator className="my-4" />
