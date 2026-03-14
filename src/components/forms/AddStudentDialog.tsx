@@ -221,7 +221,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
               </Select>
               {errors.class_id && <p className="text-xs text-destructive">{errors.class_id}</p>}
               {!currentPeriod && classes && classes.length > 0 && (
-                <p className="text-xs text-amber-600">No current academic period set.</p>
+                <p className="text-xs text-destructive">No current academic period set.</p>
               )}
             </div>
             <div className="space-y-1.5">
