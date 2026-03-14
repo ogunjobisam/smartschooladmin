@@ -13,6 +13,7 @@ import {
 
 export default function Approvals() {
   const { orgId, user } = useAuth();
+  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
 
   const { data: approvals, isLoading } = useQuery({

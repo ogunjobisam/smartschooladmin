@@ -19,6 +19,7 @@ import {
 export default function Payments() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const [search, setSearch] = useState("");
 
   const { data: payments, isLoading } = useQuery({

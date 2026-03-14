@@ -19,6 +19,7 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
   const [editOpen, setEditOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({

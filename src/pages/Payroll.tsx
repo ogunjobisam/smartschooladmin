@@ -17,6 +17,7 @@ import {
 export default function Payroll() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data: runs, isLoading } = useQuery({
     queryKey: ["payroll-runs", schoolId],

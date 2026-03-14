@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function PayrollRunDetail() {
   const { id } = useParams<{ id: string }>();
+  const { formatMoney } = useCurrency();
 
   const { data: run, isLoading } = useQuery({
     queryKey: ["payroll-run", id],

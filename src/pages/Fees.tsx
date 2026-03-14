@@ -14,6 +14,7 @@ import {
 
 export default function Fees() {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data: schedules, isLoading } = useQuery({
     queryKey: ["fee-schedules", schoolId],

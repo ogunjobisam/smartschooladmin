@@ -20,6 +20,7 @@ function ageingBadge(days: number) {
 
 export default function Arrears() {
   const { schoolId } = useAuth();
+  const { formatMoney } = useCurrency();
 
   const { data, isLoading } = useQuery({
     queryKey: ["arrears", schoolId],
