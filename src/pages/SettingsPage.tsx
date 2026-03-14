@@ -560,3 +560,79 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId: string | null; orgId: string | null; schoolName: string; queryClient: ReturnType<typeof useQueryClient> }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const handleDelete = async () => {
+    if (!schoolId || !orgId) return;
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("delete-demo-data", {
+        body: { school_id: schoolId, org_id: orgId },
+      });
+      if (res.error) throw new Error(res.error.message);
+      const result = res.data;
+      toast.success(`Deleted ${result.total_deleted} records successfully`);
+      queryClient.invalidateQueries();
+      setOpen(false);
+      setConfirmText("");
+    } catch (err: any) {
+      toast.error("Failed to delete data: " + (err.message || "Unknown error"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base text-destructive">
+          <AlertTriangle className="h-4 w-4" /> Danger Zone
+        </CardTitle>
+        <CardDescription>Irreversible actions — proceed with caution</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Delete all school data</p>
+            <p className="text-xs text-muted-foreground">Remove all students, staff, invoices, payments, and related records from this school.</p>
+          </div>
+          <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmText(""); }}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">Delete All Data</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>all students, staff, guardians, invoices, payments, payroll data, and approval records</strong> for this school. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-2 py-2">
+                <Label className="text-sm">
+                  Type <span className="font-semibold text-destructive">{schoolName}</span> to confirm:
+                </Label>
+                <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder={schoolName} />
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  disabled={confirmText !== schoolName || deleting}
+                  onClick={handleDelete}
+                >
+                  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete Everything
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
