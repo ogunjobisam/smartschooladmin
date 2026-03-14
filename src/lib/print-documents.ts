@@ -31,7 +31,7 @@ export function printInvoice(data: InvoicePrintData) {
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${i.description}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;color:#64748b">${i.category}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${formatNaira(i.amount)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-family:monospace">${fmt(i.amount)}</td>
     </tr>
   `).join("");
 
