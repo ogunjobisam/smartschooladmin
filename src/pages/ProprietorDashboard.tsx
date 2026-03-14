@@ -25,7 +25,8 @@ export default function ProprietorDashboard() {
     queryFn: async () => {
       if (!orgId) return null;
       const schoolFilter = selectedSchool !== "all" ? selectedSchool : null;
-
+      const schoolIds = schools.map(s => s.id);
+      if (schoolIds.length === 0) return null;
       // Students
       let studentsQ = supabase.from("students").select("id", { count: "exact", head: true });
       if (schoolFilter) studentsQ = studentsQ.eq("school_id", schoolFilter);

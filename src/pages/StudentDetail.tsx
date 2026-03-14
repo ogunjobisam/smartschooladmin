@@ -223,6 +223,12 @@ export default function StudentDetail() {
             </Table>
           </div>
         </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {schoolId && orgId && (
+            <DocumentsTab entityType="student" entityId={id!} schoolId={schoolId} orgId={orgId} />
+          )}
+        </TabsContent>
       </Tabs>
 
       {student && <EditStudentDialog open={editOpen} onOpenChange={setEditOpen} student={student} />}
