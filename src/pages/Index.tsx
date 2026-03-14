@@ -15,6 +15,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 
 export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
