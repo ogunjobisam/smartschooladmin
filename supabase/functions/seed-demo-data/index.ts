@@ -474,8 +474,8 @@ serve(async (req) => {
         total_gross: totalGross,
         total_deductions: totalDeductions,
         total_net: totalGross - totalDeductions,
-        created_by: user.id,
-        approved_by: user.id,
+        created_by: userId,
+        approved_by: userId,
         approved_at: new Date().toISOString(),
       }).select("id").single();
 
