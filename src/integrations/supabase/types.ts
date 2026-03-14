@@ -2102,6 +2102,7 @@ export type Database = {
         | "hr_admin"
         | "teacher"
         | "parent"
+        | "school_admin"
       approval_status: "pending" | "approved" | "rejected"
       approval_type:
         | "fee_waiver"
@@ -2270,6 +2271,7 @@ export const Constants = {
         "hr_admin",
         "teacher",
         "parent",
+        "school_admin",
       ],
       approval_status: ["pending", "approved", "rejected"],
       approval_type: [

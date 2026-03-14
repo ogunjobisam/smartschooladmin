@@ -30,6 +30,7 @@ const ROLES = [
   { value: "super_admin", label: "Super Admin" },
   { value: "proprietor", label: "Proprietor" },
   { value: "group_admin", label: "Group Admin" },
+  { value: "school_admin", label: "School Admin" },
   { value: "principal", label: "Principal" },
   { value: "bursar", label: "Bursar" },
   { value: "finance_officer", label: "Finance Officer" },
@@ -42,6 +43,7 @@ const roleBadgeClass: Record<string, string> = {
   super_admin: "bg-destructive/10 text-destructive border-destructive/20",
   proprietor: "bg-accent/10 text-accent border-accent/20",
   group_admin: "bg-accent/10 text-accent border-accent/20",
+  school_admin: "bg-primary/10 text-primary border-primary/20",
   principal: "bg-success/10 text-success border-success/20",
   bursar: "bg-warning/10 text-warning border-warning/20",
   finance_officer: "bg-warning/10 text-warning border-warning/20",
@@ -67,18 +69,25 @@ export default function UserManagement() {
 
   // Fetch all user roles in this org with profiles
   const { data: users, isLoading } = useQuery({
-    queryKey: ["org-users", orgId],
+    queryKey: ["org-users", orgId, schoolId, userRole],
     queryFn: async () => {
       if (!orgId) return [];
-      const { data } = await supabase
+      let query = supabase
         .from("user_roles")
         .select("user_id, role, school_id, created_at, schools(name)")
         .eq("org_id", orgId)
         .order("created_at", { ascending: true });
 
+      // School admins only see users in their school
+      if (userRole === "school_admin" && schoolId) {
+        query = query.eq("school_id", schoolId);
+      }
+
+      const { data } = await query;
       if (!data) return [];
 
       const userIds = data.map((r: any) => r.user_id);
+      if (userIds.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
@@ -94,10 +103,17 @@ export default function UserManagement() {
     enabled: !!orgId,
   });
 
-  // Only super_admin and proprietor can access this page
-  if (userRole !== "super_admin" && userRole !== "proprietor") {
+  // Only super_admin, proprietor, and school_admin can access this page
+  const isSchoolAdmin = userRole === "school_admin";
+  if (userRole !== "super_admin" && userRole !== "proprietor" && userRole !== "school_admin") {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // School admins can only assign these roles
+  const SCHOOL_ADMIN_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+  const availableRoles = isSchoolAdmin
+    ? ROLES.filter(r => SCHOOL_ADMIN_ROLES.includes(r.value))
+    : ROLES;
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {
@@ -223,7 +239,7 @@ export default function UserManagement() {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
+                    {availableRoles.map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -358,7 +374,7 @@ export default function UserManagement() {
               <Select value={newRole} onValueChange={setNewRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
+                  {availableRoles.map((r) => (
                     <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
