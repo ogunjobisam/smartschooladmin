@@ -1,4 +1,5 @@
 import { Calculator, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { StatCard } from "@/components/dashboard/StatCard";
