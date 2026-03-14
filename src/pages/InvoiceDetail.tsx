@@ -99,6 +99,7 @@ export default function InvoiceDetail() {
         method: pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—",
         reference: pa.payments?.reference_number || "—",
       })),
+      currency,
     });
   };
 

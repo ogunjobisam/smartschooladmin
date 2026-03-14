@@ -122,6 +122,7 @@ export default function ParentDashboard() {
       totalPaid: inv.amount_paid || 0,
       balance: (inv.total_amount || 0) - (inv.amount_paid || 0),
       payments: [],
+      currency,
     });
   };
 
