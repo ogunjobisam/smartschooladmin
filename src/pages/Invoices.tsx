@@ -58,7 +58,7 @@ export default function Invoices() {
   return (
     <div className="space-y-6">
       <PageHeader title="Invoices" description="View and manage student fee invoices.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Generate Invoices</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setGenerateOpen(true)}><Plus className="h-4 w-4" /> Generate Invoices</Button>
       </PageHeader>
 
       <div className="flex flex-col gap-3 sm:flex-row">
