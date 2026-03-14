@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
 
     if (!callerRole) return jsonResponse({ error: "Insufficient permissions" }, 403);
 
-    const callerIsSchoolAdmin = callerRole.role === "school_admin";
+    const ORG_LEVEL_ROLES = ["super_admin", "proprietor", "group_admin"];
+    const callerIsSchoolLevel = !ORG_LEVEL_ROLES.includes(callerRole.role);
     const callerSchoolId = callerRole.school_id;
 
     const body = await req.json();
