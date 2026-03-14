@@ -37,17 +37,19 @@ Deno.serve(async (req) => {
 
     // Check caller is super_admin, proprietor, or school_admin
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
     const { data: callerRole } = await adminClient
       .from("user_roles")
       .select("role, school_id")
       .eq("user_id", caller.id)
-      .in("role", ["super_admin", "proprietor", "school_admin"])
+      .in("role", ADMIN_ROLES)
       .limit(1)
       .maybeSingle();
 
     if (!callerRole) return jsonResponse({ error: "Insufficient permissions" }, 403);
 
-    const callerIsSchoolAdmin = callerRole.role === "school_admin";
+    const ORG_LEVEL_ROLES = ["super_admin", "proprietor", "group_admin"];
+    const callerIsSchoolLevel = !ORG_LEVEL_ROLES.includes(callerRole.role);
     const callerSchoolId = callerRole.school_id;
 
     const body = await req.json();
@@ -60,9 +62,8 @@ Deno.serve(async (req) => {
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (callerIsSchoolAdmin) {
-        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School admins can only assign school-level roles" }, 403);
-        // Verify target user is in same school
+      if (callerIsSchoolLevel) {
+        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
         const { data: targetRole } = await adminClient.from("user_roles").select("school_id").eq("user_id", user_id).maybeSingle();
         if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
       }
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
     if (action === "delete_role") {
       const { user_id } = body;
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
-      if (callerIsSchoolAdmin) {
+      if (callerIsSchoolLevel) {
         const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
         if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
         if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole?.role)) return jsonResponse({ error: "Cannot remove this role" }, 403);
@@ -155,8 +156,8 @@ Deno.serve(async (req) => {
     if (full_name && full_name.length > 200) return jsonResponse({ error: "Name too long" }, 400);
 
     // School admins can only invite school-level roles into their own school
-    if (callerIsSchoolAdmin) {
-      if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(role)) return jsonResponse({ error: "School admins can only assign school-level roles" }, 403);
+    if (callerIsSchoolLevel) {
+      if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
       if (school_id && school_id !== callerSchoolId) return jsonResponse({ error: "Cannot invite users to other schools" }, 403);
     }
 
