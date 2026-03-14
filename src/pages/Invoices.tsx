@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileText, Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { GenerateInvoicesDialog } from "@/components/forms/GenerateInvoicesDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,7 @@ export default function Invoices() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoices", schoolId, search, statusFilter, page],
@@ -56,7 +58,7 @@ export default function Invoices() {
   return (
     <div className="space-y-6">
       <PageHeader title="Invoices" description="View and manage student fee invoices.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Generate Invoices</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setGenerateOpen(true)}><Plus className="h-4 w-4" /> Generate Invoices</Button>
       </PageHeader>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -129,6 +131,8 @@ export default function Invoices() {
           </div>
         </div>
       </div>
+
+      <GenerateInvoicesDialog open={generateOpen} onOpenChange={setGenerateOpen} />
     </div>
   );
 }
