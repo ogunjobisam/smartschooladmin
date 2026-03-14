@@ -44,6 +44,8 @@ import UserManagement from "./pages/UserManagement";
 import NotificationHistory from "./pages/NotificationHistory";
 import ProprietorDashboard from "./pages/ProprietorDashboard";
 import Attendance from "./pages/Attendance";
+import Exams from "./pages/Exams";
+import ExamDetail from "./pages/ExamDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
