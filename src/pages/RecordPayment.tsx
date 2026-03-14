@@ -190,7 +190,7 @@ export default function RecordPayment() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Amount (₦)</Label>
+                    <Label>Amount</Label>
                     <Input type="number" placeholder="0" className="font-mono tabular-nums" value={amount} onChange={(e) => setAmount(e.target.value)} />
                   </div>
                   <div className="space-y-2">
