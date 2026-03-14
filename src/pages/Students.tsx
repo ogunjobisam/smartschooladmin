@@ -23,6 +23,7 @@ const students = [
 ];
 
 export default function Students() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
