@@ -204,6 +204,7 @@ export default function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
+          <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
         </TabsList>
