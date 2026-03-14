@@ -26,6 +26,7 @@ export default function Students() {
   const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: classes } = useQuery({
     queryKey: ["classes", schoolId],
