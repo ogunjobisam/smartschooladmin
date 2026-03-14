@@ -1,17 +1,31 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [schoolBrand, setSchoolBrand] = useState<{ name: string; logo_url: string | null; primary_color: string | null } | null>(null);
+
+  useEffect(() => {
+    const schoolSlug = searchParams.get("school");
+    if (!schoolSlug) return;
+    supabase
+      .from("schools")
+      .select("name, logo_url, primary_color")
+      .eq("id", schoolSlug)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setSchoolBrand(data); });
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +43,20 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">SchoolFlow</h1>
+          {schoolBrand?.logo_url ? (
+            <Avatar className="h-12 w-12 rounded-xl">
+              <AvatarImage src={schoolBrand.logo_url} alt={schoolBrand.name} />
+              <AvatarFallback className="rounded-xl bg-primary text-primary-foreground">{schoolBrand.name[0]}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary"
+              style={schoolBrand?.primary_color ? { backgroundColor: schoolBrand.primary_color } : undefined}
+            >
+              <Building2 className="h-6 w-6 text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "SchoolFlow"}</h1>
           <p className="text-sm text-muted-foreground">Sign in to manage your schools</p>
         </div>
 

@@ -876,33 +876,45 @@ export type Database = {
       }
       schools: {
         Row: {
+          accent_color: string | null
           address: string | null
           created_at: string
           email: string | null
           id: string
+          logo_url: string | null
           name: string
           org_id: string
           phone: string | null
+          primary_color: string | null
+          tagline: string | null
           updated_at: string
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           org_id: string
           phone?: string | null
+          primary_color?: string | null
+          tagline?: string | null
           updated_at?: string
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           org_id?: string
           phone?: string | null
+          primary_color?: string | null
+          tagline?: string | null
           updated_at?: string
         }
         Relationships: [
