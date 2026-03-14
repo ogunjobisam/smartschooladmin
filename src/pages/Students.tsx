@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
 import { exportToCsv } from "@/lib/csv-export";
+import { CsvImportDialog } from "@/components/import/CsvImportDialog";
 
 const PAGE_SIZE = 20;
 
