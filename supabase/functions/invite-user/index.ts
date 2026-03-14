@@ -16,6 +16,28 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin"];
 const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
 
+// Role hierarchy: lower index = higher privilege
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 0,
+  proprietor: 1,
+  group_admin: 2,
+  school_admin: 3,
+  principal: 4,
+  bursar: 5,
+  finance_officer: 6,
+  hr_admin: 7,
+  teacher: 8,
+  parent: 9,
+};
+
+function canAssignRole(callerRole: string, targetRole: string): boolean {
+  const callerRank = ROLE_RANK[callerRole];
+  const targetRank = ROLE_RANK[targetRole];
+  if (callerRank === undefined || targetRank === undefined) return false;
+  // Can only assign roles strictly below your own rank
+  return targetRank > callerRank;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
