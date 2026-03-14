@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { formatNaira } from "@/lib/mock-data";
+import { formatNaira } from "@/lib/format";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
