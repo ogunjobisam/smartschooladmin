@@ -18,6 +18,7 @@ export default function Staff() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: staffList, isLoading } = useQuery({
     queryKey: ["staff", schoolId, search],
