@@ -15,6 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { AddStudentDialog } from "@/components/forms/AddStudentDialog";
 
 const PAGE_SIZE = 20;
 
@@ -25,6 +26,7 @@ export default function Students() {
   const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: classes } = useQuery({
     queryKey: ["classes", schoolId],
@@ -81,8 +83,9 @@ export default function Students() {
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Manage student records and enrolments.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Student</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
       </PageHeader>
+      <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">

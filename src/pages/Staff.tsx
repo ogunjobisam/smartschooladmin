@@ -12,11 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { AddStaffDialog } from "@/components/forms/AddStaffDialog";
 
 export default function Staff() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: staffList, isLoading } = useQuery({
     queryKey: ["staff", schoolId, search],
@@ -47,8 +49,9 @@ export default function Staff() {
     <div className="space-y-6">
       <PageHeader title="Staff" description="Manage staff records and positions.">
         <Button variant="outline" size="sm" className="gap-1.5"><Download className="h-4 w-4" /> Export CSV</Button>
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Staff</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
       </PageHeader>
+      <AddStaffDialog open={showAdd} onOpenChange={setShowAdd} />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

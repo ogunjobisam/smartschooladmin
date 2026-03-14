@@ -10,10 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 
 export default function Guardians() {
   const { orgId } = useAuth();
   const [search, setSearch] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data: guardians, isLoading } = useQuery({
     queryKey: ["guardians", orgId, search],
@@ -38,8 +40,9 @@ export default function Guardians() {
   return (
     <div className="space-y-6">
       <PageHeader title="Guardians" description="Manage parent and guardian records.">
-        <Button size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> Add Guardian</Button>
+        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Guardian</Button>
       </PageHeader>
+      <AddGuardianDialog open={showAdd} onOpenChange={setShowAdd} />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
