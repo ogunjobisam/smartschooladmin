@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -709,6 +710,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
   const [adding, setAdding] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
 
   const { data: subjects = [], isLoading } = useQuery({
     queryKey: ["subjects", schoolId],
@@ -719,6 +721,32 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     },
     enabled: !!schoolId,
   });
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch class_subjects for the selected class
+  const { data: classSubjects = [] } = useQuery({
+    queryKey: ["class-subjects", selectedClassId],
+    queryFn: async () => {
+      if (!selectedClassId) return [];
+      const { data } = await supabase
+        .from("class_subjects" as any)
+        .select("id, subject_id")
+        .eq("class_id", selectedClassId);
+      return (data as any[]) || [];
+    },
+    enabled: !!selectedClassId,
+  });
+
+  const classSubjectIds = new Set(classSubjects.map((cs: any) => cs.subject_id));
 
   const handleAdd = async () => {
     if (!schoolId || !newName.trim()) return;
@@ -737,68 +765,167 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     else { toast.success("Subject deleted"); queryClient.invalidateQueries({ queryKey: ["subjects"] }); }
   };
 
+  const handleToggleClassSubject = async (subjectId: string) => {
+    if (!selectedClassId) return;
+    if (classSubjectIds.has(subjectId)) {
+      // Remove
+      const link = classSubjects.find((cs: any) => cs.subject_id === subjectId);
+      if (link) {
+        await supabase.from("class_subjects" as any).delete().eq("id", (link as any).id);
+      }
+    } else {
+      // Add
+      await supabase.from("class_subjects" as any).insert({
+        class_id: selectedClassId,
+        subject_id: subjectId,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["class-subjects", selectedClassId] });
+  };
+
+  const handleAssignAll = async () => {
+    if (!selectedClassId) return;
+    const toAdd = subjects.filter((s: any) => !classSubjectIds.has(s.id));
+    if (toAdd.length === 0) return;
+    await supabase.from("class_subjects" as any).insert(
+      toAdd.map((s: any) => ({ class_id: selectedClassId, subject_id: s.id }))
+    );
+    queryClient.invalidateQueries({ queryKey: ["class-subjects", selectedClassId] });
+    toast.success(`Assigned ${toAdd.length} subjects`);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" /> Subjects</CardTitle>
-        <CardDescription>Manage subjects taught in this school</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : (
-          <>
-            {subjects.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Subject Name</TableHead>
-                    <TableHead className="text-xs">Code</TableHead>
-                    {canManage && <TableHead className="text-xs w-16" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjects.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{s.short_code || "—"}</TableCell>
-                      {canManage && (
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      )}
+    <div className="space-y-6">
+      {/* Subject list card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4" /> Subjects</CardTitle>
+          <CardDescription>Manage subjects taught in this school</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : (
+            <>
+              {subjects.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Subject Name</TableHead>
+                      <TableHead className="text-xs">Code</TableHead>
+                      {canManage && <TableHead className="text-xs w-16" />}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {subjects.map((s: any) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{s.short_code || "—"}</TableCell>
+                        {canManage && (
+                          <TableCell>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(s.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">No subjects configured yet.</p>
+              )}
+
+              {canManage && (
+                <>
+                  <Separator />
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 space-y-2">
+                      <Label>Subject Name</Label>
+                      <Input placeholder="e.g. Mathematics" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                    </div>
+                    <div className="w-24 space-y-2">
+                      <Label>Code</Label>
+                      <Input placeholder="MATH" value={newCode} onChange={(e) => setNewCode(e.target.value)} />
+                    </div>
+                    <Button onClick={handleAdd} disabled={adding || !newName.trim()} size="sm" className="gap-1.5">
+                      {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      Add
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Class-Subject assignment card */}
+      {canManage && subjects.length > 0 && classes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <GraduationCap className="h-4 w-4" /> Assign Subjects to Class
+            </CardTitle>
+            <CardDescription>Select a class and toggle which subjects it offers. Only assigned subjects appear in exams.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-[200px]">
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedClassId && (
+                <Button variant="outline" size="sm" onClick={handleAssignAll}>
+                  Assign All
+                </Button>
+              )}
+            </div>
+
+            {selectedClassId ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                {subjects.map((s: any) => {
+                  const assigned = classSubjectIds.has(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => handleToggleClassSubject(s.id)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        assigned
+                          ? "border-primary bg-primary/5 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      <span className={`flex h-4 w-4 items-center justify-center rounded border text-[10px] ${
+                        assigned ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
+                      }`}>
+                        {assigned && "✓"}
+                      </span>
+                      {s.short_code || s.name}
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">No subjects configured yet.</p>
+              <p className="text-sm text-muted-foreground">Select a class above to manage its subjects.</p>
             )}
 
-            {canManage && (
-              <>
-                <Separator />
-                <div className="flex items-end gap-3">
-                  <div className="flex-1 space-y-2">
-                    <Label>Subject Name</Label>
-                    <Input placeholder="e.g. Mathematics" value={newName} onChange={(e) => setNewName(e.target.value)} />
-                  </div>
-                  <div className="w-24 space-y-2">
-                    <Label>Code</Label>
-                    <Input placeholder="MATH" value={newCode} onChange={(e) => setNewCode(e.target.value)} />
-                  </div>
-                  <Button onClick={handleAdd} disabled={adding || !newName.trim()} size="sm" className="gap-1.5">
-                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    Add
-                  </Button>
-                </div>
-              </>
+            {selectedClassId && (
+              <p className="text-xs text-muted-foreground">
+                {classSubjectIds.size} of {subjects.length} subjects assigned to this class
+              </p>
             )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

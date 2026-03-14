@@ -58,15 +58,36 @@ export default function ExamDetail() {
     enabled: !!id,
   });
 
-  // Fetch subjects
+  // Fetch subjects assigned to the exam's class (falls back to all school subjects)
   const { data: subjects = [] } = useQuery({
-    queryKey: ["subjects", schoolId],
+    queryKey: ["exam-subjects", exam?.class_id, schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
+      
+      // If exam has a class, get only class-assigned subjects
+      if (exam?.class_id) {
+        const { data: classSubjects } = await supabase
+          .from("class_subjects" as any)
+          .select("subject_id")
+          .eq("class_id", exam.class_id);
+        
+        if (classSubjects && classSubjects.length > 0) {
+          const subjectIds = (classSubjects as any[]).map((cs) => cs.subject_id);
+          const { data } = await supabase
+            .from("subjects")
+            .select("*")
+            .in("id", subjectIds)
+            .eq("is_active", true)
+            .order("name");
+          return data || [];
+        }
+      }
+      
+      // Fallback: all school subjects
       const { data } = await supabase.from("subjects").select("*").eq("school_id", schoolId).eq("is_active", true).order("name");
       return data || [];
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !!exam,
   });
 
   // Fetch enrolled students for the exam's class
@@ -227,7 +248,7 @@ export default function ExamDetail() {
       {subjects.length === 0 ? (
         <Card>
           <CardContent className="py-10">
-            <EmptyState icon={BookOpen} title="No subjects configured" description="Add subjects in Settings before entering scores." />
+            <EmptyState icon={BookOpen} title="No subjects assigned to this class" description="Go to Settings → Subjects and assign subjects to this class before entering scores." />
           </CardContent>
         </Card>
       ) : !exam.class_id ? (
