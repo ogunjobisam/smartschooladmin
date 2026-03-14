@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
-  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus
+  ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
