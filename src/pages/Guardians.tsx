@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
+import { exportToCsv } from "@/lib/csv-export";
 
 export default function Guardians() {
   const navigate = useNavigate();
