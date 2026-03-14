@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatNaira } from "@/lib/format";
+import { useCurrency } from "@/hooks/use-currency";
 import { exportToCsv } from "@/lib/csv-export";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
