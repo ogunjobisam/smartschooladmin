@@ -250,6 +250,11 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* ── Danger Zone ── */}
+          {(userRole === "super_admin" || userRole === "proprietor") && (
+            <DangerZoneCard schoolId={schoolId} orgId={orgId} schoolName={school?.name || schoolName} queryClient={queryClient} />
+          )}
         </TabsContent>
 
         {/* ── Branding Tab ── */}
