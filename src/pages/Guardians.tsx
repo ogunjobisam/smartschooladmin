@@ -15,6 +15,7 @@ import { AddGuardianDialog } from "@/components/forms/AddGuardianDialog";
 import { InviteGuardianButton } from "@/components/guardians/InviteGuardianButton";
 
 export default function Guardians() {
+  const navigate = useNavigate();
   const { orgId } = useAuth();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
