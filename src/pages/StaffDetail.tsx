@@ -144,6 +144,13 @@ export default function StaffDetail() {
         </TabsList>
 
         <TabsContent value="salary" className="mt-4 space-y-4">
+          {canRequestSalaryChange && pp && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSalaryChangeOpen(true)}>
+                <TrendingUp className="h-3.5 w-3.5" /> Request Salary Change
+              </Button>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border bg-card p-5 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2"><Banknote className="h-4 w-4 text-accent" /> Salary Breakdown</h3>
