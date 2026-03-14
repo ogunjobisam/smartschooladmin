@@ -200,6 +200,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-2">
         {renderGroup("Overview", overviewNav)}
         {renderGroup("Finance", financeNav)}
+        {renderGroup("Communications", communicationsNav)}
         {renderGroup("Operations", operationsNav)}
         {renderGroup("System", systemNav)}
       </SidebarContent>

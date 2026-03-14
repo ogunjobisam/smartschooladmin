@@ -105,6 +105,9 @@ const App = () => (
             <Route path="/attendance" element={withLayout(<Attendance />)} />
             <Route path="/exams" element={withLayout(<Exams />)} />
             <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
+            <Route path="/announcements" element={withLayout(<Announcements />)} />
+            <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
+            <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </SchoolBrandingProvider>
