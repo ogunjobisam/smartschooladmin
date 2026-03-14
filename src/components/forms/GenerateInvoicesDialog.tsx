@@ -105,7 +105,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 )}
                 {result.total_amount ? (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Total billed: <span className="font-mono font-medium">{formatNaira(result.total_amount)}</span>
+                    Total billed: <span className="font-mono font-medium">{formatMoney(result.total_amount)}</span>
                   </p>
                 ) : null}
               </div>
