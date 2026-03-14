@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
