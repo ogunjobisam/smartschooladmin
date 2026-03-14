@@ -174,7 +174,7 @@ export default function Reports() {
       </PageHeader>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {loadingStats ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="rounded-lg border bg-card p-5"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-32" /></div>
