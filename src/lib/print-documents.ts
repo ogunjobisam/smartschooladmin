@@ -1,4 +1,4 @@
-import { formatNaira } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 
 interface InvoicePrintData {
   invoiceNumber: string;
