@@ -35,6 +35,7 @@ const allNav = {
   operations: [
     { title: "Payroll", url: "/payroll", icon: Calculator },
     { title: "Approvals", url: "/approvals", icon: CheckSquare },
+    { title: "Group Overview", url: "/group-overview", icon: BarChart3 },
     { title: "Reports", url: "/reports", icon: ClipboardList },
     { title: "Audit Log", url: "/audit-log", icon: Shield },
   ] as NavItem[],
