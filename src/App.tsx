@@ -81,6 +81,7 @@ const App = () => (
             <Route path="/settings" element={withLayout(<SettingsPage />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </SchoolBrandingProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

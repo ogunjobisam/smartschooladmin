@@ -43,10 +43,20 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">SchoolFlow</h1>
+          {schoolBrand?.logo_url ? (
+            <Avatar className="h-12 w-12 rounded-xl">
+              <AvatarImage src={schoolBrand.logo_url} alt={schoolBrand.name} />
+              <AvatarFallback className="rounded-xl bg-primary text-primary-foreground">{schoolBrand.name[0]}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary"
+              style={schoolBrand?.primary_color ? { backgroundColor: schoolBrand.primary_color } : undefined}
+            >
+              <Building2 className="h-6 w-6 text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "SchoolFlow"}</h1>
           <p className="text-sm text-muted-foreground">Sign in to manage your schools</p>
         </div>
 

@@ -84,13 +84,22 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <NavLink to="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Building2 className="h-4 w-4 text-sidebar-primary-foreground" />
-          </div>
+          {branding.logoUrl ? (
+            <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+              <AvatarImage src={branding.logoUrl} alt={branding.name} />
+              <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs">
+                {branding.name[0]}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
+              <Building2 className="h-4 w-4 text-sidebar-primary-foreground" />
+            </div>
+          )}
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-accent-foreground">SchoolFlow</span>
-              <span className="text-[11px] text-sidebar-muted capitalize">{userRole || 'User'}</span>
+              <span className="text-sm font-semibold text-sidebar-accent-foreground">{branding.name}</span>
+              <span className="text-[11px] text-sidebar-muted capitalize">{branding.tagline || userRole || 'User'}</span>
             </div>
           )}
         </NavLink>
