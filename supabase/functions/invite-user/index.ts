@@ -16,6 +16,28 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin"];
 const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
 
+// Role hierarchy: lower index = higher privilege
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 0,
+  proprietor: 1,
+  group_admin: 2,
+  school_admin: 3,
+  principal: 4,
+  bursar: 5,
+  finance_officer: 6,
+  hr_admin: 7,
+  teacher: 8,
+  parent: 9,
+};
+
+function canAssignRole(callerRole: string, targetRole: string): boolean {
+  const callerRank = ROLE_RANK[callerRole];
+  const targetRank = ROLE_RANK[targetRole];
+  if (callerRank === undefined || targetRank === undefined) return false;
+  // Can only assign roles strictly below your own rank
+  return targetRank > callerRank;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -62,11 +84,11 @@ Deno.serve(async (req) => {
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (callerIsSchoolLevel) {
-        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(new_role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
-        const { data: targetRole } = await adminClient.from("user_roles").select("school_id").eq("user_id", user_id).maybeSingle();
-        if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
-      }
+      if (!canAssignRole(callerRole.role, new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
+      // Also check caller outranks the target's current role
+      const { data: targetRole } = await adminClient.from("user_roles").select("role, school_id").eq("user_id", user_id).maybeSingle();
+      if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot manage a ${targetRole.role}` }, 403);
+      if (callerIsSchoolLevel && targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
       const { error } = await adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
@@ -76,11 +98,9 @@ Deno.serve(async (req) => {
     if (action === "delete_role") {
       const { user_id } = body;
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
-      if (callerIsSchoolLevel) {
-        const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
-        if (targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
-        if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole?.role)) return jsonResponse({ error: "Cannot remove this role" }, 403);
-      }
+      const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
+      if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot remove a ${targetRole.role}` }, 403);
+      if (callerIsSchoolLevel && targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
       const { error } = await adminClient.from("user_roles").delete().eq("user_id", user_id);
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
@@ -155,9 +175,9 @@ Deno.serve(async (req) => {
     if (!VALID_ROLES.includes(role)) return jsonResponse({ error: "Invalid role" }, 400);
     if (full_name && full_name.length > 200) return jsonResponse({ error: "Name too long" }, 400);
 
-    // School admins can only invite school-level roles into their own school
+    // Enforce role hierarchy: caller can only assign roles below their rank
+    if (!canAssignRole(callerRole.role, role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${role} role` }, 403);
     if (callerIsSchoolLevel) {
-      if (!SCHOOL_ADMIN_ALLOWED_ROLES.includes(role)) return jsonResponse({ error: "School-level admins can only assign school-level roles" }, 403);
       if (school_id && school_id !== callerSchoolId) return jsonResponse({ error: "Cannot invite users to other schools" }, 403);
     }
 

@@ -103,19 +103,20 @@ export default function UserManagement() {
     enabled: !!orgId,
   });
 
-  // All admin roles can access this page (not teacher/parent)
+  // Role hierarchy: lower index = higher privilege
+  const ROLE_RANK: Record<string, number> = {
+    super_admin: 0, proprietor: 1, group_admin: 2, school_admin: 3,
+    principal: 4, bursar: 5, finance_officer: 6, hr_admin: 7, teacher: 8, parent: 9,
+  };
   const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
-  const ORG_LEVEL_ROLES = ["super_admin", "proprietor", "group_admin"];
-  const isOrgLevel = ORG_LEVEL_ROLES.includes(userRole || "");
+  const callerRank = ROLE_RANK[userRole || ""] ?? 99;
+
   if (!ADMIN_ROLES.includes(userRole || "")) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // School-level admins can only assign these roles
-  const SCHOOL_LEVEL_ASSIGNABLE = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
-  const availableRoles = isOrgLevel
-    ? ROLES
-    : ROLES.filter(r => SCHOOL_LEVEL_ASSIGNABLE.includes(r.value));
+  // Can only assign/see roles strictly below their own rank
+  const availableRoles = ROLES.filter(r => (ROLE_RANK[r.value] ?? 99) > callerRank);
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {
@@ -317,7 +318,7 @@ export default function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {u.user_id !== currentUser?.id && (
+                        {u.user_id !== currentUser?.id && (ROLE_RANK[u.role] ?? 99) > callerRank && (
                           <>
                             <Button
                               variant="ghost"
