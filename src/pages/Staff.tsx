@@ -19,6 +19,7 @@ const staff = [
 ];
 
 export default function Staff() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-6">
       <PageHeader title="Staff" description="Manage staff records and positions.">
