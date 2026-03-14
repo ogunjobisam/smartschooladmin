@@ -46,6 +46,9 @@ import ProprietorDashboard from "./pages/ProprietorDashboard";
 import Attendance from "./pages/Attendance";
 import Exams from "./pages/Exams";
 import ExamDetail from "./pages/ExamDetail";
+import Announcements from "./pages/Announcements";
+import NotificationSettings from "./pages/NotificationSettings";
+import NotificationTemplates from "./pages/NotificationTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
