@@ -278,9 +278,9 @@ export default function Reports() {
                     {classBilling?.map((c) => (
                       <TableRow key={c.name}>
                         <TableCell className="font-medium">{c.name}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatNaira(c.billed)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums text-success">{formatNaira(c.collected)}</TableCell>
-                        <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatNaira(c.balance)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(c.billed)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums text-success">{formatMoney(c.collected)}</TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(c.balance)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
