@@ -121,8 +121,8 @@ export default function Dashboard() {
         ) : (
           <>
             <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" />
-            <StatCard title="Fees Collected" value={formatNaira(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
-            <StatCard title="Outstanding Fees" value={formatNaira(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
+            <StatCard title="Fees Collected" value={formatMoney(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
+            <StatCard title="Outstanding Fees" value={formatMoney(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
             <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
           </>
         )}
