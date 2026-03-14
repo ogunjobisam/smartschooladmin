@@ -31,7 +31,7 @@ export default function NotificationHistory() {
         .limit(100);
 
       if (filter === "unread") query = query.eq("is_read", false);
-      if (filter !== "all" && filter !== "unread") query = query.eq("type", filter);
+      if (filter !== "all" && filter !== "unread") query = query.eq("type", filter as any);
 
       const { data } = await query;
       return data || [];
