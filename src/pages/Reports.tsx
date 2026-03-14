@@ -174,7 +174,7 @@ export default function Reports() {
       </PageHeader>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {loadingStats ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="rounded-lg border bg-card p-5"><Skeleton className="h-4 w-24 mb-2" /><Skeleton className="h-8 w-32" /></div>
@@ -191,9 +191,9 @@ export default function Reports() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 xl:grid-cols-5">
         {/* Revenue Trend */}
-        <Card className="lg:col-span-3">
+        <Card className="xl:col-span-3 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><BarChart3 className="h-4 w-4 text-accent" /> Monthly Revenue</CardTitle>
           </CardHeader>
@@ -217,7 +217,7 @@ export default function Reports() {
         </Card>
 
         {/* Payment Methods Pie */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><CreditCard className="h-4 w-4 text-accent" /> Payment Methods</CardTitle>
           </CardHeader>
@@ -242,9 +242,9 @@ export default function Reports() {
       </div>
 
       {/* Class-wise breakdown + Arrears */}
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 xl:grid-cols-5">
         {/* Class billing */}
-        <Card className="lg:col-span-3">
+        <Card className="xl:col-span-3 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><GraduationCap className="h-4 w-4 text-accent" /> Billing by Class</CardTitle>
           </CardHeader>
@@ -291,7 +291,7 @@ export default function Reports() {
         </Card>
 
         {/* Arrears Aging */}
-        <Card className="lg:col-span-2">
+        <Card className="xl:col-span-2 min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4 text-destructive" /> Arrears Aging</CardTitle>
           </CardHeader>
@@ -334,8 +334,8 @@ export default function Reports() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base"><Calculator className="h-4 w-4 text-accent" /> Payroll History</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table className="min-w-[600px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="text-xs">Period</TableHead>

@@ -28,7 +28,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
 
           {(pendingCount ?? 0) > 0 && (
@@ -43,7 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
             {children}
           </main>
         </div>
