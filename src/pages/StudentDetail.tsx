@@ -149,6 +149,46 @@ export default function StudentDetail() {
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 
+  const handlePrintTranscript = () => {
+    const transcriptScores = (scores || []).map((s: any) => ({
+      examName: s.exams?.name || "—",
+      examDate: s.exams?.exam_date || null,
+      subjectName: s.subjects?.name || "—",
+      score: s.score,
+      maxScore: s.exams?.max_score || 100,
+      grade: s.grade,
+      periodName: s.exams?.academic_periods?.name || "Unassigned",
+    }));
+
+    const transcriptAwards = (awards || []).map((a: any) => ({
+      title: a.title,
+      description: a.description,
+      date: a.award_date,
+      periodName: a.academic_periods?.name || null,
+    }));
+
+    const attTotal = attendance?.length || 0;
+    const attPresent = attendance?.filter((a: any) => a.status === "present").length || 0;
+
+    printTranscript({
+      schoolName: school?.name || branding.name,
+      schoolAddress: school?.address,
+      schoolEmail: school?.email,
+      schoolPhone: school?.phone,
+      logoUrl: school?.logo_url || branding.logoUrl,
+      studentName: `${student.first_name} ${student.last_name}`,
+      studentIdNumber: student.student_id_number || "—",
+      className,
+      dateOfBirth: student.date_of_birth,
+      gender: student.gender,
+      enrolmentDate: student.created_at,
+      scores: transcriptScores,
+      attendanceTotal: attTotal,
+      attendancePresent: attPresent,
+      awards: transcriptAwards,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -173,7 +213,10 @@ export default function StudentDetail() {
               <p className="text-sm text-muted-foreground">{className} • {student.student_type || "Day"}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintTranscript}><Printer className="h-3.5 w-3.5" /> Transcript</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
+          </div>
         </div>
 
         <Separator className="my-4" />
