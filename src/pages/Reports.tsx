@@ -321,7 +321,7 @@ export default function Reports() {
                 })}
                 <div className="flex justify-between text-sm font-bold border-t pt-3">
                   <span>Total Outstanding</span>
-                  <span className="font-mono tabular-nums text-destructive">{formatNaira(arrearsAging?.total || 0)}</span>
+                  <span className="font-mono tabular-nums text-destructive">{formatMoney(arrearsAging?.total || 0)}</span>
                 </div>
               </div>
             )}
