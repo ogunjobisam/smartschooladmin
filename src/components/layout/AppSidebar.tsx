@@ -40,6 +40,7 @@ const allNav = {
   ] as NavItem[],
   system: [
     { title: "Settings", url: "/settings", icon: Settings },
+    { title: "Users", url: "/users", icon: UserPlus },
   ] as NavItem[],
 };
 
