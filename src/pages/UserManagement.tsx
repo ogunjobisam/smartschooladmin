@@ -96,10 +96,17 @@ export default function UserManagement() {
     enabled: !!orgId,
   });
 
-  // Only super_admin and proprietor can access this page
-  if (userRole !== "super_admin" && userRole !== "proprietor") {
+  // Only super_admin, proprietor, and school_admin can access this page
+  const isSchoolAdmin = userRole === "school_admin";
+  if (userRole !== "super_admin" && userRole !== "proprietor" && userRole !== "school_admin") {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // School admins can only assign these roles
+  const SCHOOL_ADMIN_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+  const availableRoles = isSchoolAdmin
+    ? ROLES.filter(r => SCHOOL_ADMIN_ROLES.includes(r.value))
+    : ROLES;
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {
