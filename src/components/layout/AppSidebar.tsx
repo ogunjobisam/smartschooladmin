@@ -92,7 +92,7 @@ const roleNavAccess: Record<string, { overview: string[]; finance: string[]; ope
     system: [],
   },
   teacher: {
-    overview: ["Dashboard", "Students", "Attendance"],
+    overview: ["Dashboard", "Students", "Attendance", "Exams"],
     finance: [],
     operations: [],
     system: [],
