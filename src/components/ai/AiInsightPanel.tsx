@@ -90,7 +90,8 @@ export function AiInsightPanel({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            {entitlement.remaining} of {entitlement.monthlyLimit} left this month
+            {entitlement.remaining} of {entitlement.monthlyLimit}
+            {entitlement.hasAddon ? "" : " free"} left this month
           </span>
           <Button
             size="sm"
