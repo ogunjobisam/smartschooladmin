@@ -41,6 +41,7 @@ export function useAiAddon() {
         used,
         monthlyLimit,
         remaining: Math.max(0, monthlyLimit - used),
+        hasAddon: !!(row as { has_addon?: boolean }).has_addon,
       };
     },
     enabled: !!orgId,
