@@ -198,7 +198,7 @@ export default function Dashboard() {
 
 
         {/* Recent Activity */}
-        <div className="rounded-lg border bg-card xl:col-span-2 min-w-0 overflow-hidden">
+        <div className={`rounded-lg border bg-card min-w-0 overflow-hidden ${canReviewApprovals ? "xl:col-span-2" : "xl:col-span-5"}`}>
           <div className="border-b px-5 py-3">
             <h3 className="text-sm font-semibold text-card-foreground">Recent Activity</h3>
           </div>
