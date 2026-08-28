@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Enums } from "@/integrations/supabase/types";
 
 export type NotificationType =
   | "invoice_generated"
@@ -25,7 +26,7 @@ export async function createNotification(params: CreateNotificationParams) {
     org_id: params.orgId,
     school_id: params.schoolId || null,
     user_id: params.userId,
-    type: params.type as any,
+    type: params.type as Enums<"notification_type">,
     title: params.title,
     message: params.message || "",
     entity_type: params.entityType || null,
@@ -43,7 +44,7 @@ export async function createBulkNotifications(
     org_id: n.orgId,
     school_id: n.schoolId || null,
     user_id: n.userId,
-    type: n.type as any,
+    type: n.type as Enums<"notification_type">,
     title: n.title,
     message: n.message || "",
     entity_type: n.entityType || null,

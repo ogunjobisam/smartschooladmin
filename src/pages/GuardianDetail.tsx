@@ -47,7 +47,7 @@ export default function GuardianDetail() {
     enabled: !!id,
   });
 
-  const studentIds = linkedStudents?.map((sg: any) => sg.students?.id).filter(Boolean) || [];
+  const studentIds = linkedStudents?.map((sg) => sg.students?.id).filter(Boolean) || [];
 
   const { data: invoices } = useQuery({
     queryKey: ["guardian-invoices", studentIds],
@@ -125,7 +125,7 @@ export default function GuardianDetail() {
                 {linkedStudents?.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No linked children.</TableCell></TableRow>
                 ) : (
-                  linkedStudents?.map((sg: any) => {
+                  linkedStudents?.map((sg) => {
                     const s = sg.students;
                     if (!s) return null;
                     return (
@@ -161,7 +161,7 @@ export default function GuardianDetail() {
                 {!invoices || invoices.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No invoices.</TableCell></TableRow>
                 ) : (
-                  invoices.map((inv: any) => (
+                  invoices.map((inv) => (
                     <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.students?.first_name} {inv.students?.last_name}</TableCell>

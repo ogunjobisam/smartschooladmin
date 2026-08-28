@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
@@ -151,7 +152,36 @@ function normalizeGender(val: string): string | null {
 }
 
 export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogProps) {
-  const { schoolId } = useAuth();
+  const { schoolId, orgId } = useAuth();
+  const [importClassId, setImportClassId] = useState<string>("");
+
+  // Imported students have to land in a class, or they are invisible to
+  // attendance, exams and class-based invoicing.
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("classes").select("id, name").eq("school_id", schoolId!).order("level_order");
+      return data || [];
+    },
+    enabled: !!schoolId && open && mode === "students",
+  });
+
+  const { data: currentPeriod } = useQuery({
+    queryKey: ["current-period", orgId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, name, academic_years!inner(org_id)")
+        .eq("is_current", true)
+        .eq("academic_years.org_id", orgId!)
+        .order("start_date")
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!orgId && open && mode === "students",
+  });
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fields = mode === "students" ? STUDENT_FIELDS : STAFF_FIELDS;
@@ -170,6 +200,7 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
     setMappings([]);
     setParsedRows([]);
     setResult({ inserted: 0, skipped: 0 });
+    setImportClassId("");
   }, []);
 
   const handleFile = useCallback((file: File) => {
@@ -219,6 +250,10 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
   const importMutation = useMutation({
     mutationFn: async () => {
       if (!schoolId) throw new Error("No school selected");
+      if (mode === "students") {
+        if (!importClassId) throw new Error("Choose a class for these students");
+        if (!currentPeriod) throw new Error("No current term is set. Set one under Settings → Academic Years first.");
+      }
       const validRows = parsedRows.filter(r => r.errors.length === 0);
       if (validRows.length === 0) throw new Error("No valid rows to import");
 
@@ -237,8 +272,27 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
             address: r.data.address?.trim() || null,
             school_id: schoolId,
           }));
-          const { error } = await supabase.from("students").insert(records);
+          const { data: created, error } = await supabase
+            .from("students")
+            .insert(records)
+            .select("id");
           if (error) throw error;
+
+          // Enrol them, in the same step. Imported students used to be created
+          // with no enrolment at all, so they showed in the Students list but
+          // belonged to no class — invisible to attendance, exams and
+          // class-based invoicing, with nothing to explain why.
+          if (created?.length) {
+            const { error: enrolError } = await supabase.from("enrolments").insert(
+              created.map((student) => ({
+                student_id: student.id,
+                class_id: importClassId,
+                academic_period_id: currentPeriod!.id,
+              }))
+            );
+            if (enrolError) throw enrolError;
+          }
+
           inserted += records.length;
         } else {
           const records = batch.map(r => ({
@@ -266,7 +320,7 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
       queryClient.invalidateQueries({ queryKey: [mode === "students" ? "students" : "staff"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     },
   });
@@ -356,6 +410,27 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
                 </Badge>
               )}
             </div>
+
+            {mode === "students" && (
+              <div className="space-y-1.5 rounded-md border bg-muted/40 p-3">
+                <Label htmlFor="import-class">Enrol these students into</Label>
+                <Select value={importClassId} onValueChange={setImportClassId}>
+                  <SelectTrigger id="import-class" className="bg-background">
+                    <SelectValue placeholder="Select a class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {currentPeriod
+                    ? `They will be enrolled for ${currentPeriod.name}. Without a class they would not appear in attendance or exams.`
+                    : "No current term is set. Set one under Settings → Academic Years before importing."}
+                </p>
+              </div>
+            )}
             <ScrollArea className="h-[300px] rounded border">
               <Table>
                 <TableHeader>
@@ -389,7 +464,14 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("map")}>Back</Button>
-              <Button onClick={() => importMutation.mutate()} disabled={importMutation.isPending || validCount === 0}>
+              <Button
+                onClick={() => importMutation.mutate()}
+                disabled={
+                  importMutation.isPending ||
+                  validCount === 0 ||
+                  (mode === "students" && (!importClassId || !currentPeriod))
+                }
+              >
                 {importMutation.isPending ? "Importing…" : `Import ${validCount} ${mode === "students" ? "Students" : "Staff"}`}
               </Button>
             </DialogFooter>

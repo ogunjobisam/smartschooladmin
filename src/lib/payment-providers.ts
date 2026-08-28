@@ -8,7 +8,7 @@ export interface PaymentInitParams {
   reference: string;
   currency: string;
   callbackUrl?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PaymentInitResult {

@@ -20,7 +20,18 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 
 interface LinkGuardianSectionProps {
   studentId: string;
-  guardians: any[];
+  guardians: {
+    id: string;
+    relationship: string | null;
+    is_primary: boolean | null;
+    guardians: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      phone: string | null;
+      email: string | null;
+    } | null;
+  }[];
   onRefresh: () => void;
 }
 
@@ -52,7 +63,7 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
     enabled: !!orgId && showLink,
   });
 
-  const linkedGuardianIds = new Set(guardians?.map((g: any) => g.guardians?.id).filter(Boolean));
+  const linkedGuardianIds = new Set(guardians?.map((g) => g.guardians?.id).filter(Boolean));
 
   const availableGuardians = allGuardians?.filter(g => !linkedGuardianIds.has(g.id)) || [];
 
@@ -77,7 +88,7 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
       setSearchTerm("");
       onRefresh();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -95,7 +106,7 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
       toast({ title: "Guardian unlinked" });
       onRefresh();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -125,7 +136,7 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
             {guardians?.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No guardians linked.</TableCell></TableRow>
             ) : (
-              guardians?.map((sg: any) => (
+              guardians?.map((sg) => (
                 <TableRow key={sg.id}>
                   <TableCell className="font-medium">{sg.guardians?.first_name} {sg.guardians?.last_name}</TableCell>
                   <TableCell className="capitalize">{sg.relationship || "—"}</TableCell>

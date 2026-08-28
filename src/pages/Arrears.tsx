@@ -25,7 +25,9 @@ export default function Arrears() {
   const { formatMoney } = useCurrency();
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
 
-  const handleSendReminder = async (inv: any) => {
+  type OverdueInvoice = NonNullable<NonNullable<typeof data>["overdueInvoices"]>[number];
+
+  const handleSendReminder = async (inv: OverdueInvoice) => {
     if (!orgId || !user) return;
     setSendingReminder(inv.id);
 
@@ -35,7 +37,7 @@ export default function Arrears() {
       .select("guardian_id, guardians(id, first_name, last_name, user_id)")
       .eq("student_id", inv.student_id);
 
-    const guardians = (guardianLinks || []).map((gl: any) => gl.guardians).filter(Boolean);
+    const guardians = (guardianLinks || []).map((gl) => gl.guardians).filter(Boolean);
 
     if (guardians.length === 0) {
       toast.error("No guardians linked to this student");
@@ -45,8 +47,8 @@ export default function Arrears() {
 
     // Create notifications for each guardian with a user_id
     const notifications = guardians
-      .filter((g: any) => g.user_id)
-      .map((g: any) => ({
+      .filter((g) => g.user_id)
+      .map((g) => ({
         org_id: orgId,
         school_id: schoolId,
         user_id: g.user_id,
@@ -83,7 +85,7 @@ export default function Arrears() {
         .eq("status", "overdue")
         .order("due_date", { ascending: true });
 
-      const overdueInvoices = (invoices || []).map((inv: any) => {
+      const overdueInvoices = (invoices || []).map((inv) => {
         const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
         const daysOverdue = inv.due_date ? Math.max(0, Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86400000)) : 0;
         const studentName = inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "—";
@@ -136,7 +138,7 @@ export default function Arrears() {
                   <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No overdue invoices.</TableCell>
                 </TableRow>
             ) : (
-              data?.overdueInvoices?.map((s: any) => (
+              data?.overdueInvoices?.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.studentName}</TableCell>
                   <TableCell>{s.className}</TableCell>

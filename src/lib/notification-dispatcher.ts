@@ -60,7 +60,7 @@ export async function dispatchNotification(params: DispatchParams) {
   }
 
   if (queueItems.length > 0) {
-    const { error } = await supabase.from("outbound_message_queue" as any).insert(
+    const { error } = await supabase.from("outbound_message_queue").insert(
       queueItems.map((item) => ({
         org_id: params.orgId,
         channel: item.channel,
@@ -86,14 +86,14 @@ export async function sendFeeReminders(orgId: string, schoolId: string) {
       students!inner(id, first_name, last_name, student_guardians(guardian_id, guardians(id, first_name, last_name, email, phone, user_id)))
     `)
     .eq("school_id", schoolId)
-    .in("status", ["pending", "overdue"] as any);
+    .in("status", ["pending", "overdue"]);
 
   if (!overdueInvoices?.length) return { sent: 0 };
 
   const notifications: Parameters<typeof createBulkNotifications>[0] = [];
 
   for (const inv of overdueInvoices) {
-    const student = (inv as any).students;
+    const student = inv.students;
     const guardianLinks = student?.student_guardians || [];
     const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
 
@@ -141,7 +141,7 @@ export async function sendPaymentConfirmation(params: {
 
   if (!student) return;
 
-  const guardianLinks = (student as any).student_guardians || [];
+  const guardianLinks = student.student_guardians || [];
   const formattedAmount = (params.amount / 100).toLocaleString();
   const title = `Payment confirmed for ${student.first_name} ${student.last_name}`;
   const message = params.invoiceNumber
@@ -210,7 +210,7 @@ export async function sendAnnouncementNotifications(params: {
       .eq("class_id", params.targetClassId);
     if (enrolments) {
       for (const e of enrolments) {
-        const student = (e as any).students;
+        const student = e.students;
         const links = student?.student_guardians || [];
         for (const link of links) {
           if (link.guardians?.user_id) userIds.push(link.guardians.user_id);

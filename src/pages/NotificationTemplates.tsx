@@ -48,11 +48,11 @@ export default function NotificationTemplates() {
     queryFn: async () => {
       if (!orgId) return [];
       const { data } = await supabase
-        .from("notification_templates" as any)
+        .from("notification_templates")
         .select("*")
         .eq("org_id", orgId)
         .order("type");
-      return (data as any[]) || [];
+      return data || [];
     },
     enabled: !!orgId,
   });
@@ -60,14 +60,14 @@ export default function NotificationTemplates() {
   const handleSave = async () => {
     if (!orgId || !type || !channel) return;
     setSaving(true);
-    const { error } = await supabase.from("notification_templates" as any).upsert({
+    const { error } = await supabase.from("notification_templates").upsert({
       org_id: orgId,
       type,
       channel,
       subject: subject.trim(),
       body: body.trim(),
       is_active: true,
-    }, { onConflict: "org_id,type,channel" as any });
+    }, { onConflict: "org_id,type,channel" });
     setSaving(false);
     if (error) {
       toast.error("Failed to save template");
@@ -83,12 +83,12 @@ export default function NotificationTemplates() {
   };
 
   const handleToggle = async (id: string, currentActive: boolean) => {
-    await supabase.from("notification_templates" as any).update({ is_active: !currentActive }).eq("id", id);
+    await supabase.from("notification_templates").update({ is_active: !currentActive }).eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["notification-templates"] });
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("notification_templates" as any).delete().eq("id", id);
+    await supabase.from("notification_templates").delete().eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["notification-templates"] });
     toast.success("Template deleted");
   };
@@ -172,7 +172,7 @@ export default function NotificationTemplates() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates.map((t: any) => (
+                {templates.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">{t.type?.replace(/_/g, " ")}</Badge>

@@ -60,13 +60,13 @@ export default function ParentDashboard() {
         .from("student_guardians")
         .select("relationship, students(id, first_name, last_name, student_id_number, status, school_id, enrolments(classes(name)), schools(name))")
         .eq("guardian_id", guardian.id);
-      return (data || []).map((sg: any) => ({ ...sg.students, relationship: sg.relationship }));
+      return (data || []).map((sg) => ({ ...sg.students, relationship: sg.relationship }));
     },
     enabled: !!guardian?.id,
   });
 
   // Get invoices for all children
-  const studentIds = children?.map((c: any) => c.id) || [];
+  const studentIds = children?.map((c) => c.id) || [];
   const { data: invoices, isLoading: invoicesLoading } = useQuery({
     queryKey: ["parent-invoices", studentIds],
     queryFn: async () => {
@@ -99,14 +99,16 @@ export default function ParentDashboard() {
 
   const isLoading = guardianLoading || childrenLoading;
 
-  const totalBilled = invoices?.reduce((s, i: any) => s + (i.total_amount || 0), 0) || 0;
-  const totalPaid = invoices?.reduce((s, i: any) => s + (i.amount_paid || 0), 0) || 0;
-  const pendingInvoices = invoices?.filter((i: any) => i.status === "pending" || i.status === "overdue").length || 0;
+  const totalBilled = invoices?.reduce((s, i) => s + (i.total_amount || 0), 0) || 0;
+  const totalPaid = invoices?.reduce((s, i) => s + (i.amount_paid || 0), 0) || 0;
+  const pendingInvoices = invoices?.filter((i) => i.status === "pending" || i.status === "overdue").length || 0;
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
   const displayName = user?.user_metadata?.full_name || guardian ? `${guardian?.first_name} ${guardian?.last_name}` : "Parent";
 
-  const handlePrintInvoice = async (inv: any) => {
+  type ParentInvoice = NonNullable<typeof invoices>[number];
+
+  const handlePrintInvoice = async (inv: ParentInvoice) => {
     // Fetch line items for this invoice
     const { data: lineItems } = await supabase
       .from("invoice_items")
@@ -128,7 +130,7 @@ export default function ParentDashboard() {
       studentId: student?.student_id_number || "—",
       className: student?.enrolments?.[0]?.classes?.name || "—",
       periodName: inv.academic_periods?.name || "—",
-      lineItems: (lineItems || []).map((i: any) => ({
+      lineItems: (lineItems || []).map((i) => ({
         description: i.description,
         category: i.fee_categories?.name || "—",
         amount: i.amount,
@@ -191,7 +193,7 @@ export default function ParentDashboard() {
             <p className="py-4 text-center text-sm text-muted-foreground">No children linked to your account.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {children?.map((child: any) => (
+              {children?.map((child) => (
                 <div key={child.id} className="flex items-center gap-3 rounded-lg border p-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10">
                     <GraduationCap className="h-5 w-5 text-accent" />
@@ -235,7 +237,7 @@ export default function ParentDashboard() {
               ) : invoices?.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No invoices yet.</TableCell></TableRow>
               ) : (
-                invoices?.map((inv: any) => {
+                invoices?.map((inv) => {
                   const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
                   return (
                     <TableRow key={inv.id}>
@@ -270,11 +272,11 @@ export default function ParentDashboard() {
           <CardContent>
             <Tabs defaultValue={children[0].id}>
               <TabsList>
-                {children.map((child: any) => (
+                {children.map((child) => (
                   <TabsTrigger key={child.id} value={child.id}>{child.first_name}</TabsTrigger>
                 ))}
               </TabsList>
-              {children.map((child: any) => (
+              {children.map((child) => (
                 <TabsContent key={child.id} value={child.id} className="mt-4">
                   <ChildPerformance studentId={child.id} />
                 </TabsContent>
@@ -332,7 +334,7 @@ export default function ParentDashboard() {
               ) : payments?.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No payments yet.</TableCell></TableRow>
               ) : (
-                payments?.map((p: any) => (
+                payments?.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="tabular-nums text-sm">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
                     <TableCell className="font-medium text-sm">{p.students?.first_name} {p.students?.last_name}</TableCell>

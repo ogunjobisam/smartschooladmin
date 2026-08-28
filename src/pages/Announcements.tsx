@@ -50,12 +50,12 @@ export default function Announcements() {
     queryFn: async () => {
       if (!orgId) return [];
       const { data } = await supabase
-        .from("school_announcements" as any)
+        .from("school_announcements")
         .select("*")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
         .limit(50);
-      return (data as any[]) || [];
+      return data || [];
     },
     enabled: !!orgId,
   });
@@ -74,7 +74,7 @@ export default function Announcements() {
 
     // Save announcement
     const { data: announcement, error } = await supabase
-      .from("school_announcements" as any)
+      .from("school_announcements")
       .insert({
         org_id: orgId,
         school_id: schoolId,
@@ -100,7 +100,7 @@ export default function Announcements() {
     const result = await sendAnnouncementNotifications({
       orgId,
       schoolId,
-      announcementId: (announcement as any).id,
+      announcementId: announcement.id,
       title: title.trim(),
       body: body.trim(),
       audience,
@@ -237,7 +237,7 @@ export default function Announcements() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {announcements.map((a: any) => (
+                {announcements.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell>
                       <p className="font-medium text-sm">{a.title}</p>

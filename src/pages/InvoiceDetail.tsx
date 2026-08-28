@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Download, Printer, CreditCard } from "lucide-react";
+import { ArrowLeft, Printer, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,7 +112,7 @@ export default function InvoiceDetail() {
       studentId: student?.student_id_number || "—",
       className,
       periodName: invoice.academic_periods?.name || "—",
-      lineItems: (lineItems || []).map((i: any) => ({
+      lineItems: (lineItems || []).map((i) => ({
         description: i.description,
         category: i.fee_categories?.name || "—",
         amount: i.amount,
@@ -120,7 +120,7 @@ export default function InvoiceDetail() {
       totalAmount: invoice.total_amount || 0,
       totalPaid,
       balance,
-      payments: (paymentHistory || []).map((pa: any) => ({
+      payments: (paymentHistory || []).map((pa) => ({
         date: pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—",
         amount: pa.amount,
         method: pa.payments?.payment_method ? formatMethod(pa.payments.payment_method) : "—",
@@ -150,8 +150,9 @@ export default function InvoiceDetail() {
             <p className="text-sm text-muted-foreground">{invoice.schools?.name || "—"}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Printer className="h-3.5 w-3.5" /> Print</Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Download className="h-3.5 w-3.5" /> Download PDF</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
+              <Printer className="h-3.5 w-3.5" /> Print or save as PDF
+            </Button>
             {balance > 0 && (
               <Button size="sm" className="gap-1.5" onClick={() => setPayOpen(true)}>
                 <CreditCard className="h-3.5 w-3.5" /> Pay Now
@@ -191,7 +192,7 @@ export default function InvoiceDetail() {
                 {lineItems?.length === 0 ? (
                   <TableRow><TableCell colSpan={3} className="py-6 text-center text-muted-foreground">No line items.</TableCell></TableRow>
                 ) : (
-                  lineItems?.map((item: any) => (
+                  lineItems?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>{item.description}</TableCell>
                       <TableCell className="text-muted-foreground">{item.fee_categories?.name || "—"}</TableCell>
@@ -225,7 +226,7 @@ export default function InvoiceDetail() {
                 {paymentHistory?.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No payments recorded.</TableCell></TableRow>
                 ) : (
-                  paymentHistory?.map((pa: any) => (
+                  paymentHistory?.map((pa) => (
                     <TableRow key={pa.id}>
                       <TableCell className="tabular-nums">{pa.payments?.payment_date ? new Date(pa.payments.payment_date).toLocaleDateString() : "—"}</TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(pa.amount)}</TableCell>
@@ -252,7 +253,7 @@ export default function InvoiceDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {receipts.map((r: any) => (
+                  {receipts.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-mono text-xs">{r.receipt_number}</TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(r.amount)}</TableCell>

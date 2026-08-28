@@ -92,7 +92,7 @@ export default function StaffDetail() {
     );
   }
 
-  const currentPos = staff.staff_positions?.find((p: any) => p.is_current);
+  const currentPos = staff.staff_positions?.find((p) => p.is_current);
   const initials = `${staff.first_name[0]}${staff.last_name[0]}`.toUpperCase();
 
   const pp = payrollProfile;
@@ -119,7 +119,7 @@ export default function StaffDetail() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-card-foreground">{staff.first_name} {staff.last_name}</h2>
-                <StatusBadge status={staff.employment_status as any} />
+                <StatusBadge status={staff.employment_status} />
               </div>
               <p className="font-mono text-xs text-muted-foreground">{staff.staff_id_number || "—"}</p>
               <p className="text-sm text-muted-foreground">{currentPos?.title || "—"} • {currentPos?.department || "—"}</p>
@@ -232,7 +232,7 @@ export default function StaffDetail() {
                 {payslips?.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No payslips found.</TableCell></TableRow>
                 ) : (
-                  payslips?.map((ps: any) => (
+                  payslips?.map((ps) => (
                     <TableRow key={ps.id}>
                       <TableCell className="font-medium">{ps.payroll_runs?.period_label || "—"}</TableCell>
                       <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(ps.basic)}</TableCell>

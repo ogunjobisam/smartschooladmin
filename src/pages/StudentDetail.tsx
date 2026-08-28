@@ -163,7 +163,7 @@ export default function StudentDetail() {
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 
   const handlePrintTranscript = () => {
-    const transcriptScores = (scores || []).map((s: any) => ({
+    const transcriptScores = (scores || []).map((s) => ({
       examName: s.exams?.name || "—",
       examDate: s.exams?.exam_date || null,
       subjectName: s.subjects?.name || "—",
@@ -173,7 +173,7 @@ export default function StudentDetail() {
       periodName: s.exams?.academic_periods?.name || "Unassigned",
     }));
 
-    const transcriptAwards = (awards || []).map((a: any) => ({
+    const transcriptAwards = (awards || []).map((a) => ({
       title: a.title,
       description: a.description,
       date: a.award_date,
@@ -181,7 +181,7 @@ export default function StudentDetail() {
     }));
 
     const attTotal = attendance?.length || 0;
-    const attPresent = attendance?.filter((a: any) => a.status === "present").length || 0;
+    const attPresent = attendance?.filter((a) => a.status === "present").length || 0;
 
     printTranscript({
       schoolName: school?.name || branding.name,
@@ -293,7 +293,7 @@ export default function StudentDetail() {
                 {invoices?.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No invoices.</TableCell></TableRow>
                 ) : (
-                  invoices?.map((inv: any) => (
+                  invoices?.map((inv) => (
                     <TableRow key={inv.id} className="cursor-pointer" onClick={() => window.location.href = `/invoices/${inv.id}`}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.academic_periods?.name || "—"}</TableCell>
@@ -324,7 +324,7 @@ export default function StudentDetail() {
                 {payments?.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No payments.</TableCell></TableRow>
                 ) : (
-                  payments?.map((p: any) => {
+                  payments?.map((p) => {
                     const invoiceNum = p.payment_allocations?.[0]?.invoices?.invoice_number || "—";
                     return (
                       <TableRow key={p.id}>
@@ -346,7 +346,7 @@ export default function StudentDetail() {
           <div className="rounded-lg border bg-card">
             {(() => {
               const total = attendance?.length || 0;
-              const present = attendance?.filter((a: any) => a.status === "present").length || 0;
+              const present = attendance?.filter((a) => a.status === "present").length || 0;
               const pct = total > 0 ? Math.round((present / total) * 100) : 0;
               return total > 0 ? (
                 <div className="border-b px-5 py-3 flex items-center gap-4">
@@ -369,7 +369,7 @@ export default function StudentDetail() {
                 {attendance?.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No attendance records.</TableCell></TableRow>
                 ) : (
-                  attendance?.map((a: any) => (
+                  attendance?.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.date}</TableCell>
                       <TableCell>{a.classes?.name || "—"}</TableCell>
@@ -435,7 +435,7 @@ export default function StudentDetail() {
                 {scores?.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No exam scores.</TableCell></TableRow>
                 ) : (
-                  scores?.map((s: any) => (
+                  scores?.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.exams?.name || "—"}</TableCell>
                       <TableCell>{s.subjects?.name || "—"}</TableCell>

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles } from "lucide-react";
+import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles, Send, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -19,10 +19,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
-const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "addons"];
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "notifications", "addons"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -224,21 +226,32 @@ export default function SettingsPage() {
     }
   };
 
-  const handleToggleCurrentPeriod = async (periodId: string, yearId: string) => {
+  const handleToggleCurrentPeriod = async (periodId: string) => {
     setTogglingCurrent(periodId);
-    // Clear all is_current for this year's periods first
-    const year = academicYears?.find((y: any) => y.id === yearId);
-    if (year?.academic_periods) {
-      for (const p of year.academic_periods) {
-        if (p.is_current) {
-          await supabase.from("academic_periods").update({ is_current: false }).eq("id", p.id);
-        }
-      }
+
+    // Clear across every year in the organisation, not just the one being
+    // edited. Clearing per-year left two terms current at once, which the rest
+    // of the app cannot represent: student enrolment, attendance and exams each
+    // pick "the" current term and would silently disagree about which.
+    const currentIds = (academicYears || [])
+      .flatMap((y) => y.academic_periods || [])
+      .filter((p) => p.is_current && p.id !== periodId)
+      .map((p) => p.id);
+
+    if (currentIds.length > 0) {
+      await supabase.from("academic_periods").update({ is_current: false }).in("id", currentIds);
     }
-    await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+    const { error } = await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+
     setTogglingCurrent(null);
-    toast.success("Current period updated");
+    if (error) {
+      toast.error("Could not set the current term: " + error.message);
+      return;
+    }
+    toast.success("Current term updated");
     queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+    queryClient.invalidateQueries({ queryKey: ["current-period"] });
+    queryClient.invalidateQueries({ queryKey: ["attendance-periods"] });
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -260,6 +273,7 @@ export default function SettingsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="addons">Add-ons</TabsTrigger>
         </TabsList>
 
@@ -432,6 +446,7 @@ export default function SettingsPage() {
                         <TableRow>
                           <TableHead className="text-xs">Class Name</TableHead>
                           <TableHead className="text-xs">Order</TableHead>
+                          <TableHead className="text-xs">Teachers</TableHead>
                           {canManage && <TableHead className="text-xs w-16" />}
                         </TableRow>
                       </TableHeader>
@@ -440,6 +455,9 @@ export default function SettingsPage() {
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">{c.name}</TableCell>
                             <TableCell className="text-muted-foreground">{c.level_order}</TableCell>
+                            <TableCell>
+                              <ClassTeacherPicker classId={c.id} className={c.name} canManage={canManage} />
+                            </TableCell>
                             {canManage && (
                               <TableCell>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClass(c.id)}>
@@ -565,7 +583,7 @@ export default function SettingsPage() {
                 <>
                   {academicYears && academicYears.length > 0 ? (
                     <div className="space-y-4">
-                      {academicYears.map((year: any) => (
+                      {academicYears.map((year) => (
                         <div key={year.id} className="rounded-lg border p-4 space-y-2">
                           <div className="flex items-center justify-between">
                             <div>
@@ -578,7 +596,7 @@ export default function SettingsPage() {
                           </div>
                           {year.academic_periods && year.academic_periods.length > 0 && (
                             <div className="mt-2 space-y-1">
-                              {year.academic_periods.map((p: any) => (
+                              {year.academic_periods.map((p) => (
                                 <div key={p.id} className="flex items-center justify-between rounded bg-muted/50 px-3 py-1.5 text-xs">
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium">{p.name}</span>
@@ -587,7 +605,7 @@ export default function SettingsPage() {
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
                                     {canManage && !p.is_current && (
-                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id, year.id)}>
+                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id)}>
                                         {togglingCurrent === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Current"}
                                       </Button>
                                     )}
@@ -659,6 +677,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* -- Notifications Tab -- */}
+        <TabsContent value="notifications" className="space-y-6 pt-4">
+          <MessageOutboxCard canManage={canManage} />
+        </TabsContent>
+
         {/* -- Add-ons Tab -- */}
         <TabsContent value="addons" className="space-y-6 pt-4">
           <AiAddonCard orgId={orgId} canManage={canEditBranding} />
@@ -832,15 +855,15 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     queryFn: async () => {
       if (!selectedClassId) return [];
       const { data } = await supabase
-        .from("class_subjects" as any)
+        .from("class_subjects")
         .select("id, subject_id")
         .eq("class_id", selectedClassId);
-      return (data as any[]) || [];
+      return data || [];
     },
     enabled: !!selectedClassId,
   });
 
-  const classSubjectIds = new Set(classSubjects.map((cs: any) => cs.subject_id));
+  const classSubjectIds = new Set(classSubjects.map((cs) => cs.subject_id));
 
   const handleAdd = async () => {
     if (!schoolId || !newName.trim()) return;
@@ -863,13 +886,13 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     if (!selectedClassId) return;
     if (classSubjectIds.has(subjectId)) {
       // Remove
-      const link = classSubjects.find((cs: any) => cs.subject_id === subjectId);
+      const link = classSubjects.find((cs) => cs.subject_id === subjectId);
       if (link) {
-        await supabase.from("class_subjects" as any).delete().eq("id", (link as any).id);
+        await supabase.from("class_subjects").delete().eq("id", link.id);
       }
     } else {
       // Add
-      await supabase.from("class_subjects" as any).insert({
+      await supabase.from("class_subjects").insert({
         class_id: selectedClassId,
         subject_id: subjectId,
       });
@@ -879,10 +902,10 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
 
   const handleAssignAll = async () => {
     if (!selectedClassId) return;
-    const toAdd = subjects.filter((s: any) => !classSubjectIds.has(s.id));
+    const toAdd = subjects.filter((s) => !classSubjectIds.has(s.id));
     if (toAdd.length === 0) return;
-    await supabase.from("class_subjects" as any).insert(
-      toAdd.map((s: any) => ({ class_id: selectedClassId, subject_id: s.id }))
+    await supabase.from("class_subjects").insert(
+      toAdd.map((s) => ({ class_id: selectedClassId, subject_id: s.id }))
     );
     queryClient.invalidateQueries({ queryKey: ["class-subjects", selectedClassId] });
     toast.success(`Assigned ${toAdd.length} subjects`);
@@ -911,7 +934,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {subjects.map((s: any) => (
+                    {subjects.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="text-muted-foreground">{s.short_code || "—"}</TableCell>
@@ -971,7 +994,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
                     <SelectValue placeholder="Select a class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map((c: any) => (
+                    {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -986,7 +1009,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
 
             {selectedClassId ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {subjects.map((s: any) => {
+                {subjects.map((s) => {
                   const assigned = classSubjectIds.has(s.id);
                   return (
                     <button
@@ -1117,5 +1140,210 @@ function AiAddonCard({ orgId, canManage }: { orgId: string | null; canManage: bo
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MessageOutboxCard({ canManage }: { canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const [sending, setSending] = useState(false);
+
+  const { data: summary = [], isLoading } = useQuery({
+    queryKey: ["outbox-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_outbox_summary");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const countFor = (status: string) => summary.find((r) => r.status === status)?.count ?? 0;
+  const queued = countFor("queued");
+  const sent = countFor("sent");
+  const failed = countFor("failed");
+
+  const sendNow = async () => {
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-message-queue", { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data.sent > 0) toast.success(`Sent ${data.sent} message${data.sent === 1 ? "" : "s"}`);
+      if (data.failed > 0) toast.error(`${data.failed} message${data.failed === 1 ? "" : "s"} could not be delivered`);
+      if (data.sent === 0 && data.failed === 0) {
+        toast.info(
+          data.email_configured
+            ? "Nothing waiting to send"
+            : "No email provider is configured yet, so messages are still waiting."
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["outbox-summary"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not send queued messages"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Send className="h-4 w-4" /> Outbox
+        </CardTitle>
+        <CardDescription>
+          Fee reminders, invites and announcements are queued here before they go out.
+          Delivery needs an email provider — set the RESEND_API_KEY and
+          NOTIFICATIONS_FROM_EMAIL function secrets, then schedule or run the send below.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Waiting", value: queued },
+                { label: "Sent", value: sent },
+                { label: "Failed", value: failed },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="font-mono text-xl font-semibold tabular-nums">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {canManage && (
+              <Button onClick={sendNow} disabled={sending || queued === 0} size="sm" className="gap-1.5">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send {queued > 0 ? queued : ""} queued message{queued === 1 ? "" : "s"}
+              </Button>
+            )}
+
+            {failed > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Failed messages were rejected by the provider — usually a bad address or an
+                unverified sender domain. They are not retried automatically.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Assigns teachers to one class.
+ *
+ * Teachers only see the students, registers and scores of classes they are
+ * assigned to, so a teacher with nothing assigned here sees nothing at all —
+ * this is where that is put right.
+ */
+function ClassTeacherPicker({ classId, className, canManage }: { classId: string; className: string; canManage: boolean }) {
+  const { schoolId } = useAuth();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const { data: assigned = [] } = useQuery({
+    queryKey: ["class-teachers", classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_teachers")
+        .select("id, staff_id, staff(id, first_name, last_name)")
+        .eq("class_id", classId);
+      return data || [];
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["assignable-teachers", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("staff")
+        .select("id, first_name, last_name")
+        .eq("school_id", schoolId!)
+        .eq("employment_status", "active")
+        .order("last_name");
+      return data || [];
+    },
+    enabled: !!schoolId && open,
+  });
+
+  const assignedIds = new Set(assigned.map((a) => a.staff_id));
+
+  const toggle = async (staffId: string) => {
+    setBusy(true);
+    const existing = assigned.find((a) => a.staff_id === staffId);
+    const { error } = existing
+      ? await supabase.from("class_teachers").delete().eq("id", existing.id)
+      : await supabase.from("class_teachers").insert({ class_id: classId, staff_id: staffId });
+    setBusy(false);
+
+    if (error) {
+      toast.error("Could not update teachers: " + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["class-teachers", classId] });
+  };
+
+  const names = assigned
+    .map((a) => {
+      const staff = a.staff;
+      return staff ? `${staff.first_name} ${staff.last_name}` : null;
+    })
+    .filter(Boolean) as string[];
+
+  if (!canManage) {
+    return <span className="text-sm text-muted-foreground">{names.join(", ") || "—"}</span>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs font-normal">
+          <Users className="h-3 w-3" />
+          {names.length === 0 ? <span className="text-muted-foreground">Assign</span> : names.join(", ")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Teachers for {className}</DialogTitle>
+          <DialogDescription>
+            A teacher sees only the students, registers and results of the classes they
+            are assigned to.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-72 space-y-1 overflow-y-auto">
+          {teachers.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No active staff in this school yet.
+            </p>
+          ) : (
+            teachers.map((t) => (
+              <label
+                key={t.id}
+                className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted"
+              >
+                <Checkbox
+                  checked={assignedIds.has(t.id)}
+                  disabled={busy}
+                  onCheckedChange={() => toggle(t.id)}
+                />
+                <span className="text-sm">{t.last_name}, {t.first_name}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => setOpen(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

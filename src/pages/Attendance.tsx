@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { rosterForPeriod } from "@/lib/roster";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -30,19 +31,20 @@ interface StudentRow {
 }
 
 const statusConfig: Record<AttendanceStatus, { label: string; icon: typeof Check; className: string }> = {
-  present: { label: "Present", icon: Check, className: "bg-success/10 text-success hover:bg-success/20" },
-  absent: { label: "Absent", icon: X, className: "bg-destructive/10 text-destructive hover:bg-destructive/20" },
-  late: { label: "Late", icon: Clock, className: "bg-warning/10 text-warning hover:bg-warning/20" },
-  excused: { label: "Excused", icon: ShieldOff, className: "bg-muted text-muted-foreground hover:bg-muted/80" },
+  present: { label: "Present", icon: Check, className: "border-success/30 bg-success/10 text-success hover:bg-success/20" },
+  absent: { label: "Absent", icon: X, className: "border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20" },
+  late: { label: "Late", icon: Clock, className: "border-warning/30 bg-warning/10 text-warning hover:bg-warning/20" },
+  excused: { label: "Excused", icon: ShieldOff, className: "border-border bg-muted text-muted-foreground hover:bg-muted/80" },
 };
 
-const statusCycle: AttendanceStatus[] = ["present", "absent", "late", "excused"];
+const statusOrder: AttendanceStatus[] = ["present", "absent", "late", "excused"];
 
 export default function Attendance() {
   const navigate = useNavigate();
-  const { schoolId, orgId, user } = useAuth();
+  const { schoolId, orgId, user, userRole } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
   const [date, setDate] = useState<Date>(new Date());
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [saving, setSaving] = useState(false);
@@ -61,66 +63,71 @@ export default function Attendance() {
     enabled: !!schoolId,
   });
 
-  // Fetch current academic period
-  // Scoped to the org's own academic years. This previously queried every
-  // academic_period with no filter and took whichever row came back first.
-  const { data: currentPeriod } = useQuery({
-    queryKey: ["current-period", orgId],
+  // Every term in the org, so the register can be taken for a term other than
+  // the current one. Attendance was previously pinned to whichever term was
+  // marked current, and a class whose enrolments sat in a different term looked
+  // simply empty with no way to tell why.
+  const { data: periods = [] } = useQuery({
+    queryKey: ["attendance-periods", orgId],
     queryFn: async () => {
       const { data } = await supabase
         .from("academic_periods")
-        .select("id, academic_years!inner(org_id)")
-        .eq("is_current", true)
+        .select("id, name, is_current, start_date, academic_years!inner(org_id, name)")
         .eq("academic_years.org_id", orgId!)
-        .limit(1)
-        .maybeSingle();
-      return data;
+        .order("start_date");
+      return data || [];
     },
     enabled: !!orgId,
   });
 
-  // Fetch enrolled students for selected class + existing attendance
+  const currentPeriod = periods.find((p) => p.is_current) ?? periods[periods.length - 1];
+  const activePeriodId = selectedPeriodId || currentPeriod?.id || "";
+
+  // Fetch every enrolment for the class, across all terms, plus the day's
+  // register. Filtering by term happens below so the page can tell the
+  // difference between "nobody is in this class" and "nobody is in this class
+  // *this term*" — two problems with very different fixes.
   const { data: studentData, isLoading: studentsLoading } = useQuery({
-    queryKey: ["attendance-students", selectedClassId, dateStr, currentPeriod?.id],
+    queryKey: ["attendance-students", selectedClassId, dateStr],
     queryFn: async () => {
-      if (!selectedClassId || !schoolId) return { students: [], records: [] };
+      if (!selectedClassId || !schoolId) return { enrolments: [], records: [] };
 
-      // Get enrolled students
-      let studentsQuery = supabase
-        .from("enrolments")
-        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status)")
-        .eq("class_id", selectedClassId);
-
-      if (currentPeriod?.id) {
-        studentsQuery = studentsQuery.eq("academic_period_id", currentPeriod.id);
-      }
-
-      const { data: enrolments } = await studentsQuery;
-
-      // Get existing attendance for this date + class
-      const { data: records } = await supabase
-        .from("attendance_records")
-        .select("*")
-        .eq("class_id", selectedClassId)
-        .eq("date", dateStr);
+      const [{ data: enrolments }, { data: records }] = await Promise.all([
+        supabase
+          .from("enrolments")
+          .select("student_id, academic_period_id, students!inner(id, first_name, last_name, student_id_number, status)")
+          .eq("class_id", selectedClassId),
+        supabase
+          .from("attendance_records")
+          .select("*")
+          .eq("class_id", selectedClassId)
+          .eq("date", dateStr),
+      ]);
 
       return {
-        students: (enrolments || [])
-          .map((e: any) => e.students)
-          .filter((s: any) => s.status === "active"),
+        enrolments: (enrolments || []).filter((e) => e.students?.status === "active"),
         records: records || [],
       };
     },
     enabled: !!selectedClassId && !!schoolId,
   });
 
+  const roster = rosterForPeriod(studentData?.enrolments ?? [], activePeriodId);
+
+  // When the term being viewed is empty, name the terms the class *is* enrolled
+  // in so the teacher can switch rather than guess.
+  const otherTerms = roster.otherPeriodIds
+    .map((id) => periods.find((p) => p.id === id))
+    .filter((p): p is (typeof periods)[number] => !!p);
+
   // Build rows when data changes
   useEffect(() => {
     if (!studentData) return;
-    const { students, records } = studentData;
-    const recordMap = new Map(records.map((r: any) => [r.student_id, r]));
+    const records = studentData.records;
+    const students = roster.students;
+    const recordMap = new Map(records.map((r) => [r.student_id, r]));
 
-    const newRows: StudentRow[] = students.map((s: any) => {
+    const newRows: StudentRow[] = students.map((s) => {
       const existing = recordMap.get(s.id);
       return {
         studentId: s.id,
@@ -134,14 +141,16 @@ export default function Attendance() {
     newRows.sort((a, b) => a.lastName.localeCompare(b.lastName));
     setRows(newRows);
     setDirty(false);
-  }, [studentData]);
+    // termEnrolments is derived from studentData and activePeriodId, so those
+    // two are the real inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentData, activePeriodId]);
 
-  const toggleStatus = (index: number) => {
+  const setStatus = (index: number, status: AttendanceStatus) => {
     setRows((prev) => {
+      if (prev[index].status === status) return prev;
       const updated = [...prev];
-      const current = updated[index].status;
-      const nextIdx = (statusCycle.indexOf(current) + 1) % statusCycle.length;
-      updated[index] = { ...updated[index], status: statusCycle[nextIdx] };
+      updated[index] = { ...updated[index], status };
       return updated;
     });
     setDirty(true);
@@ -202,8 +211,21 @@ export default function Attendance() {
             <SelectValue placeholder="Select class" />
           </SelectTrigger>
           <SelectContent>
-            {classes.map((c: any) => (
+            {classes.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={activePeriodId} onValueChange={setSelectedPeriodId}>
+          <SelectTrigger className="h-9 w-[190px]">
+            <SelectValue placeholder="Select term" />
+          </SelectTrigger>
+          <SelectContent>
+            {periods.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}{p.is_current ? " (current)" : ""}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -230,7 +252,7 @@ export default function Attendance() {
         {rows.length > 0 && (
           <div className="flex items-center gap-1.5 ml-auto">
             <span className="text-xs text-muted-foreground mr-1">Mark all:</span>
-            {statusCycle.map((s) => {
+            {statusOrder.map((s) => {
               const config = statusConfig[s];
               return (
                 <Button key={s} variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAllStatus(s)}>
@@ -266,7 +288,7 @@ export default function Attendance() {
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">
             {selectedClassId
-              ? `${classes.find((c: any) => c.id === selectedClassId)?.name || "Class"} — ${format(date, "EEEE, dd MMMM yyyy")}`
+              ? `${classes.find((c) => c.id === selectedClassId)?.name || "Class"} — ${format(date, "EEEE, dd MMMM yyyy")}`
               : "Select a class to begin"}
           </CardTitle>
           {rows.length > 0 && (
@@ -280,18 +302,43 @@ export default function Attendance() {
           )}
         </CardHeader>
         <CardContent>
-          {!selectedClassId ? (
+          {classes.length === 0 && !classesLoading ? (
+            // A teacher only sees classes they are assigned to, so an empty list
+            // means nobody has assigned them one — not that the school has none.
+            <EmptyState
+              icon={Users}
+              title={userRole === "teacher" ? "No classes assigned to you" : "No classes yet"}
+              description={
+                userRole === "teacher"
+                  ? "You can only take the register for classes you are assigned to. Ask your school admin to assign you under Settings → Classes."
+                  : "Create classes before attendance can be marked."
+              }
+              {...(userRole === "teacher"
+                ? {}
+                : { actionLabel: "Open class settings", onAction: () => navigate("/settings?tab=classes") })}
+            />
+          ) : !selectedClassId ? (
             <EmptyState icon={Users} title="No class selected" description="Choose a class from the dropdown above to mark attendance." />
           ) : studentsLoading ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : rows.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="No students enrolled"
-              description="This class has no enrolled students for the current academic period. Add students to it, or check that the right term is marked as current in Settings."
-              actionLabel="Go to Students"
-              onAction={() => navigate("/students")}
-            />
+            otherTerms.length > 0 ? (
+              <EmptyState
+                icon={CalendarIcon}
+                title={`Nobody is in this class for ${periods.find((p) => p.id === activePeriodId)?.name ?? "this term"}`}
+                description={`This class has students enrolled in ${otherTerms.map((t) => t.name).join(", ")}. Switch the term above to take the register, or promote them into this term from the Students page.`}
+                actionLabel={`Switch to ${otherTerms[0].name}`}
+                onAction={() => setSelectedPeriodId(otherTerms[0].id)}
+              />
+            ) : (
+              <EmptyState
+                icon={Users}
+                title="No students in this class"
+                description="Nobody is enrolled in this class yet. Students are put into a class when you add them, or through Promote — students added by CSV import need a class chosen during the import."
+                actionLabel="Go to Students"
+                onAction={() => navigate("/students")}
+              />
+            )
           ) : (
             <Table>
               <TableHeader>
@@ -299,32 +346,52 @@ export default function Attendance() {
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead>ID</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row, idx) => {
-                  const config = statusConfig[row.status];
-                  const Icon = config.icon;
-                  return (
-                    <TableRow key={row.studentId}>
-                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell className="font-medium">{row.lastName}, {row.firstName}</TableCell>
-                      <TableCell className="text-muted-foreground">{row.studentIdNumber || "—"}</TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={cn("h-8 gap-1.5 rounded-full px-3 text-xs font-medium", config.className)}
-                          onClick={() => toggleStatus(idx)}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {config.label}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {rows.map((row, idx) => (
+                  <TableRow key={row.studentId}>
+                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                    <TableCell className="font-medium">{row.lastName}, {row.firstName}</TableCell>
+                    <TableCell className="text-muted-foreground">{row.studentIdNumber || "—"}</TableCell>
+                    <TableCell>
+                      {/* One tap sets any status. This used to be a single
+                          button that cycled through all four, so correcting a
+                          mistap meant clicking three more times. */}
+                      <div
+                        role="radiogroup"
+                        aria-label={`Attendance for ${row.firstName} ${row.lastName}`}
+                        className="flex justify-end gap-1"
+                      >
+                        {statusOrder.map((status) => {
+                          const config = statusConfig[status];
+                          const Icon = config.icon;
+                          const selected = row.status === status;
+                          return (
+                            <button
+                              key={status}
+                              type="button"
+                              role="radio"
+                              aria-checked={selected}
+                              title={config.label}
+                              onClick={() => setStatus(idx, status)}
+                              className={cn(
+                                "flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                                selected
+                                  ? config.className
+                                  : "border-transparent text-muted-foreground hover:bg-muted"
+                              )}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">{config.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

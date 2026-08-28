@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
+import type { Enums } from "@/integrations/supabase/types";
 
 interface StaffData {
   id: string;
@@ -96,7 +97,7 @@ export function EditStaffDialog({ open, onOpenChange, staff }: Props) {
           gender: form.gender || null,
           date_of_birth: form.date_of_birth || null,
           employment_date: form.employment_date || null,
-          employment_status: form.employment_status as any,
+          employment_status: form.employment_status as Enums<"staff_employment_status">,
           qualifications: form.qualifications.trim() || null,
         })
         .eq("id", staff.id);

@@ -41,7 +41,7 @@ export function PromoteStudentsDialog({ open, onOpenChange }: PromoteStudentsDia
         .from("academic_years")
         .select("academic_periods(id, name, academic_year_id)")
         .eq("org_id", orgId);
-      return (data || []).flatMap((y: any) => y.academic_periods || []);
+      return (data || []).flatMap((y) => y.academic_periods || []);
     },
     enabled: !!orgId && open,
   });
@@ -126,7 +126,7 @@ export function PromoteStudentsDialog({ open, onOpenChange }: PromoteStudentsDia
                 <Select value={fromPeriodId} onValueChange={setFromPeriodId}>
                   <SelectTrigger><SelectValue placeholder="Source Period" /></SelectTrigger>
                   <SelectContent>
-                    {periods.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    {periods.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -143,7 +143,7 @@ export function PromoteStudentsDialog({ open, onOpenChange }: PromoteStudentsDia
                 <Select value={toPeriodId} onValueChange={setToPeriodId}>
                   <SelectTrigger><SelectValue placeholder="Target Period" /></SelectTrigger>
                   <SelectContent>
-                    {periods.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    {periods.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

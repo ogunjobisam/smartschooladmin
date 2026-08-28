@@ -45,7 +45,9 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
     },
   });
 
-  const handleDownload = async (doc: any) => {
+  type DocumentRow = (typeof documents)[number];
+
+  const handleDownload = async (doc: DocumentRow) => {
     try {
       // Documents live in a private bucket, so the link is minted on demand.
       const url = await getDocumentUrl(doc.file_url);
@@ -55,7 +57,7 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
     }
   };
 
-  const handleDelete = async (doc: any) => {
+  const handleDelete = async (doc: DocumentRow) => {
     await removeDocumentObject(doc.file_url);
     const { error } = await supabase.from("document_files").delete().eq("id", doc.id);
     if (error) toast.error("Failed to delete document");
@@ -114,7 +116,7 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.map((doc: any) => (
+              {documents.map((doc) => (
                 <TableRow key={doc.id}>
                   <TableCell className="font-medium">{doc.file_name}</TableCell>
                   <TableCell className="capitalize text-muted-foreground">{doc.category || "general"}</TableCell>

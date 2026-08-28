@@ -47,7 +47,7 @@ export default function Guardians() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
           if (!guardians?.length) return;
           exportToCsv("guardians", ["Name", "Phone", "Email", "Children"],
-            guardians.map((g: any) => [`${g.first_name} ${g.last_name}`, g.phone || "", g.email || "", (g.student_guardians?.length || 0).toString()]));
+            guardians.map((g) => [`${g.first_name} ${g.last_name}`, g.phone || "", g.email || "", (g.student_guardians?.length || 0).toString()]));
         }}><Download className="h-4 w-4" /> Export</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Guardian</Button>
       </PageHeader>
@@ -83,7 +83,7 @@ export default function Guardians() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No guardians found.</TableCell>
               </TableRow>
             ) : (
-              guardians?.map((g: any) => (
+              guardians?.map((g) => (
                 <TableRow key={g.id} className="cursor-pointer" onClick={() => navigate(`/guardians/${g.id}`)}>
                   <TableCell className="font-medium">{g.first_name} {g.last_name}</TableCell>
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>

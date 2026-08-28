@@ -15,6 +15,7 @@ import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import type { PayslipData } from "@/components/payroll/PayslipView";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -24,7 +25,7 @@ export default function PayrollRunDetail() {
   const { user, schoolId, orgId } = useAuth();
   const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
-  const [payslipData, setPayslipData] = useState<any>(null);
+  const [payslipData, setPayslipData] = useState<PayslipData | null>(null);
 
   const { data: run, isLoading } = useQuery({
     queryKey: ["payroll-run", id],
@@ -53,7 +54,7 @@ export default function PayrollRunDetail() {
 
   const handleApprove = async () => {
     const { error } = await supabase.from("payroll_runs").update({
-      status: "approved" as any,
+      status: "approved",
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
     }).eq("id", id!);
@@ -64,7 +65,7 @@ export default function PayrollRunDetail() {
 
   const handleReject = async () => {
     const { error } = await supabase.from("payroll_runs").update({
-      status: "rejected" as any,
+      status: "rejected",
     }).eq("id", id!);
     if (error) { toast.error("Failed to reject"); return; }
     toast.success("Payroll rejected");
@@ -74,7 +75,7 @@ export default function PayrollRunDetail() {
   const handleExportBank = () => {
     if (!items || items.length === 0) return;
     const headers = ["Staff ID", "Name", "Bank", "Account", "Net Pay"];
-    const rows = items.map((s: any) => [
+    const rows = items.map((s) => [
       s.staff?.staff_id_number || "",
       `${s.staff?.first_name || ""} ${s.staff?.last_name || ""}`,
       "", // bank info would come from staff_bank_details
@@ -85,8 +86,10 @@ export default function PayrollRunDetail() {
     toast.success("Bank batch CSV exported");
   };
 
-  const openPayslip = (s: any) => {
-    const pos = s.staff?.staff_positions?.find((p: any) => p.is_current);
+  type PayrollItem = NonNullable<typeof items>[number];
+
+  const openPayslip = (s: PayrollItem) => {
+    const pos = s.staff?.staff_positions?.find((p) => p.is_current);
     setPayslipData({
       staffName: `${s.staff?.first_name} ${s.staff?.last_name}`,
       staffId: s.staff?.staff_id_number || "",
@@ -174,8 +177,8 @@ export default function PayrollRunDetail() {
                 {items?.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No staff items.</TableCell></TableRow>
                 ) : (
-                  items?.map((s: any) => {
-                    const pos = s.staff?.staff_positions?.find((p: any) => p.is_current);
+                  items?.map((s) => {
+                    const pos = s.staff?.staff_positions?.find((p) => p.is_current);
                     return (
                       <TableRow key={s.id}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{s.staff?.staff_id_number || "—"}</TableCell>

@@ -93,7 +93,7 @@ export function StudentHistoryTab({ studentId, schoolId }: Props) {
                 <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">No enrolment history.</TableCell>
               </TableRow>
             ) : (
-              enrolments.map((e: any) => (
+              enrolments.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.classes?.name || "—"}</TableCell>
                   <TableCell>{e.academic_periods?.name || "—"}</TableCell>
@@ -131,7 +131,7 @@ export function StudentHistoryTab({ studentId, schoolId }: Props) {
                 <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No awards yet.</TableCell>
               </TableRow>
             ) : (
-              awards.map((a: any) => (
+              awards.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">{a.title}</TableCell>
                   <TableCell className="text-muted-foreground">{a.description || "—"}</TableCell>

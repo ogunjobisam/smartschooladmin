@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
+import type { Enums } from "@/integrations/supabase/types";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -25,7 +26,7 @@ export default function Invoices() {
   const { schoolId } = useAuth();
   const { formatMoney } = useCurrency();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Enums<"invoice_status"> | "all">("all");
   const [page, setPage] = useState(0);
   const [generateOpen, setGenerateOpen] = useState(false);
 
@@ -45,7 +46,7 @@ export default function Invoices() {
         query = query.or(`invoice_number.ilike.%${search}%`);
       }
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter as any);
+        query = query.eq("status", statusFilter);
       }
 
       const { data: invoices, count } = await query;
@@ -67,7 +68,7 @@ export default function Invoices() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search by invoice ID…" className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as Enums<"invoice_status"> | "all"); setPage(0); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
@@ -105,7 +106,7 @@ export default function Invoices() {
                 <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No invoices found.</TableCell>
               </TableRow>
             ) : (
-              data?.invoices?.map((inv: any) => {
+              data?.invoices?.map((inv) => {
                 const student = inv.students;
                 const studentName = student ? `${student.first_name} ${student.last_name}` : "—";
                 return (

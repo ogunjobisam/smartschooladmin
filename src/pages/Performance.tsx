@@ -20,7 +20,7 @@ import { classPosition, subjectBreakdown, summariseStudent } from "@/lib/perform
 
 export default function Performance() {
   const navigate = useNavigate();
-  const { schoolId, orgId } = useAuth();
+  const { schoolId, orgId, userRole } = useAuth();
   const [classId, setClassId] = useState<string>("");
   const [periodId, setPeriodId] = useState<string>("all");
 
@@ -108,13 +108,21 @@ export default function Performance() {
       </PageHeader>
 
       {classes.length === 0 ? (
-        <EmptyState
-          icon={GraduationCap}
-          title="No classes yet"
-          description="Create classes before performance can be tracked."
-          actionLabel="Open class settings"
-          onAction={() => navigate("/settings?tab=classes")}
-        />
+        userRole === "teacher" ? (
+          <EmptyState
+            icon={GraduationCap}
+            title="No classes assigned to you"
+            description="You see performance for the classes you are assigned to. Ask your school admin to assign you under Settings → Classes."
+          />
+        ) : (
+          <EmptyState
+            icon={GraduationCap}
+            title="No classes yet"
+            description="Create classes before performance can be tracked."
+            actionLabel="Open class settings"
+            onAction={() => navigate("/settings?tab=classes")}
+          />
+        )
       ) : isLoading ? (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">

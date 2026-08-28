@@ -13,7 +13,7 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -22,7 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Loader2, Shield, Trash2, Pencil } from "lucide-react";
+import { UserPlus, Loader2, Shield, Trash2, Pencil, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { getErrorMessage } from "@/lib/errors";
@@ -63,6 +63,7 @@ export default function UserManagement() {
   const [role, setRole] = useState("");
   const [assignSchoolId, setAssignSchoolId] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [inviteLink, setInviteLink] = useState<{ email: string; link: string } | null>(null);
 
   const [editingUser, setEditingUser] = useState<{ userId: string; currentRole: string } | null>(null);
   const [newRole, setNewRole] = useState("");
@@ -87,16 +88,16 @@ export default function UserManagement() {
       const { data } = await query;
       if (!data) return [];
 
-      const userIds = data.map((r: any) => r.user_id);
+      const userIds = data.map((r) => r.user_id);
       if (userIds.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .in("user_id", userIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
 
-      return data.map((r: any) => ({
+      return data.map((r) => ({
         ...r,
         profile: profileMap.get(r.user_id) || { full_name: "Unknown", email: "" },
       }));
@@ -156,6 +157,14 @@ export default function UserManagement() {
         ? `User ${email} created and assigned ${role} role`
         : `Existing user ${email} assigned ${role} role`
       );
+
+      // Show the set-password link. The invite is also queued as an email, but
+      // a school without a mail provider needs to be able to pass it on by hand
+      // — otherwise the new account is unusable and nothing says why.
+      if (data?.invite_link) {
+        setInviteLink({ email: email.trim(), link: data.invite_link });
+      }
+
       setEmail("");
       setFullName("");
       setRole("");
@@ -304,7 +313,7 @@ export default function UserManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                users?.map((u: any) => (
+                users?.map((u) => (
                   <TableRow key={u.user_id}>
                     <TableCell className="font-medium">{u.profile.full_name || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.profile.email || "—"}</TableCell>
@@ -391,6 +400,49 @@ export default function UserManagement() {
               {updatingRole && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update Role
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* The invited account exists but has no password until this link is used. */}
+      <Dialog open={!!inviteLink} onOpenChange={(open) => { if (!open) setInviteLink(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send {inviteLink?.email} their sign-in link</DialogTitle>
+            <DialogDescription>
+              We have queued this as an email. If your school has not set up an email
+              provider yet, copy the link and send it to them yourself — their account
+              cannot be used until they set a password.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input readOnly value={inviteLink?.link ?? ""} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+              <Button
+                variant="outline"
+                className="shrink-0 gap-1.5"
+                onClick={async () => {
+                  if (!inviteLink) return;
+                  try {
+                    await navigator.clipboard.writeText(inviteLink.link);
+                    toast.success("Link copied");
+                  } catch {
+                    toast.error("Could not copy — select the link and copy it manually.");
+                  }
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This link expires, so send it soon. You can always issue a new one from the
+              sign-in page's &ldquo;Forgot password&rdquo; link.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setInviteLink(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

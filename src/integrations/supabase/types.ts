@@ -370,6 +370,45 @@ export type Database = {
           },
         ]
       }
+      class_teachers: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          is_form_teacher: boolean
+          staff_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          is_form_teacher?: boolean
+          staff_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          is_form_teacher?: boolean
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_teachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_teachers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string
@@ -2132,6 +2171,14 @@ export type Database = {
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
+      my_staff_id: { Args: never; Returns: string }
+      teaches_class: { Args: { _class_id: string }; Returns: boolean }
+      teaches_student: { Args: { _student_id: string }; Returns: boolean }
+      is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
+      my_outbox_summary: {
+        Args: never
+        Returns: { status: string; count: number }[]
+      }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       my_guardian_id: { Args: never; Returns: string }
       my_ai_entitlement: {

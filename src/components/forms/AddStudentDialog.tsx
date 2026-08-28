@@ -91,11 +91,16 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
   const { data: currentPeriod } = useQuery({
     queryKey: ["current-period", orgId],
     queryFn: async () => {
+      // limit(1): maybeSingle() raises when more than one row comes back, and
+      // nothing stops two terms being marked current, which used to make adding
+      // a student impossible with a misleading "no current period" message.
       const { data } = await supabase
         .from("academic_periods")
         .select("id, name, academic_years!inner(org_id)")
         .eq("is_current", true)
         .eq("academic_years.org_id", orgId!)
+        .order("start_date", { ascending: false })
+        .limit(1)
         .maybeSingle();
       return data;
     },
@@ -178,7 +183,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
       setErrors({});
       if (data?.id) navigate(`/students/${data.id}`);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       if (err instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
         err.errors.forEach(e => { if (e.path[0]) fieldErrors[e.path[0] as string] = e.message; });

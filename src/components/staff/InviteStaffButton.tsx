@@ -56,7 +56,7 @@ export function InviteStaffButton({ staffId, staffName, staffEmail, hasUserId }:
       toast({ title: "Invite sent", description: `${staffName} can now log in to the system.` });
       setOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to send invite.", variant: "destructive" });
     },
   });
