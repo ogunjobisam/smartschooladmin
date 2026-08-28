@@ -159,7 +159,7 @@ export default function StudentDetail() {
   }
 
   const initials = `${student.first_name[0]}${student.last_name[0]}`.toUpperCase();
-  const className = student.enrolments?.[0]?.classes?.name || "—";
+  const className = displayClassName(student.enrolments?.[0]?.classes?.name) || "—";
   const totalBilled = invoices?.reduce((s, i) => s + (i.total_amount || 0), 0) || 0;
   const totalPaid = invoices?.reduce((s, i) => s + (i.amount_paid || 0), 0) || 0;
 
@@ -409,7 +409,7 @@ export default function StudentDetail() {
             }
             buildSummary={() => ({
               student: `${student?.first_name ?? ""} ${student?.last_name ?? ""}`.trim(),
-              class: student?.enrolments?.[0]?.classes?.name,
+              class: displayClassName(student?.enrolments?.[0]?.classes?.name),
               overallAverage: studentPerformance.average,
               overallGrade: studentPerformance.grade,
               subjects: studentPerformance.subjects.map((sub) => ({
