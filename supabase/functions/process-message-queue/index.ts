@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { classifyEmailFailure } from "../_shared/email-result.ts";
+import { formatSender, replyToAddress } from "../_shared/sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,11 +23,21 @@ function json(body: Record<string, unknown>, status = 200) {
 interface QueueRow {
   id: string;
   org_id: string;
+  school_id: string | null;
   channel: string;
   recipient: string;
   subject: string | null;
   body: string;
+  reply_to: string | null;
   attempts: number;
+}
+
+/** The From name and Reply-To for one message, resolved before sending. */
+interface Sender {
+  /** Display name — the school this message is from. */
+  name: string | null;
+  /** Where a reply should go, or null to omit the header. */
+  replyTo: string | null;
 }
 
 /**
@@ -45,31 +57,47 @@ type SendResult =
   | { status: "unconfigured"; error: string };
 
 /**
+ * Resend's built-in sender, used when no verified one is configured.
+ *
+ * It lets a school prove the pipe works with nothing but an API key, but it only
+ * delivers to the address that owns the Resend account — everyone else is
+ * refused with a 403. That refusal is classified as `unconfigured`, so those
+ * messages wait rather than dying.
+ */
+const DEFAULT_FROM = "onboarding@resend.dev";
+
+/**
  * Email delivery.
  *
- * Resend is the default because it needs nothing but an API key and a verified
- * sender. Swapping providers means replacing this one function — everything
- * else works off the queue table.
+ * Resend is the default because it needs nothing but an API key. Swapping
+ * providers means replacing this one function — everything else works off the
+ * queue table.
  */
-async function sendEmail(row: QueueRow): Promise<SendResult> {
+async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("NOTIFICATIONS_FROM_EMAIL");
+  // A missing sender is no longer a blocker: without this default, setting only
+  // RESEND_API_KEY left the whole queue "unconfigured" with nothing to say why.
+  const from = Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM;
 
-  if (!apiKey || !from) {
+  if (!apiKey) {
     return {
       status: "unconfigured",
-      error: "No email provider configured. Set RESEND_API_KEY and NOTIFICATIONS_FROM_EMAIL.",
+      error: "No email provider configured. Set RESEND_API_KEY.",
     };
   }
 
+  // One platform domain sends for every school: the school's name goes on the
+  // From line, and a reply reaches the school rather than the platform.
+  const replyTo = replyToAddress(sender.replyTo);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from,
+      from: formatSender(sender.name, from),
       to: [row.recipient],
       subject: row.subject || "A message from your school",
       text: row.body,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
 
@@ -78,9 +106,19 @@ async function sendEmail(row: QueueRow): Promise<SendResult> {
   const detail = await response.text();
   const error = `Resend ${response.status}: ${detail.slice(0, 300)}`;
 
-  // A 4xx other than rate limiting will fail identically on every retry.
-  const permanent = response.status >= 400 && response.status < 500 && response.status !== 429;
-  return permanent ? { status: "failed", error } : { status: "retry", error };
+  // An unverified sender refuses every message equally, so it must not burn the
+  // backlog — see the note in _shared/email-result.ts.
+  const outcome = classifyEmailFailure(response.status, detail);
+  if (outcome === "unconfigured") {
+    return {
+      status: "unconfigured",
+      error:
+        `${error} — this is a sender problem, not a problem with the message. ` +
+        `Verify a domain in Resend and set NOTIFICATIONS_FROM_EMAIL to an address on it. ` +
+        `Messages stay queued until then.`,
+    };
+  }
+  return { status: outcome, error };
 }
 
 /**
@@ -130,9 +168,33 @@ Deno.serve(async (req) => {
       orgFilter = role.org_id;
     }
 
+    // Requeue: put failed rows back in the queue so a fixed configuration can
+    // deliver them. Nothing else in the app can move a row out of "failed" —
+    // there is no UPDATE policy for `authenticated` — so without this a single
+    // bad sender setting loses the backlog permanently.
+    let requeueRequested = false;
+    try {
+      const body = await req.json();
+      requeueRequested = body?.action === "requeue";
+    } catch {
+      // No body, or not JSON: a plain drain.
+    }
+
+    if (requeueRequested) {
+      let reset = admin
+        .from("outbound_message_queue")
+        .update({ status: "queued", attempts: 0, processed_at: null })
+        .eq("status", "failed");
+      if (orgFilter) reset = reset.eq("org_id", orgFilter);
+
+      const { data: requeued, error: requeueError } = await reset.select("id");
+      if (requeueError) throw requeueError;
+      return json({ success: true, requeued: (requeued || []).length });
+    }
+
     let query = admin
       .from("outbound_message_queue")
-      .select("id, org_id, channel, recipient, subject, body, attempts")
+      .select("id, org_id, school_id, channel, recipient, subject, body, reply_to, attempts")
       .eq("status", "queued")
       .lt("attempts", MAX_ATTEMPTS)
       .order("created_at")
@@ -144,12 +206,33 @@ Deno.serve(async (req) => {
     if (fetchError) throw fetchError;
 
     const pending = (rows || []) as QueueRow[];
+
+    // One lookup for the handful of distinct schools in the batch, rather than
+    // a query per message. Names go on the From line; the school's own address
+    // is the fallback reply-to for rows queued before reply_to was resolved.
+    const schoolIds = [...new Set(pending.map((r) => r.school_id).filter((id): id is string => !!id))];
+    const schools = new Map<string, { name: string; email: string | null }>();
+    if (schoolIds.length > 0) {
+      const { data: schoolRows } = await admin
+        .from("schools")
+        .select("id, name, email")
+        .in("id", schoolIds);
+      for (const school of schoolRows || []) {
+        schools.set(school.id, { name: school.name, email: school.email });
+      }
+    }
+
     let sent = 0;
     let failed = 0;
     let deferred = 0;
 
     for (const row of pending) {
-      const result = row.channel === "email" ? await sendEmail(row) : sendSms();
+      const school = row.school_id ? schools.get(row.school_id) : undefined;
+      const sender: Sender = {
+        name: school?.name ?? null,
+        replyTo: row.reply_to ?? school?.email ?? null,
+      };
+      const result = row.channel === "email" ? await sendEmail(row, sender) : sendSms();
       const now = new Date().toISOString();
 
       if (result.status === "sent") {
@@ -195,7 +278,11 @@ Deno.serve(async (req) => {
       sent,
       failed,
       deferred,
-      email_configured: !!(Deno.env.get("RESEND_API_KEY") && Deno.env.get("NOTIFICATIONS_FROM_EMAIL")),
+      email_configured: !!Deno.env.get("RESEND_API_KEY"),
+      // So the settings screen can say which sender is in use, and warn when it
+      // is the test one that only reaches the Resend account holder.
+      sender: Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM,
+      sender_is_default: !Deno.env.get("NOTIFICATIONS_FROM_EMAIL"),
     });
   } catch (err) {
     console.error("process-message-queue error:", err);

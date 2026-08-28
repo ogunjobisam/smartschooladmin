@@ -84,7 +84,11 @@ export default function Apply() {
   const submit = useMutation({
     mutationFn: async () => {
       const { data, error: fnError } = await supabase.functions.invoke("admissions", {
-        body: { action: "apply", slug, ...form },
+        // sectionValue, not form.section: the select shows an age-derived
+        // suggestion, and Radix does not fire onValueChange when the user picks
+        // the option already displayed — so form.section stayed empty and the
+        // application saved with no section at all.
+        body: { action: "apply", slug, ...form, section: sectionValue },
       });
       // An edge function that answers 4xx surfaces as fnError with the body
       // hidden, so the readable reason has to be dug out of data when present.

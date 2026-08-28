@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --pretty",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:migrations": "bash scripts/check-migrations.sh",
     "test:watch": "vitest"
   },
   "dependencies": {

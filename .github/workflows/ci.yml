@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to a branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests, lint, build
+    runs-on: ubuntu-latest
+    env:
+      # src/integrations/supabase/client.ts throws at import time when these are
+      # absent, and both the build and two test files import it. These are
+      # throwaway placeholders — the real values are publishable by design, and
+      # nothing here talks to a Supabase project.
+      VITE_SUPABASE_URL: https://placeholder.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
+      VITE_SUPABASE_PROJECT_ID: placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Run all four even when an earlier one fails, so a single push shows
+      # every problem rather than one per cycle.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        if: ${{ !cancelled() }}
+        run: npm test
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: npm run lint
+
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: npm run build
+
+  migrations:
+    name: Migration replay
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y postgresql-client
+
+      # Replays every migration against an empty database and asserts the
+      # invariants. The migration set silently stopped being replayable once
+      # because nothing ever did this.
+      - name: Replay migrations
+        run: npm run test:migrations

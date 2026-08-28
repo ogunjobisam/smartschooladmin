@@ -71,7 +71,12 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
   if (isLoading || !school) return <Skeleton className="h-64 w-full" />;
 
   const cleanedSlug = toSlug(slug);
-  const publicUrl = cleanedSlug ? admissionsUrl(cleanedSlug, window.location.origin) : null;
+  // Deliberately the slug the school has saved, not the one being typed: a link
+  // built from unsaved input points nowhere, which is how Copy and Open came to
+  // hand out `/apply/` with nothing after it.
+  const savedSlug = school.admissions_slug;
+  const publicUrl = savedSlug ? admissionsUrl(savedSlug, window.location.origin) : null;
+  const unsavedSlug = cleanedSlug !== (savedSlug ?? "");
 
   const copyLink = async () => {
     if (!publicUrl) return;
@@ -121,6 +126,16 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
           </div>
           {cleanedSlug !== slug && slug !== "" && (
             <p className="text-xs text-muted-foreground">Will be saved as <code>{cleanedSlug}</code>.</p>
+          )}
+          {unsavedSlug && cleanedSlug !== "" && (
+            <p className="text-xs text-warning-foreground">
+              Save before sharing — the link below still points at the address you had before.
+            </p>
+          )}
+          {!publicUrl && (
+            <p className="text-xs text-muted-foreground">
+              Save a link before sharing it.
+            </p>
           )}
           {publicUrl && (
             <div className="flex flex-wrap gap-2 pt-1">

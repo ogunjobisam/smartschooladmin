@@ -51,7 +51,8 @@ async function createInviteLink(
   admin: AdminClient,
   email: string,
   orgId: string,
-  schoolName: string | null
+  schoolName: string | null,
+  schoolId: string | null = null
 ): Promise<string | null> {
   const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
   if (error || !data?.properties?.action_link) {
@@ -64,6 +65,8 @@ async function createInviteLink(
 
   await admin.from("outbound_message_queue").insert({
     org_id: orgId,
+    // Puts the school's name on the From line when the invite is a school's.
+    school_id: schoolId,
     channel: "email",
     recipient: email,
     subject: `Your account${where} is ready`,
@@ -269,7 +272,13 @@ Deno.serve(async (req) => {
         .eq("id", guardian_id);
       if (linkError) return jsonResponse({ error: linkError.message }, 400);
 
-      const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, null) : null;
+      // guardianSchoolId is resolved above from the guardian's children.
+      const guardianSchoolName = guardianSchoolId
+        ? (await adminClient.from("schools").select("name").eq("id", guardianSchoolId).maybeSingle()).data?.name ?? null
+        : null;
+      const inviteLink = isNew
+        ? await createInviteLink(adminClient, email, org_id, guardianSchoolName, guardianSchoolId)
+        : null;
 
       return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
     }
@@ -339,7 +348,7 @@ Deno.serve(async (req) => {
       if (linkError) return jsonResponse({ error: linkError.message }, 400);
 
       const inviteLink = isNew
-        ? await createInviteLink(adminClient, email, org_id, studentSchool?.name ?? null)
+        ? await createInviteLink(adminClient, email, org_id, studentSchool?.name ?? null, student.school_id ?? null)
         : null;
 
       return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
@@ -431,7 +440,7 @@ Deno.serve(async (req) => {
       schoolName = school?.name ?? null;
     }
 
-    const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, schoolName) : null;
+    const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, schoolName, school_id || null) : null;
 
     return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
   } catch (err) {

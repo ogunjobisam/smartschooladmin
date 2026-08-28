@@ -209,7 +209,10 @@ Deno.serve(async (req) => {
     if (school.email) {
       messages.push({
         org_id: school.org_id,
+        school_id: school.id,
         channel: "email",
+        // The office reading this can reply straight to the family.
+        reply_to: guardianEmail,
         recipient: school.email,
         subject: `New application: ${firstName} ${lastName} (${application.reference})`,
         body:
@@ -227,7 +230,10 @@ Deno.serve(async (req) => {
     if (guardianEmail) {
       messages.push({
         org_id: school.org_id,
+        school_id: school.id,
         channel: "email",
+        // A parent replying to the acknowledgement should reach the school.
+        reply_to: school.email,
         recipient: guardianEmail,
         subject: `We have your application for ${firstName} (${application.reference})`,
         body:

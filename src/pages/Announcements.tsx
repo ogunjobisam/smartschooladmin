@@ -118,7 +118,11 @@ export default function Announcements() {
     setChannelEmail(false);
     setChannelSms(false);
     queryClient.invalidateQueries({ queryKey: ["announcements"] });
-    toast.success(`Announcement sent to ${result.sent} recipient(s)`);
+    toast.success(`Announcement sent to ${result.sent} recipient(s)`, {
+      description: result.queuedEmails
+        ? `${result.queuedEmails} email${result.queuedEmails === 1 ? "" : "s"} queued — send them from Settings → Notifications.`
+        : undefined,
+    });
   };
 
   const audienceLabel = (a: string) => {
@@ -180,7 +184,7 @@ export default function Announcements() {
               )}
               <div className="space-y-2">
                 <Label>Delivery Channels</Label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={channelInApp} onCheckedChange={(v) => setChannelInApp(!!v)} />
                     In-App
@@ -188,14 +192,20 @@ export default function Announcements() {
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={channelEmail} onCheckedChange={(v) => setChannelEmail(!!v)} />
                     Email
-                    <Badge variant="outline" className="text-[10px]">Coming soon</Badge>
                   </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={channelSms} onCheckedChange={(v) => setChannelSms(!!v)} />
+                  {/* SMS has no provider yet, so the box is disabled rather than
+                      accepted and quietly ignored. */}
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox checked={false} disabled />
                     SMS
-                    <Badge variant="outline" className="text-[10px]">Coming soon</Badge>
+                    <Badge variant="outline" className="text-[10px]">Not available yet</Badge>
                   </label>
                 </div>
+                {channelEmail && (
+                  <p className="text-xs text-muted-foreground">
+                    Emails are queued, then sent from Settings → Notifications.
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>

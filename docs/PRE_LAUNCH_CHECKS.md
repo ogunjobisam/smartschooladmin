@@ -2,10 +2,11 @@
 
 Verification of the work merged in PRs #1–#3, and the prompts used to run it.
 
-The app's own test suite proves the code compiles and the pure logic is right. It
-proves nothing about the live Supabase project, and the repository has no CI. So
-these checks are run by pasting the prompts below into Lovable, whose agent can
-query the connected project and drive the live preview.
+The app's own test suite proves the code compiles and the pure logic is right,
+and CI now runs it on every pull request along with a full migration replay. What
+neither can prove is anything about the *live* Supabase project or a rendered
+screen — so those checks are run by pasting the prompts below into Lovable, whose
+agent can query the connected project and drive the live preview.
 
 ---
 
@@ -14,10 +15,10 @@ query the connected project and drive the live preview.
 | Part | What it covers | State |
 | --- | --- | --- |
 | 1 | Did the migrations, policies and function reach the live database | **Run — passed**, 2 blockers |
-| 2 | Functional walkthrough of every new feature | Not run — needs write access |
-| 3 | Security probe of the new tenant boundaries | Partly run (read-only probes only) |
+| 2 | Functional walkthrough of every new feature | **Run** — 7 dead ends found, all fixed |
+| 3 | Security probe of the new tenant boundaries | **Run** — isolation holds; 3 role-boundary holes found and fixed |
 | 4 | Confirm or refute nine suspected defects | **Run** — 8 confirmed, 1 refuted |
-| 5 | Design and copy review of the new screens | Not run |
+| 5 | Design and copy review of the new screens | **Run** — no overflow; currency and copy issues found |
 
 Lovable's full report: [`.lovable/plan/external-review-audit-findings-report-2026-08-28.md`](../.lovable/plan/external-review-audit-findings-report-2026-08-28.md).
 
@@ -25,11 +26,31 @@ Lovable's full report: [`.lovable/plan/external-review-audit-findings-report-202
 
 1. ~~**`supabase db push` no longer works on a fresh project.**~~ **Fixed.** See
    below for what was wrong and how it was proven.
-2. **`RESEND_API_KEY` and `NOTIFICATIONS_FROM_EMAIL` are not set** as edge
-   function secrets. Admissions acknowledgements, invites and fee reminders queue
-   in `outbound_message_queue` and never send. Set them as function secrets —
-   never in `.env` or any `VITE_*` variable. **Still outstanding** — this one
-   needs credentials, so it is yours to do.
+2. ~~**`RESEND_API_KEY` and `NOTIFICATIONS_FROM_EMAIL` are not set.**~~
+   `RESEND_API_KEY` is now set, and the code no longer needs the second secret:
+   a missing `NOTIFICATIONS_FROM_EMAIL` falls back to Resend's built-in sender
+   instead of blocking the whole queue.
+
+   **One thing remains, and it is a real limit rather than a bug.** The built-in
+   sender only delivers to the address that owns the Resend account. Until a
+   school domain is verified in Resend and `NOTIFICATIONS_FROM_EMAIL` is set to
+   an address on it, **parents will not receive anything.** Those messages are no
+   longer destroyed by the attempt — see below — they simply wait.
+
+### The trap that was avoided
+
+Setting the second secret without verifying a domain would have been worse than
+doing nothing. Resend answers **403** for an unverified sender, and the queue
+processor classified any 4xx except 429 as *permanent*: one drain would have
+marked every queued invite and admissions acknowledgement `failed` on its first
+attempt. Nothing in the app could move a row out of `failed` — no UPDATE policy
+for `authenticated`, no UI control — so verifying the domain afterwards would not
+have brought them back.
+
+Sender refusals are now classified as `unconfigured`, which costs no attempt and
+leaves the row queued, and there is a **Try failed messages again** control on
+the outbox card for anything already lost. The classification is pinned by tests
+in `src/test/email-result.test.ts`.
 
 ---
 
@@ -168,6 +189,45 @@ From Part 4, ranked. Six are fixed; three remain open.
    `transport_stops.dropoff_time`, `transport_routes.description`. Either surface
    them or drop them. (`school_events.created_by` *is* written — that suspicion
    was refuted.)
+
+---
+
+## Parts 2, 3 and 5 — run, and what they found
+
+Run through Lovable against the live project. Full report in
+`.lovable/plan/`. It confirmed the bursar gating works, tenant isolation holds,
+anonymous access is refused, and the closed-admissions page behaves. It also
+found real holes, all now fixed in `20260829100000_close_role_boundary_holes.sql`
+and covered by the new behaviour tests in `supabase/tests/rls.sql`:
+
+| Finding | Was |
+| --- | --- |
+| Teachers could read and **write** every student in the org | A `FOR ALL` policy sat beside the scoped one; permissive policies combine with `OR`, so the scoping was decorative |
+| Teachers could read the whole school's invoices and guardians | No role check beyond "not a parent or student" |
+| Any member could enumerate `user_roles` | Including which account is `super_admin` |
+| **A student could write their own exam scores** | Write policies gated on `NOT has_role(…,'parent')`, written before the `student` role existed — a student is not a parent. Found while fixing the above, not by the audit |
+| Performance and transcripts 500'd everywhere | `exams` and `student_scores` policies subqueried each other → `42P17 infinite recursion`, hidden behind a "No performance data yet" empty state |
+| Every fresh sign-in landed on `/onboarding` | `get_my_role()` used `LIMIT 1` with no `ORDER BY`; a row with a null `org_id` could win, and users were then offered the org-creation wizard |
+
+Also fixed: the guardian list's Invite button navigated instead of inviting; the
+public form saved `section` as null; Settings linked an unsaved admissions slug;
+the Transport KPI ignored per-student fee overrides; guardian names kept the
+honorific, so the parent portal greeted "Welcome, Mrs".
+
+### Still outstanding
+
+- **Redeploy the edge functions.** The deployed `invite-user` predates the
+  `student` role and returns `400`, so the student portal has never worked in
+  production. The repo source is correct — it needs
+  `npx supabase functions deploy invite-user`.
+- **Three orphaned `auth.users`** from the audit (`audit.*@example.com`) with a
+  known password. They hold no role, which combined with the onboarding bug meant
+  they could have created a new organisation. Delete them from the dashboard.
+- **Check `admissions_open` on each school.** The audit toggled it and restored
+  it to `true`, but its own notes say all three started `false`.
+- **Organisation currency is GBP**, so money renders in £. Change it to NGN.
+- The application reference sequence is global, not per-school, so one school can
+  infer another's volume from the gaps.
 
 ---
 

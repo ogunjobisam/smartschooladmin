@@ -89,7 +89,9 @@ export default function Guardians() {
                   <TableCell className="font-mono text-sm tabular-nums">{g.phone || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{g.email || "—"}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums">{g.student_guardians?.length || 0}</TableCell>
-                  <TableCell>
+                  {/* The row navigates on click; without stopping propagation
+                      the invite button just opened the guardian's page. */}
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <InviteGuardianButton
                       guardianId={g.id}
                       guardianName={`${g.first_name} ${g.last_name}`}

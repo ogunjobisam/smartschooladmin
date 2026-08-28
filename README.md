@@ -110,19 +110,47 @@ npx supabase functions deploy invite-user # deploy an edge function
 Edge functions need `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
 `SUPABASE_SERVICE_ROLE_KEY` set as function secrets.
 
-Sending email (invites, fee reminders, announcements) needs an email provider:
+Sending email (invites, admissions replies, announcements) needs one secret:
 
 ```sh
 npx supabase secrets set RESEND_API_KEY=re_...
-npx supabase secrets set NOTIFICATIONS_FROM_EMAIL="Your School <noreply@yourschool.com>"
 npx supabase functions deploy process-message-queue
 ```
 
-Without these, messages queue up and stay queued — **Settings → Notifications**
-shows the backlog and explains why. Invites still work without email: the
-set-password link is shown to whoever sent the invite so they can pass it on.
+That alone works. With no `NOTIFICATIONS_FROM_EMAIL`, messages go out as
+Resend's built-in `onboarding@resend.dev`, **which only reaches the address that
+owns the Resend account.** Everyone else is refused.
 
-Schedule the queue drain so it does not depend on someone pressing a button:
+**One domain serves every school.** Verify a single domain that *you* control —
+not each school's — and set it as the sender:
+
+```sh
+npx supabase secrets set NOTIFICATIONS_FROM_EMAIL=notifications@yourplatform.com
+```
+
+Each message then goes out as `Grace Academy <notifications@yourplatform.com>`,
+with **Reply-To set to that school's own address** from Settings → General, so a
+parent sees the school in their inbox and a reply reaches the school rather than
+you. Adding a school needs no DNS work at all.
+
+The school's name and reply-to travel on the queue row (`school_id`,
+`reply_to`), so this works across a multi-school group. A row with no school
+falls back to a bare platform address rather than failing.
+
+A school that later wants mail genuinely from `@theirschool.com` verifies that
+domain separately — an upgrade, not a requirement.
+
+A refusal caused by an unverified sender is treated as a configuration problem,
+not a bad message: those rows stay queued and go out once the domain is
+verified, rather than being marked failed. **Settings → Notifications** shows the
+backlog, names the sender in use, and can put genuinely failed messages back in
+the queue. Invites work without any of this — the set-password link is shown to
+whoever sent the invite so they can pass it on.
+
+**Nothing drains the queue on a schedule.** Today the Settings button is the only
+sender. To automate it, enable the `pg_cron` and `pg_net` extensions and run the
+following **against your project** — not as a migration, since it embeds the
+service role key and must never be committed:
 
 ```sql
 select cron.schedule(
@@ -229,3 +257,30 @@ Before opening a pull request, run `npm run lint`, `npm run typecheck` and
 `npm test`. Use `npm run typecheck` rather than `npx tsc --noEmit`: the root
 `tsconfig.json` has `"files": []` and only project references, so a bare
 `tsc --noEmit` silently passes on broken code.
+
+GitHub Actions runs all four on every pull request, plus a migration replay.
+
+## Migration replay
+
+`npm run test:migrations` applies every migration in `supabase/migrations/` to an
+empty database and then asserts that no table has row-level security on with no
+readable policy, that nothing grants `anon` or `PUBLIC` access to `applications`
+or `school_notices`, and that `has_role()` still excludes `student`.
+
+It then runs `supabase/tests/rls.sql`, which seeds a school and queries it as a
+real teacher and a real student to prove the policies *behave* — a teacher
+assigned to no class sees no students and cannot edit one, cannot read invoices
+or guardians, and cannot enumerate roles; a student can read their own scores but
+not change them. Every assertion there corresponds to a hole that was open at
+some point.
+
+It needs a PostgreSQL server and `psql`; connection comes from the usual `PG*`
+variables or `DATABASE_URL`. `supabase/tests/bootstrap.sql` stands in for the
+Supabase-managed schemas, so this proves the schema *applies* and the policies
+are present — not that they evaluate as a signed-in user, which needs a real
+project.
+
+This exists because the migration set silently stopped being replayable once:
+two overlapping sets of files created the same policies, and `CREATE POLICY` has
+no `IF NOT EXISTS`. **Give every `CREATE POLICY` a `DROP POLICY IF EXISTS`
+immediately above it.**
