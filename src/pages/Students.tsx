@@ -21,6 +21,7 @@ import { CsvImportDialog } from "@/components/import/CsvImportDialog";
 import { PromoteStudentsDialog } from "@/components/students/PromoteStudentsDialog";
 import { ArrowRight } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
+import { sortBySection } from "@/lib/sections";
 
 const PAGE_SIZE = 20;
 
@@ -40,7 +41,7 @@ export default function Students() {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });

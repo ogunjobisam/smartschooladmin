@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, ArrowRight } from "lucide-react";
+import { sortBySection } from "@/lib/sections";
 
 interface PromoteStudentsDialogProps {
   open: boolean;
@@ -28,7 +29,7 @@ export function PromoteStudentsDialog({ open, onOpenChange }: PromoteStudentsDia
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId && open,
   });

@@ -414,6 +414,7 @@ export type Database = {
           created_at: string
           id: string
           level_order: number | null
+          section: Database["public"]["Enums"]["school_section"] | null
           name: string
           school_id: string
         }
@@ -421,6 +422,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_order?: number | null
+          section?: Database["public"]["Enums"]["school_section"] | null
           name: string
           school_id: string
         }
@@ -428,6 +430,7 @@ export type Database = {
           created_at?: string
           id?: string
           level_order?: number | null
+          section?: Database["public"]["Enums"]["school_section"] | null
           name?: string
           school_id?: string
         }
@@ -2239,6 +2242,7 @@ export type Database = {
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
+      school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: "active" | "inactive" | "suspended" | "withdrawn"
       transaction_status:
         | "initiated"
@@ -2411,6 +2415,7 @@ export const Constants = {
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
+      school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: ["active", "inactive", "suspended", "withdrawn"],
       transaction_status: [
         "initiated",

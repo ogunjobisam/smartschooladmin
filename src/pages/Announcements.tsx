@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { sendAnnouncementNotifications } from "@/lib/notification-dispatcher";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { sortBySection } from "@/lib/sections";
 
 export default function Announcements() {
   const { orgId, schoolId, user } = useAuth();
@@ -40,7 +41,7 @@ export default function Announcements() {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });

@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { rosterForPeriod } from "@/lib/roster";
+import { sortBySection } from "@/lib/sections";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -58,7 +59,7 @@ export default function Attendance() {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });

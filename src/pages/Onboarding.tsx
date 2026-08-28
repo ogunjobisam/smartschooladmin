@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { SCHOOL_SECTIONS, classesForSections, type PlannedClass, type SchoolSection } from "@/lib/sections";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getErrorMessage } from "@/lib/errors";
 
 const steps = ["Organisation", "School", "Classes", "Academic Year"];
@@ -33,15 +36,6 @@ const countries = [
   { code: "RW", name: "Rwanda", currency: "RWF" },
 ];
 
-const CLASS_PRESETS: Record<string, string[]> = {
-  NG: ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"],
-  GB: ["Year 7", "Year 8", "Year 9", "Year 10", "Year 11", "Year 12", "Year 13"],
-  US: ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-  GH: ["JHS 1", "JHS 2", "JHS 3", "SHS 1", "SHS 2", "SHS 3"],
-  KE: ["Form 1", "Form 2", "Form 3", "Form 4"],
-  DEFAULT: ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6"],
-};
-
 export default function Onboarding() {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
@@ -55,7 +49,21 @@ export default function Onboarding() {
   const [schoolName, setSchoolName] = useState("");
   const [campusName, setCampusName] = useState("Main Campus");
 
-  const [classes, setClasses] = useState<string[]>(CLASS_PRESETS["NG"]);
+  // Sections the school runs. Defaulting to secondary alone was the old
+  // behaviour and quietly assumed every school was a secondary school.
+  const [sections, setSections] = useState<SchoolSection[]>(["primary", "secondary"]);
+  const [classes, setClasses] = useState<PlannedClass[]>(() => classesForSections(["primary", "secondary"]));
+
+  const toggleSection = (section: SchoolSection) => {
+    const next = sections.includes(section)
+      ? sections.filter((s) => s !== section)
+      : [...sections, section];
+    setSections(next);
+    // Keep any class the user typed themselves; replace the presets.
+    const presetNames = new Set(classesForSections(SCHOOL_SECTIONS.map((s) => s.value)).map((c) => c.name));
+    const custom = classes.filter((c) => !presetNames.has(c.name));
+    setClasses([...classesForSections(next), ...custom]);
+  };
   const [newClass, setNewClass] = useState("");
 
   const [academicYear, setAcademicYear] = useState("2025/2026");
@@ -65,13 +73,11 @@ export default function Onboarding() {
     setCountry(code);
     const c = countries.find((c) => c.code === code);
     if (c) setCurrency(c.currency);
-    // Update class presets based on country
-    setClasses(CLASS_PRESETS[code] || CLASS_PRESETS["DEFAULT"]);
   };
 
   const handleAddClass = () => {
-    if (newClass.trim() && !classes.includes(newClass.trim())) {
-      setClasses([...classes, newClass.trim()]);
+    if (newClass.trim() && !classes.some((c) => c.name === newClass.trim())) {
+      setClasses([...classes, { name: newClass.trim(), section: sections[0] ?? "primary" }]);
       setNewClass("");
     }
   };
@@ -189,15 +195,46 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <Label>Classes / Grade Levels</Label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  We've pre-filled classes based on your country. Add, remove, or rename as needed.
+                <Label>Which sections does your school run?</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick the age bands you teach. We'll fill in the usual classes for each.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SCHOOL_SECTIONS.map((section) => {
+                  const selected = sections.includes(section.value);
+                  return (
+                    <button
+                      key={section.value}
+                      type="button"
+                      onClick={() => toggleSection(section.value)}
+                      aria-pressed={selected}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
+                        selected ? "border-accent bg-accent/5" : "hover:bg-muted/50"
+                      )}
+                    >
+                      <Checkbox checked={selected} className="mt-0.5 pointer-events-none" tabIndex={-1} />
+                      <span>
+                        <span className="block text-sm font-medium">{section.label}</span>
+                        <span className="block text-xs text-muted-foreground">{section.ageRange}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div>
+                <Label>Classes</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Add, remove or rename as needed.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {classes.map((c, i) => (
-                  <div key={i} className="flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1.5 text-sm">
-                    <span>{c}</span>
+                  <div key={`${c.name}-${i}`} className="flex items-center gap-1 rounded-md border bg-muted/50 px-2.5 py-1.5 text-sm">
+                    <span>{c.name}</span>
                     <button onClick={() => handleRemoveClass(i)} className="ml-1 rounded-sm hover:bg-muted p-0.5">
                       <X className="h-3 w-3 text-muted-foreground" />
                     </button>

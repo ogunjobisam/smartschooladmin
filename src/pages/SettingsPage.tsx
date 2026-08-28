@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { SCHOOL_SECTIONS, sectionLabel, sortBySection, type SchoolSection } from "@/lib/sections";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,7 +75,7 @@ export default function SettingsPage() {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("*").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });
@@ -224,6 +225,15 @@ export default function SettingsPage() {
       setNewPeriodName(""); setNewPeriodStart(""); setNewPeriodEnd(""); setNewPeriodYearId(null);
       queryClient.invalidateQueries({ queryKey: ["academic-years"] });
     }
+  };
+
+  const handleSetClassSection = async (classId: string, section: SchoolSection | null) => {
+    const { error } = await supabase.from("classes").update({ section }).eq("id", classId);
+    if (error) {
+      toast.error("Could not update the section: " + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["classes", schoolId] });
   };
 
   const handleToggleCurrentPeriod = async (periodId: string) => {
@@ -445,6 +455,7 @@ export default function SettingsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-xs">Class Name</TableHead>
+                          <TableHead className="text-xs">Section</TableHead>
                           <TableHead className="text-xs">Order</TableHead>
                           <TableHead className="text-xs">Teachers</TableHead>
                           {canManage && <TableHead className="text-xs w-16" />}
@@ -454,6 +465,24 @@ export default function SettingsPage() {
                         {classes.map((c) => (
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">{c.name}</TableCell>
+                            <TableCell>
+                              {canManage ? (
+                                <Select
+                                  value={c.section ?? "none"}
+                                  onValueChange={(v) => handleSetClassSection(c.id, v === "none" ? null : (v as SchoolSection))}
+                                >
+                                  <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Unassigned</SelectItem>
+                                    {SCHOOL_SECTIONS.map((sec) => (
+                                      <SelectItem key={sec.value} value={sec.value}>{sec.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">{sectionLabel(c.section)}</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{c.level_order}</TableCell>
                             <TableCell>
                               <ClassTeacherPicker classId={c.id} className={c.name} canManage={canManage} />
