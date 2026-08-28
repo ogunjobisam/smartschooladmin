@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen } from "lucide-react";
+import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -18,10 +18,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
-const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic"];
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "addons"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -259,6 +260,7 @@ export default function SettingsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
+          <TabsTrigger value="addons">Add-ons</TabsTrigger>
         </TabsList>
 
         {/* ── General Tab ── */}
@@ -657,6 +659,10 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* -- Add-ons Tab -- */}
+        <TabsContent value="addons" className="space-y-6 pt-4">
+          <AiAddonCard orgId={orgId} canManage={canEditBranding} />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -1015,5 +1021,101 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
         </Card>
       )}
     </div>
+  );
+}
+
+function AiAddonCard({ orgId, canManage }: { orgId: string | null; canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["ai-addon-settings", orgId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organisation_groups")
+        .select("ai_addon_enabled, ai_monthly_limit")
+        .eq("id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: usage } = useQuery({
+    queryKey: ["ai-addon-usage", orgId],
+    queryFn: async () => {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from("ai_usage_events")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId!)
+        .eq("status", "succeeded")
+        .gte("created_at", monthStart.toISOString());
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+  });
+
+  const toggle = async (enabled: boolean) => {
+    if (!orgId) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("organisation_groups")
+      .update({ ai_addon_enabled: enabled })
+      .eq("id", orgId);
+    setSaving(false);
+    if (error) {
+      toast.error("Could not update the add-on: " + error.message);
+      return;
+    }
+    toast.success(enabled ? "AI Analysis add-on enabled" : "AI Analysis add-on disabled");
+    queryClient.invalidateQueries({ queryKey: ["ai-addon-settings", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["ai-entitlement", orgId] });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-4 w-4" /> AI Analysis
+        </CardTitle>
+        <CardDescription>
+          Written analysis of academic performance, report card comments, fee collection and
+          staffing, generated from your own data. Billed separately from your subscription.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : (
+          <>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">
+                  {settings?.ai_addon_enabled ? "Active" : "Not active"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {settings?.ai_addon_enabled
+                    ? `${usage ?? 0} of ${settings.ai_monthly_limit} analyses used this month.`
+                    : "Turn on to make AI analysis available across the app."}
+                </p>
+              </div>
+              <Switch
+                checked={!!settings?.ai_addon_enabled}
+                disabled={!canManage || saving}
+                onCheckedChange={toggle}
+              />
+            </div>
+            {!canManage && (
+              <p className="text-xs text-muted-foreground">
+                Only a proprietor or group admin can change the add-on.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

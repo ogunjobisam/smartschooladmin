@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { BarChart3, GraduationCap, TrendingDown, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -152,6 +153,36 @@ export default function Performance() {
               subtitle={periodId === "all" ? "All terms" : "Selected term"}
             />
           </div>
+
+          <AiInsightPanel
+            analysisType="academic_performance"
+            title="AI performance analysis"
+            description="A written read of how this class is doing, which subjects need attention, and which students to look at first."
+            schoolId={schoolId}
+            disabledReason={scores.length === 0 ? "Enter some exam scores first — there is nothing to analyse yet." : undefined}
+            buildSummary={() => ({
+              class: classes.find((c) => c.id === effectiveClassId)?.name,
+              term: periodId === "all" ? "All terms" : periods.find((p) => p.id === periodId)?.name,
+              classAverage,
+              studentCount: students.length,
+              subjectAverages: subjectChart,
+              students: ranked.map((r) => ({
+                name: `${r.student.first_name} ${r.student.last_name}`,
+                average: r.performance.average,
+                grade: r.performance.grade,
+                position: r.rank.position,
+                attendanceRate: r.performance.attendance.rate,
+                trend: r.performance.trend.direction,
+                trendChange: r.performance.trend.change,
+                weakestSubjects: r.performance.subjects.slice(-2).map((sub) => ({
+                  subject: sub.subjectName,
+                  average: sub.average,
+                })),
+                flag: r.performance.risk.level,
+                flagReasons: r.performance.risk.reasons,
+              })),
+            })}
+          />
 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Average by subject</CardTitle></CardHeader>

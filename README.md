@@ -20,7 +20,9 @@ structured workflows, role-based access, approvals and an audit trail instead.
 | Academics | Attendance register, exams, score entry, report cards |
 | Communications | Announcements, notification templates, in-app notifications |
 | Oversight | Approvals queue, audit log, cross-school reporting, proprietor dashboard |
-| Parent portal | Children, invoices, balances, payment history |
+| Academic performance | Per-student trends, subject strengths, class rankings, at-risk flags |
+| Parent portal | Children, invoices, balances, payment history, their children's results |
+| AI Analysis (paid add-on) | Written performance analysis, draft report card comments, finance and staffing insights |
 
 Multi-tenancy runs on an `organisation_group → school → campus` hierarchy. Every
 table is isolated by organisation through PostgreSQL row-level security.
@@ -89,7 +91,39 @@ npx supabase functions deploy invite-user # deploy an edge function
 ```
 
 Edge functions need `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
-`SUPABASE_SERVICE_ROLE_KEY` set as function secrets.
+`SUPABASE_SERVICE_ROLE_KEY` set as function secrets. The AI add-on additionally
+needs `ANTHROPIC_API_KEY`:
+
+```sh
+npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+npx supabase functions deploy ai-insights
+```
+
+## AI Analysis add-on
+
+The AI features are sold separately from the core product, so they are off by
+default. A proprietor or group admin turns them on per organisation under
+**Settings → Add-ons**, which also shows how much of the monthly allowance has
+been used.
+
+Four surfaces use it:
+
+| Where | What it does |
+| --- | --- |
+| Academic Performance | Reads a class's results and attendance and says which subjects and students need attention |
+| Student → Performance | Drafts an end-of-term report card comment for a teacher to edit |
+| Reports | Explains where fee collection is stuck, from collection rate and arrears ageing |
+| Reports | Reads payroll cost against student and staff numbers |
+
+Every call runs through the `ai-insights` edge function, which re-checks the
+caller's role, that the school belongs to their organisation, that the add-on is
+active, and that the monthly allowance has not run out — the entitlement cannot
+be bypassed by calling the function directly. Each call is recorded in
+`ai_usage_events` with token counts, so usage can be billed later.
+
+Only aggregated figures are sent to the model — the summaries computed in
+`src/lib/performance.ts`, not raw student records. The API key lives in function
+secrets and never reaches the browser.
 
 ### First run
 

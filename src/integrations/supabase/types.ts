@@ -90,6 +90,48 @@ export type Database = {
           },
         ]
       }
+      ai_usage_events: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          error_message: string | null
+          id: string
+          input_tokens: number
+          model: string | null
+          org_id: string
+          output_tokens: number
+          school_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          analysis_type: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string | null
+          org_id: string
+          output_tokens?: number
+          school_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number
+          model?: string | null
+          org_id?: string
+          output_tokens?: number
+          school_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       approval_requests: {
         Row: {
           amount: number | null
@@ -915,6 +957,8 @@ export type Database = {
       }
       organisation_groups: {
         Row: {
+          ai_addon_enabled: boolean
+          ai_monthly_limit: number
           country: string
           created_at: string
           created_by: string | null
@@ -925,6 +969,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_addon_enabled?: boolean
+          ai_monthly_limit?: number
           country?: string
           created_at?: string
           created_by?: string | null
@@ -935,6 +981,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_addon_enabled?: boolean
+          ai_monthly_limit?: number
           country?: string
           created_at?: string
           created_by?: string | null
@@ -2083,6 +2131,17 @@ export type Database = {
         }[]
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
+      ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
+      is_my_child: { Args: { _student_id: string }; Returns: boolean }
+      my_guardian_id: { Args: never; Returns: string }
+      my_ai_entitlement: {
+        Args: never
+        Returns: {
+          enabled: boolean
+          used: number
+          monthly_limit: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
