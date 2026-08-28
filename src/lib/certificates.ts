@@ -303,8 +303,7 @@ export function buildCertificatesDocument(
   /* Certificate: full A4 landscape sheet, one award per page. */
   .certificate { width: 297mm; height: 210mm; padding: 0; box-sizing: border-box; }
   .certificate .frame {
-    position: relative; height: 100%; box-sizing: border-box; margin: 8mm;
-    height: calc(100% - 16mm);
+    position: relative; box-sizing: border-box; margin: 8mm; height: calc(100% - 16mm);
     border: 2px solid #b08d3f; outline: 6px solid #f6efe0; outline-offset: -10px;
     background:
       radial-gradient(circle at 12% 12%, rgba(176,141,63,.10), transparent 46%),
