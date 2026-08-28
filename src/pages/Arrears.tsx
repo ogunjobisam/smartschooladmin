@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-currency";
 import {
+import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
@@ -89,7 +90,7 @@ export default function Arrears() {
         const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
         const daysOverdue = inv.due_date ? Math.max(0, Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86400000)) : 0;
         const studentName = inv.students ? `${inv.students.first_name} ${inv.students.last_name}` : "—";
-        const className = inv.students?.enrolments?.[0]?.classes?.name || "—";
+        const className = displayClassName(inv.students?.enrolments?.[0]?.classes?.name) || "—";
         return { ...inv, balance, daysOverdue, studentName, className };
       });
 

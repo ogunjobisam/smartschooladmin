@@ -22,6 +22,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { exportToCsv } from "@/lib/csv-export";
+import { displayClassName } from "@/lib/sections";
 
 const CHART_COLORS = [
   "hsl(215, 90%, 55%)", "hsl(152, 60%, 40%)", "hsl(38, 92%, 50%)",
@@ -102,7 +103,7 @@ export default function Reports() {
 
       const grouped: Record<string, { billed: number; collected: number }> = {};
       (invoices || []).forEach((inv) => {
-        const className = inv.students?.enrolments?.[0]?.classes?.name || "Unassigned";
+        const className = displayClassName(inv.students?.enrolments?.[0]?.classes?.name) || "Unassigned";
         if (!grouped[className]) grouped[className] = { billed: 0, collected: 0 };
         grouped[className].billed += inv.total_amount || 0;
         grouped[className].collected += inv.amount_paid || 0;

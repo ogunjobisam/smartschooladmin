@@ -22,6 +22,7 @@ import { PromoteStudentsDialog } from "@/components/students/PromoteStudentsDial
 import { ArrowRight } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
 import { sortBySection } from "@/lib/sections";
+import { displayClassName } from "@/lib/sections";
 
 const PAGE_SIZE = 20;
 
@@ -85,7 +86,7 @@ export default function Students() {
 
   const getClassName = (student: StudentRow) => {
     const enrolment = student.enrolments?.[0];
-    return enrolment?.classes?.name || "—";
+    return displayClassName(enrolment?.classes?.name) || "—";
   };
 
   const totalPages = Math.ceil((data?.count || 0) / PAGE_SIZE);

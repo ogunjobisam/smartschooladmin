@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { Enums } from "@/integrations/supabase/types";
+import { displayClassName } from "@/lib/sections";
 
 export default function RecordPayment() {
   const navigate = useNavigate();
@@ -166,7 +167,7 @@ export default function RecordPayment() {
                 <p className="text-xs text-muted-foreground py-2">No students found.</p>
               ) : (
                 students?.map((s) => {
-                  const cn = s.enrolments?.[0]?.classes?.name || "—";
+                  const cn = displayClassName(s.enrolments?.[0]?.classes?.name) || "—";
                   return (
                     <button
                       key={s.id}
