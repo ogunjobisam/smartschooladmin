@@ -130,6 +130,7 @@ export default function Announcements() {
     setMode("one_off");
     setStartsAt("");
     setEndsAt("");
+    setIsPinned(false);
   };
 
   const handleSend = async () => {
