@@ -199,5 +199,19 @@ export function canManageStaff(role: string | null): boolean {
   return STAFF_WRITERS.includes((role || "") as AppRole);
 }
 
+/** Roles allowed to change the wording of notification templates. */
+const TEMPLATE_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal",
+];
+
+/**
+ * Whether a role may create, edit or delete notification templates. Everyone
+ * else with access to the page reads them only — template wording goes out in
+ * the school's name, so it is not a bursar-level change.
+ */
+export function canManageTemplates(role: string | null): boolean {
+  return TEMPLATE_WRITERS.includes((role || "") as AppRole);
+}
+
 /** Exported for tests. */
 export const _internals = { NAV_KEY_BY_ROLE, URL_BY_KEY };
