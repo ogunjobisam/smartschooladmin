@@ -185,16 +185,39 @@ export default function Arrears() {
                   <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      disabled={sendingReminder === s.id}
-                      onClick={() => handleSendReminder(s)}
-                    >
-                      {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
-                      Remind
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        disabled={sendingReminder === s.id}
+                        onClick={() => handleSendReminder(s)}
+                      >
+                        {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                        Remind
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() =>
+                          openLetters(
+                            [{
+                              studentId: s.student_id,
+                              studentName: s.studentName,
+                              className: s.className,
+                              invoiceNumber: s.invoice_number,
+                              balance: s.balance,
+                              dueDate: s.due_date,
+                              daysOverdue: s.daysOverdue,
+                            }],
+                            `${s.studentName} — ${s.invoice_number}`,
+                          )
+                        }
+                      >
+                        <Printer className="h-3 w-3" /> Letter
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -202,6 +225,14 @@ export default function Arrears() {
           </TableBody>
         </Table>
       </div>
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        targets={letterTargets}
+        defaultKind="overdue_notice"
+        contextLabel={letterLabel}
+      />
     </div>
   );
 }
