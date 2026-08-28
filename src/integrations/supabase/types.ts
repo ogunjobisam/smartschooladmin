@@ -1901,45 +1901,60 @@ export type Database = {
           body: string
           channels: string[]
           created_at: string
+          display_mode: string
+          ends_at: string | null
           id: string
+          is_active: boolean
           org_id: string
           school_id: string | null
           sent_at: string | null
           sent_by: string | null
+          starts_at: string | null
           status: string
           target_class_id: string | null
           title: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           audience?: string
           body?: string
           channels?: string[]
           created_at?: string
+          display_mode?: string
+          ends_at?: string | null
           id?: string
+          is_active?: boolean
           org_id: string
           school_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          starts_at?: string | null
           status?: string
           target_class_id?: string | null
           title: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           audience?: string
           body?: string
           channels?: string[]
           created_at?: string
+          display_mode?: string
+          ends_at?: string | null
           id?: string
+          is_active?: boolean
           org_id?: string
           school_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          starts_at?: string | null
           status?: string
           target_class_id?: string | null
           title?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
