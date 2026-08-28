@@ -100,7 +100,12 @@ export default function ProprietorDashboard() {
     queryKey: ["school-comparison", orgId],
     queryFn: async () => {
       if (!orgId) return [];
-      const results = [];
+      // Annotated because a bare [] infers never[] under strictNullChecks and
+      // the early `return []` above then pins the query's type to never[].
+      const results: {
+        name: string; students: number; staff: number;
+        invoiced: number; collected: number; outstanding: number; collectionRate: number;
+      }[] = [];
       for (const school of schools) {
         const [{ count: students }, { count: staff }, { data: invs }] = await Promise.all([
           supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", school.id),
