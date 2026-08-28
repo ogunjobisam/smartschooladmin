@@ -30,6 +30,30 @@ const ROLE_RANK: Record<string, number> = {
   parent: 9,
 };
 
+type AdminClient = ReturnType<typeof createClient>;
+
+/**
+ * Look up an auth user by email.
+ *
+ * `listUsers()` returns only the first page (50 users) by default, so a bare
+ * `.find()` over it silently misses anyone past that boundary and the invite
+ * then fails with a confusing "email already registered". Page through until
+ * we find a match or run out of users.
+ */
+async function findUserByEmail(admin: AdminClient, email: string) {
+  const target = email.toLowerCase();
+  const perPage = 200;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+    const match = users.find((u) => u.email?.toLowerCase() === target);
+    if (match) return match;
+    if (users.length < perPage) return undefined;
+  }
+  return undefined;
+}
+
 function canAssignRole(callerRole: string, targetRole: string): boolean {
   const callerRank = ROLE_RANK[callerRole];
   const targetRank = ROLE_RANK[targetRole];
@@ -62,7 +86,7 @@ Deno.serve(async (req) => {
     const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
     const { data: callerRole } = await adminClient
       .from("user_roles")
-      .select("role, school_id")
+      .select("role, school_id, org_id")
       .eq("user_id", caller.id)
       .in("role", ADMIN_ROLES)
       .limit(1)
@@ -77,14 +101,30 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // School admins can only manage users in their own school
+    // Tenant isolation: every write below uses the service role key and bypasses
+    // RLS, so an org_id supplied by the client must be proven to be the caller's
+    // own org. Otherwise an admin of one organisation could grant themselves or
+    // anyone else a role inside another organisation.
+    if (body.org_id && body.org_id !== callerRole.org_id) {
+      return jsonResponse({ error: "Cannot manage users in another organisation" }, 403);
+    }
+    if (callerIsSchoolLevel && !callerSchoolId) {
+      return jsonResponse({ error: "Your account is not assigned to a school" }, 403);
+    }
+
+    // School-level admins may only hand out these roles. The rank check in
+    // canAssignRole() alone would let a school_admin create a principal, which
+    // is a school-wide authority they should not be able to grant.
     const SCHOOL_ADMIN_ALLOWED_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+    const assignableByCaller = (targetRole: string) =>
+      canAssignRole(callerRole.role, targetRole) &&
+      (!callerIsSchoolLevel || SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole));
 
     // Handle role update
     if (action === "update_role") {
       const { user_id, new_role } = body;
       if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (!canAssignRole(callerRole.role, new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
+      if (!assignableByCaller(new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
       // Also check caller outranks the target's current role
       const { data: targetRole } = await adminClient.from("user_roles").select("role, school_id").eq("user_id", user_id).maybeSingle();
       if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot manage a ${targetRole.role}` }, 403);
@@ -114,9 +154,17 @@ Deno.serve(async (req) => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email) || email.length > 255) return jsonResponse({ error: "Invalid email format" }, 400);
 
+      // The guardian row must live in the caller's org before we link an account to it.
+      const { data: guardian } = await adminClient
+        .from("guardians")
+        .select("id")
+        .eq("id", guardian_id)
+        .eq("org_id", org_id)
+        .maybeSingle();
+      if (!guardian) return jsonResponse({ error: "Guardian not found in your organisation" }, 404);
+
       // Check if user exists
-      const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-      const existingUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      const existingUser = await findUserByEmail(adminClient, email);
 
       let userId: string;
       let isNew = false;
@@ -176,14 +224,22 @@ Deno.serve(async (req) => {
     if (full_name && full_name.length > 200) return jsonResponse({ error: "Name too long" }, 400);
 
     // Enforce role hierarchy: caller can only assign roles below their rank
-    if (!canAssignRole(callerRole.role, role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${role} role` }, 403);
+    if (!assignableByCaller(role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${role} role` }, 403);
     if (callerIsSchoolLevel) {
       if (school_id && school_id !== callerSchoolId) return jsonResponse({ error: "Cannot invite users to other schools" }, 403);
     }
+    if (school_id) {
+      const { data: targetSchool } = await adminClient
+        .from("schools")
+        .select("id")
+        .eq("id", school_id)
+        .eq("org_id", callerRole.org_id)
+        .maybeSingle();
+      if (!targetSchool) return jsonResponse({ error: "School does not belong to your organisation" }, 403);
+    }
 
     // Check if user already exists
-    const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+    const existingUser = await findUserByEmail(adminClient, email);
 
     let userId: string;
     let isNew = false;

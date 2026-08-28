@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { getErrorMessage } from "@/lib/errors";
 
 interface Props {
   open: boolean;
@@ -67,8 +68,8 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
       } else {
         toast.info(data.message || "No new invoices were created.");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate invoices.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to generate invoices."));
     } finally {
       setLoading(false);
     }

@@ -116,7 +116,7 @@ function autoMapColumns(csvHeaders: string[], fields: { value: string; label: st
 
   const usedFields = new Set<string>();
   return csvHeaders.map(h => {
-    const normalized = h.replace(/[\s_\-]/g, "").toLowerCase();
+    const normalized = h.replace(/[\s_-]/g, "").toLowerCase();
     const match = fieldLookup[normalized];
     if (match && !usedFields.has(match)) {
       usedFields.add(match);

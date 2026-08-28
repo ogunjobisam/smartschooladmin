@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { gradeForScore, remarkForGrade } from "@/lib/performance";
 
 interface ScoreItem {
   subjectId: string;
@@ -27,26 +28,7 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
   const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
   const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
   const average = scores.length > 0 ? totalScore / scores.length : 0;
-  const overallGrade = scores.length > 0 ? computeOverallGrade(average, maxScore) : "N/A";
-
-  function computeOverallGrade(avg: number, max: number): string {
-    const pct = (avg / max) * 100;
-    if (pct >= 90) return "A+";
-    if (pct >= 80) return "A";
-    if (pct >= 70) return "B";
-    if (pct >= 60) return "C";
-    if (pct >= 50) return "D";
-    if (pct >= 40) return "E";
-    return "F";
-  }
-
-  function getRemarks(grade: string): string {
-    const remarks: Record<string, string> = {
-      "A+": "Outstanding", A: "Excellent", B: "Very Good",
-      C: "Good", D: "Fair", E: "Below Average", F: "Needs Improvement",
-    };
-    return remarks[grade] || "";
-  }
+  const overallGrade = scores.length > 0 ? gradeForScore(average, maxScore) : "N/A";
 
   const handlePrint = () => {
     const content = printRef.current;
@@ -146,7 +128,7 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
                         {s.grade}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{getRemarks(s.grade)}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{remarkForGrade(s.grade)}</TableCell>
                   </TableRow>
                 );
               })}

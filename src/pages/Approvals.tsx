@@ -6,10 +6,74 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
+import { getErrorMessage } from "@/lib/errors";
+import { isSalaryField, parseSalaryValue } from "@/lib/payroll";
 import { toast } from "@/hooks/use-toast";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
+
+/**
+ * Apply an approved salary change to the staff member's payroll profile.
+ *
+ * Values are stored as text on salary_change_requests because the field being
+ * changed can be an amount or a rate, so the field name is validated against a
+ * known list before it is used as a column name.
+ */
+async function applySalaryChange(approvalRequestId: string, reviewerId: string | undefined, orgId: string | null) {
+  const { data: request } = await supabase
+    .from("salary_change_requests")
+    .select("id, staff_id, field_changed, new_value")
+    .eq("approval_request_id", approvalRequestId)
+    .maybeSingle();
+
+  // Not every approval is a salary change; other types have nothing to apply.
+  if (!request) return;
+
+  if (!isSalaryField(request.field_changed)) {
+    throw new Error(`Unrecognised salary field "${request.field_changed}" — change not applied`);
+  }
+
+  const value = parseSalaryValue(request.field_changed, request.new_value);
+  if (value === null) {
+    throw new Error(`"${request.new_value}" is not a valid ${request.field_changed.replace(/_/g, " ")} — change not applied`);
+  }
+
+  // Built explicitly rather than with a computed key so the column name stays
+  // type-checked against the payroll_profiles schema.
+  const field = request.field_changed;
+  const update = {
+    staff_id: request.staff_id,
+    ...(field === "basic_salary" && { basic_salary: value }),
+    ...(field === "housing_allowance" && { housing_allowance: value }),
+    ...(field === "transport_allowance" && { transport_allowance: value }),
+    ...(field === "other_allowances" && { other_allowances: value }),
+    ...(field === "pension_rate" && { pension_rate: value }),
+    ...(field === "tax_rate" && { tax_rate: value }),
+  };
+
+  const { error: profileError } = await supabase
+    .from("payroll_profiles")
+    .upsert(update, { onConflict: "staff_id" });
+  if (profileError) throw profileError;
+
+  await supabase
+    .from("salary_change_requests")
+    .update({ status: "approved" })
+    .eq("id", request.id);
+
+  // Salary changes are exactly the kind of thing an audit trail exists for.
+  if (orgId) {
+    await supabase.from("audit_logs").insert({
+      org_id: orgId,
+      user_id: reviewerId,
+      action: "approve",
+      entity_type: "salary_change",
+      entity_id: request.id,
+      detail: `Applied ${request.field_changed.replace(/_/g, " ")} = ${value}`,
+    });
+  }
+}
 
 export default function Approvals() {
   const { orgId, user } = useAuth();
@@ -33,18 +97,34 @@ export default function Approvals() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
+      const reviewedAt = new Date().toISOString();
+
       const { error } = await supabase
         .from("approval_requests")
-        .update({ status, reviewed_by: user?.id, reviewed_at: new Date().toISOString() })
+        .update({ status, reviewed_by: user?.id, reviewed_at: reviewedAt })
         .eq("id", id);
       if (error) throw error;
+
+      // Flipping the status is not the outcome anyone is after — an approved
+      // salary change has to actually reach the staff member's payroll profile,
+      // otherwise the approval queue is decorative.
+      if (status === "approved") {
+        await applySalaryChange(id, user?.id, orgId);
+      } else {
+        await supabase
+          .from("salary_change_requests")
+          .update({ status: "rejected" })
+          .eq("approval_request_id", id);
+      }
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["salary-changes"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-profile"] });
       toast({ title: `Request ${status}`, description: `The approval request has been ${status}.` });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update approval status.", variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Error", description: getErrorMessage(err, "Failed to update approval status."), variant: "destructive" });
     },
   });
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -30,7 +30,13 @@ const SchoolBrandingContext = createContext<SchoolBrandingContextType>({
   refetch: () => {},
 });
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
 function hexToHsl(hex: string): string {
+  // Colours come from user-editable school settings, so an unexpected value
+  // (a short #fff, a named colour, an empty string) must not produce
+  // "NaN NaN% NaN%" and blank the theme.
+  if (!HEX_COLOR.test(hex)) hex = defaultBranding.primaryColor;
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
@@ -54,7 +60,7 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<SchoolBranding>(defaultBranding);
   const [loading, setLoading] = useState(true);
 
-  const fetchBranding = async () => {
+  const fetchBranding = useCallback(async () => {
     if (!schoolId) {
       setBranding(defaultBranding);
       setLoading(false);
@@ -78,11 +84,11 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
       setBranding(defaultBranding);
     }
     setLoading(false);
-  };
+  }, [schoolId]);
 
   useEffect(() => {
     fetchBranding();
-  }, [schoolId]);
+  }, [fetchBranding]);
 
   // Apply CSS custom properties
   useEffect(() => {

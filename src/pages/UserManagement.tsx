@@ -25,6 +25,7 @@ import {
 import { UserPlus, Loader2, Shield, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
+import { getErrorMessage } from "@/lib/errors";
 
 const ROLES = [
   { value: "super_admin", label: "Super Admin" },
@@ -161,8 +162,8 @@ export default function UserManagement() {
       setAssignSchoolId("");
       setInviteOpen(false);
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to invite user");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to invite user"));
     } finally {
       setInviting(false);
     }
@@ -181,8 +182,8 @@ export default function UserManagement() {
       setEditingUser(null);
       setNewRole("");
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update role");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to update role"));
     } finally {
       setUpdatingRole(false);
     }
@@ -197,8 +198,8 @@ export default function UserManagement() {
       if (data?.error) throw new Error(data.error);
       toast.success("User removed from organisation");
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove user");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to remove user"));
     }
   };
 

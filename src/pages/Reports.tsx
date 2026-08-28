@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { useCurrency } from "@/hooks/use-currency";
@@ -188,6 +189,40 @@ export default function Reports() {
             <StatCard title="Active Staff" value={(overallStats?.staffCount || 0).toLocaleString()} icon={Users} />
           </>
         )}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AiInsightPanel
+          analysisType="finance"
+          title="AI finance analysis"
+          description="Reads collection rate, arrears ageing and revenue trend together and says where the money is stuck."
+          schoolId={schoolId}
+          disabledReason={!overallStats?.totalBilled ? "Generate some invoices first — there is nothing to analyse yet." : undefined}
+          buildSummary={() => ({
+            totalBilled: overallStats?.totalBilled,
+            totalCollected: overallStats?.totalCollected,
+            collectionRatePercent: overallStats?.collectionRate,
+            activeStudents: overallStats?.studentCount,
+            monthlyRevenue,
+            billingByClass: classBilling,
+            arrearsAgeing: arrearsAging,
+            paymentMethods: paymentsByMethod,
+          })}
+        />
+        <AiInsightPanel
+          analysisType="staff"
+          title="AI staffing analysis"
+          description="Looks at payroll cost against student and staff numbers, and how payroll compares with fee collection."
+          schoolId={schoolId}
+          disabledReason={!overallStats?.staffCount ? "Add staff records first — there is nothing to analyse yet." : undefined}
+          buildSummary={() => ({
+            activeStaff: overallStats?.staffCount,
+            activeStudents: overallStats?.studentCount,
+            totalPayrollPaid: overallStats?.totalPayroll,
+            totalFeesCollected: overallStats?.totalCollected,
+            payrollRuns: payrollSummary,
+          })}
+        />
       </div>
 
       {/* Charts Row */}

@@ -1,5 +1,5 @@
 import {
-  Users, GraduationCap, Receipt, CreditCard, AlertTriangle,
+  GraduationCap, Receipt, CreditCard,
   CheckSquare, Clock, FileText, ArrowRight
 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
@@ -17,13 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const { formatMoney } = useCurrency();
-
-  // Redirect parents to their portal
-  if (userRole === "parent") return <Navigate to="/parent" replace />;
+  const isParent = userRole === "parent";
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", schoolId, orgId],
@@ -51,7 +56,7 @@ export default function Dashboard() {
         pendingApprovals: approvalsRes.count || 0,
       };
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && !isParent,
   });
 
   const { data: approvals } = useQuery({
@@ -67,7 +72,7 @@ export default function Dashboard() {
         .limit(5);
       return data || [];
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !isParent,
   });
 
   const { data: auditLogs } = useQuery({
@@ -82,7 +87,7 @@ export default function Dashboard() {
         .limit(5);
       return data || [];
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !isParent,
   });
 
   const activityIcons: Record<string, typeof Receipt> = {
@@ -95,18 +100,26 @@ export default function Dashboard() {
   };
 
   const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    // Clamp at 0: clock skew between the browser and the database can otherwise
+    // render a just-created row as "-1m ago".
+    const diff = Math.max(0, Date.now() - new Date(dateStr).getTime());
     const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
     if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
     if (hours < 24) return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  // Parents get their own portal. This has to come after every hook above:
+  // returning early while `userRole` is still resolving would change the hook
+  // count between renders and crash the page.
+  if (isParent) return <Navigate to="/parent" replace />;
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${displayName.split(' ')[0]}`}
+        title={`${greeting()}, ${displayName.split(' ')[0]}`}
         description="Here's an overview of your schools today."
       />
 

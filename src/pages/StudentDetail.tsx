@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -21,10 +21,23 @@ import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
 import { printTranscript, TranscriptData } from "@/lib/print-documents";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
+import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
+import { useStudentPerformanceData } from "@/hooks/use-performance-data";
+import { summariseStudent } from "@/lib/performance";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId } = useAuth();
+  const {
+    scores: performanceScores,
+    attendance: performanceAttendance,
+    isLoading: performanceLoading,
+  } = useStudentPerformanceData(id);
+  const studentPerformance = useMemo(
+    () => summariseStudent(id!, performanceScores, performanceAttendance),
+    [id, performanceScores, performanceAttendance]
+  );
   const { formatMoney } = useCurrency();
   const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
@@ -250,6 +263,7 @@ export default function StudentDetail() {
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="grades">Grades</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -367,6 +381,41 @@ export default function StudentDetail() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="mt-4 space-y-4">
+          <PerformanceSummary
+            performance={studentPerformance}
+            isLoading={performanceLoading}
+          />
+          <AiInsightPanel
+            analysisType="report_card_comments"
+            title="AI report card comment"
+            description="Drafts a teacher-style end-of-term comment from this student's results and attendance, for you to edit before publishing."
+            schoolId={schoolId}
+            disabledReason={
+              performanceScores.length === 0
+                ? "No exam scores recorded for this student yet."
+                : undefined
+            }
+            buildSummary={() => ({
+              student: `${student?.first_name ?? ""} ${student?.last_name ?? ""}`.trim(),
+              class: student?.enrolments?.[0]?.classes?.name,
+              overallAverage: studentPerformance.average,
+              overallGrade: studentPerformance.grade,
+              subjects: studentPerformance.subjects.map((sub) => ({
+                subject: sub.subjectName,
+                average: sub.average,
+                grade: sub.grade,
+              })),
+              termAverages: studentPerformance.periods.map((period) => ({
+                term: period.periodName,
+                average: period.average,
+              })),
+              trend: studentPerformance.trend,
+              attendanceRate: studentPerformance.attendance.rate,
+            })}
+          />
         </TabsContent>
 
         <TabsContent value="grades" className="mt-4">

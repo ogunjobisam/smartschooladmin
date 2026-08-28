@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { getErrorMessage } from "@/lib/errors";
 
 interface StaffData {
   id: string;
@@ -105,8 +106,8 @@ export function EditStaffDialog({ open, onOpenChange, staff }: Props) {
       queryClient.invalidateQueries({ queryKey: ["staff-detail", staff.id] });
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update staff.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to update staff."));
     } finally {
       setLoading(false);
     }

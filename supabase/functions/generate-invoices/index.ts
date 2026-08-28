@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function jsonError(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -15,20 +22,43 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Verify calling user
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return jsonError("Unauthorized", 401);
     const token = authHeader.replace("Bearer ", "");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
     const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
-    if (!user) throw new Error("Unauthorized");
+    if (!user) return jsonError("Unauthorized", 401);
 
     const { fee_schedule_id, school_id, due_date } = await req.json();
     if (!fee_schedule_id || !school_id) throw new Error("fee_schedule_id and school_id required");
 
-    // 1. Get fee schedule with class & period info
+    // Tenant isolation: everything below runs with the service role key and so
+    // bypasses RLS. Prove the caller holds a billing role in the org that owns
+    // this school before writing anything into it.
+    const BILLING_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer"];
+    const { data: callerRole } = await supabase
+      .from("user_roles")
+      .select("role, org_id")
+      .eq("user_id", user.id)
+      .in("role", BILLING_ROLES)
+      .limit(1)
+      .maybeSingle();
+    if (!callerRole) return jsonError("Forbidden — you do not have permission to generate invoices", 403);
+
+    const { data: targetSchool } = await supabase
+      .from("schools")
+      .select("id, org_id")
+      .eq("id", school_id)
+      .eq("org_id", callerRole.org_id)
+      .maybeSingle();
+    if (!targetSchool) return jsonError("Forbidden — school does not belong to your organisation", 403);
+
+    // 1. Get fee schedule with class & period info — must belong to the same school
     const { data: schedule, error: schedErr } = await supabase
       .from("fee_schedules")
       .select("id, name, total_amount, class_id, academic_period_id")
       .eq("id", fee_schedule_id)
+      .eq("school_id", school_id)
       .single();
     if (schedErr || !schedule) throw new Error("Fee schedule not found");
 
@@ -133,7 +163,7 @@ serve(async (req) => {
 
     // 7. Create audit log entry
     await supabase.from("audit_logs").insert({
-      org_id: (await supabase.from("schools").select("org_id").eq("id", school_id).single()).data?.org_id,
+      org_id: targetSchool.org_id,
       action: "bulk_create",
       entity_type: "invoice",
       detail: `Generated ${createdInvoices?.length} invoices from fee schedule "${schedule.name}"`,
@@ -147,9 +177,9 @@ serve(async (req) => {
       total_amount: (createdInvoices?.length || 0) * schedule.total_amount,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Bulk invoice error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Internal server error" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

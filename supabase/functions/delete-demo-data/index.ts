@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     // Verify role
     const { data: roleData } = await admin
       .from("user_roles")
-      .select("role")
+      .select("role, org_id")
       .eq("user_id", userId)
       .in("role", ["proprietor", "super_admin"])
       .limit(1)
@@ -64,6 +64,30 @@ Deno.serve(async (req) => {
     if (!school_id || !org_id) {
       return new Response(JSON.stringify({ error: "school_id and org_id are required" }), {
         status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Tenant isolation: this deletes with the service role key, which bypasses RLS,
+    // so the target org/school MUST be proven to belong to the caller before any
+    // delete runs. Without this an admin of one school could wipe another's data.
+    if (roleData.org_id !== org_id) {
+      return new Response(JSON.stringify({ error: "Forbidden — organisation does not belong to you" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: school } = await admin
+      .from("schools")
+      .select("id")
+      .eq("id", school_id)
+      .eq("org_id", org_id)
+      .maybeSingle();
+
+    if (!school) {
+      return new Response(JSON.stringify({ error: "Forbidden — school does not belong to your organisation" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -136,7 +160,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("delete-demo-data error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal server error" }),
+      JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

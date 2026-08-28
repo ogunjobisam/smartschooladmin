@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
   ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
-  Megaphone, Bell, MessageSquareText
+  Megaphone, Bell, MessageSquareText, LineChart
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -12,129 +12,53 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { navItemsForRole, profileLinkForRole, type NavGroup, type NavItem } from "@/lib/access";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
-type NavItem = { title: string; url: string; icon: typeof LayoutDashboard };
-
-const allNav = {
-  overview: [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Students", url: "/students", icon: GraduationCap },
-    { title: "Guardians", url: "/guardians", icon: Users },
-    { title: "Staff", url: "/staff", icon: UserCog },
-    { title: "Attendance", url: "/attendance", icon: CalendarCheck },
-    { title: "Exams", url: "/exams", icon: BookOpen },
-  ] as NavItem[],
-  finance: [
-    { title: "Fee Schedules", url: "/fees", icon: Receipt },
-    { title: "Invoices", url: "/invoices", icon: FileText },
-    { title: "Payments", url: "/payments", icon: CreditCard },
-    { title: "Arrears", url: "/arrears", icon: AlertTriangle },
-  ] as NavItem[],
-  communications: [
-    { title: "Announcements", url: "/announcements", icon: Megaphone },
-    { title: "Templates", url: "/notification-templates", icon: MessageSquareText },
-    { title: "My Preferences", url: "/notification-settings", icon: Bell },
-  ] as NavItem[],
-  operations: [
-    { title: "Payroll", url: "/payroll", icon: Calculator },
-    { title: "Approvals", url: "/approvals", icon: CheckSquare },
-    { title: "Group Overview", url: "/group-overview", icon: BarChart3 },
-    { title: "Reports", url: "/reports", icon: ClipboardList },
-    { title: "Audit Log", url: "/audit-log", icon: Shield },
-  ] as NavItem[],
-  system: [
-    { title: "Settings", url: "/settings", icon: Settings },
-    { title: "Users", url: "/users", icon: UserPlus },
-  ] as NavItem[],
+/** Icons live here; titles, urls and role access come from the shared access map. */
+const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
+  dashboard: LayoutDashboard,
+  students: GraduationCap,
+  guardians: Users,
+  staff: UserCog,
+  attendance: CalendarCheck,
+  exams: BookOpen,
+  performance: LineChart,
+  fees: Receipt,
+  invoices: FileText,
+  payments: CreditCard,
+  arrears: AlertTriangle,
+  announcements: Megaphone,
+  templates: MessageSquareText,
+  preferences: Bell,
+  payroll: Calculator,
+  approvals: CheckSquare,
+  "group-overview": BarChart3,
+  reports: ClipboardList,
+  "audit-log": Shield,
+  settings: Settings,
+  users: UserPlus,
 };
 
-// Role-based visibility rules
-const roleNavAccess: Record<string, { overview: string[]; finance: string[]; communications: string[]; operations: string[]; system: string[] }> = {
-  super_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
-    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    communications: ["Announcements", "Templates", "My Preferences"],
-    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
-    system: ["Settings", "Users"],
-  },
-  proprietor: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
-    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    communications: ["Announcements", "Templates", "My Preferences"],
-    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
-    system: ["Settings", "Users"],
-  },
-  group_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
-    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    communications: ["Announcements", "Templates", "My Preferences"],
-    operations: ["Payroll", "Approvals", "Group Overview", "Reports", "Audit Log"],
-    system: ["Settings", "Users"],
-  },
-  principal: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
-    finance: ["Invoices", "Arrears"],
-    communications: ["Announcements", "Templates", "My Preferences"],
-    operations: ["Approvals", "Reports"],
-    system: ["Users"],
-  },
-  school_admin: {
-    overview: ["Dashboard", "Students", "Guardians", "Staff", "Attendance", "Exams"],
-    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    communications: ["Announcements", "Templates", "My Preferences"],
-    operations: ["Approvals", "Reports"],
-    system: ["Settings", "Users"],
-  },
-  bursar: {
-    overview: ["Dashboard", "Students", "Guardians"],
-    finance: ["Fee Schedules", "Invoices", "Payments", "Arrears"],
-    communications: ["Announcements", "My Preferences"],
-    operations: ["Payroll", "Reports"],
-    system: ["Users"],
-  },
-  finance_officer: {
-    overview: ["Dashboard", "Students"],
-    finance: ["Invoices", "Payments", "Arrears"],
-    communications: ["My Preferences"],
-    operations: ["Reports"],
-    system: ["Users"],
-  },
-  hr_admin: {
-    overview: ["Dashboard", "Staff"],
-    finance: [],
-    communications: ["Announcements", "My Preferences"],
-    operations: ["Payroll", "Reports"],
-    system: ["Users"],
-  },
-  teacher: {
-    overview: ["Dashboard", "Students", "Attendance", "Exams"],
-    finance: [],
-    communications: ["Announcements", "My Preferences"],
-    operations: [],
-    system: [],
-  },
-  parent: {
-    overview: ["Dashboard"],
-    finance: ["Invoices", "Payments"],
-    communications: ["My Preferences"],
-    operations: [],
-    system: [],
-  },
+const GROUP_LABELS: Record<NavGroup, string> = {
+  overview: "Overview",
+  finance: "Finance",
+  communications: "Communications",
+  operations: "Operations",
+  system: "System",
 };
 
-// Map parent dashboard to /parent
+const GROUP_ORDER: NavGroup[] = ["overview", "finance", "communications", "operations", "system"];
+
+// Map the parent dashboard to /parent
 const parentDashboardOverride: Record<string, string> = {
   "/dashboard": "/parent",
 };
 
-function filterNav(items: NavItem[], allowedTitles: string[]): NavItem[] {
-  return items.filter(item => allowedTitles.includes(item.title));
-}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -144,12 +68,7 @@ export function AppSidebar() {
   const { branding } = useSchoolBranding();
   const isActive = (path: string) => location.pathname === path;
 
-  const access = roleNavAccess[userRole || "teacher"];
-  const overviewNav = filterNav(allNav.overview, access.overview);
-  const financeNav = filterNav(allNav.finance, access.finance);
-  const communicationsNav = filterNav(allNav.communications, access.communications);
-  const operationsNav = filterNav(allNav.operations, access.operations);
-  const systemNav = filterNav(allNav.system, access.system);
+  const navItems = navItemsForRole(userRole);
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'User';
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
@@ -169,6 +88,7 @@ export function AppSidebar() {
           <SidebarMenu>
             {items.map((item) => {
               const url = resolveUrl(item.url);
+              const Icon = NAV_ICONS[item.key] ?? LayoutDashboard;
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(url)}>
@@ -178,7 +98,7 @@ export function AppSidebar() {
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <Icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -217,11 +137,9 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {renderGroup("Overview", overviewNav)}
-        {renderGroup("Finance", financeNav)}
-        {renderGroup("Communications", communicationsNav)}
-        {renderGroup("Operations", operationsNav)}
-        {renderGroup("System", systemNav)}
+        {GROUP_ORDER.map((group) =>
+          renderGroup(GROUP_LABELS[group], navItems.filter((i) => i.group === group))
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
@@ -245,7 +163,9 @@ export function AppSidebar() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem asChild><NavLink to="/settings" className="w-full">Profile & Settings</NavLink></DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <NavLink to={profileLinkForRole(userRole)} className="w-full">Profile &amp; Settings</NavLink>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" /> Log out

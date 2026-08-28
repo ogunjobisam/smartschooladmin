@@ -11,6 +11,12 @@ import { FileText, Download, Trash2, Upload } from "lucide-react";
 import { UploadDocumentDialog } from "./UploadDocumentDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { getDocumentUrl, removeDocumentObject } from "@/lib/documents";
+import { getErrorMessage } from "@/lib/errors";
 
 interface DocumentsTabProps {
   entityType: string;
@@ -39,12 +45,18 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
     },
   });
 
-  const handleDelete = async (doc: any) => {
-    // Extract path from URL for storage deletion
-    const urlParts = doc.file_url.split("/school-assets/");
-    if (urlParts[1]) {
-      await supabase.storage.from("school-assets").remove([urlParts[1]]);
+  const handleDownload = async (doc: any) => {
+    try {
+      // Documents live in a private bucket, so the link is minted on demand.
+      const url = await getDocumentUrl(doc.file_url);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not open this document"));
     }
+  };
+
+  const handleDelete = async (doc: any) => {
+    await removeDocumentObject(doc.file_url);
     const { error } = await supabase.from("document_files").delete().eq("id", doc.id);
     if (error) toast.error("Failed to delete document");
     else {
@@ -84,7 +96,12 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : documents.length === 0 ? (
-          <EmptyState icon={FileText} title="No documents" description="Upload documents to get started." />
+          <EmptyState
+            icon={FileText}
+            title="No documents"
+            description="Attach certificates, identification, contracts or receipts to keep them with this record."
+            {...(userRole !== "parent" ? { actionLabel: "Upload a document", onAction: () => setUploadOpen(true) } : {})}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -105,13 +122,35 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
                   <TableCell className="text-muted-foreground">{format(new Date(doc.created_at), "dd MMM yyyy")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(doc)} title="Download">
+                        <Download className="h-3.5 w-3.5" />
                       </Button>
                       {canDelete && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(doc)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Delete">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this document?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                &ldquo;{doc.file_name}&rdquo; will be permanently removed from this record.
+                                This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(doc)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </TableCell>
