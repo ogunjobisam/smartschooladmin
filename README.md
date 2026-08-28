@@ -91,8 +91,36 @@ npx supabase functions deploy invite-user # deploy an edge function
 ```
 
 Edge functions need `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
-`SUPABASE_SERVICE_ROLE_KEY` set as function secrets. The AI add-on additionally
-needs `ANTHROPIC_API_KEY`:
+`SUPABASE_SERVICE_ROLE_KEY` set as function secrets.
+
+Sending email (invites, fee reminders, announcements) needs an email provider:
+
+```sh
+npx supabase secrets set RESEND_API_KEY=re_...
+npx supabase secrets set NOTIFICATIONS_FROM_EMAIL="Your School <noreply@yourschool.com>"
+npx supabase functions deploy process-message-queue
+```
+
+Without these, messages queue up and stay queued — **Settings → Notifications**
+shows the backlog and explains why. Invites still work without email: the
+set-password link is shown to whoever sent the invite so they can pass it on.
+
+Schedule the queue drain so it does not depend on someone pressing a button:
+
+```sql
+select cron.schedule(
+  'drain-message-queue', '*/10 * * * *',
+  $$select net.http_post(
+      url := 'https://<project-ref>.supabase.co/functions/v1/process-message-queue',
+      headers := '{"Authorization": "Bearer <service-role-key>"}'::jsonb
+    )$$
+);
+```
+
+SMS is queued but not delivered — no SMS provider is wired up yet. Queued texts
+stay put and say so rather than being silently dropped.
+
+The AI add-on needs `ANTHROPIC_API_KEY`:
 
 ```sh
 npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...

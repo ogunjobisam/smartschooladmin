@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles } from "lucide-react";
+import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
-const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "addons"];
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "notifications", "addons"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -271,6 +271,7 @@ export default function SettingsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="addons">Add-ons</TabsTrigger>
         </TabsList>
 
@@ -670,6 +671,11 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* -- Notifications Tab -- */}
+        <TabsContent value="notifications" className="space-y-6 pt-4">
+          <MessageOutboxCard canManage={canManage} />
+        </TabsContent>
+
         {/* -- Add-ons Tab -- */}
         <TabsContent value="addons" className="space-y-6 pt-4">
           <AiAddonCard orgId={orgId} canManage={canEditBranding} />
@@ -1122,6 +1128,98 @@ function AiAddonCard({ orgId, canManage }: { orgId: string | null; canManage: bo
             {!canManage && (
               <p className="text-xs text-muted-foreground">
                 Only a proprietor or group admin can change the add-on.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MessageOutboxCard({ canManage }: { canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const [sending, setSending] = useState(false);
+
+  const { data: summary = [], isLoading } = useQuery({
+    queryKey: ["outbox-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_outbox_summary");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const countFor = (status: string) => summary.find((r) => r.status === status)?.count ?? 0;
+  const queued = countFor("queued");
+  const sent = countFor("sent");
+  const failed = countFor("failed");
+
+  const sendNow = async () => {
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-message-queue", { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data.sent > 0) toast.success(`Sent ${data.sent} message${data.sent === 1 ? "" : "s"}`);
+      if (data.failed > 0) toast.error(`${data.failed} message${data.failed === 1 ? "" : "s"} could not be delivered`);
+      if (data.sent === 0 && data.failed === 0) {
+        toast.info(
+          data.email_configured
+            ? "Nothing waiting to send"
+            : "No email provider is configured yet, so messages are still waiting."
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["outbox-summary"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not send queued messages"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Send className="h-4 w-4" /> Outbox
+        </CardTitle>
+        <CardDescription>
+          Fee reminders, invites and announcements are queued here before they go out.
+          Delivery needs an email provider — set the RESEND_API_KEY and
+          NOTIFICATIONS_FROM_EMAIL function secrets, then schedule or run the send below.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Waiting", value: queued },
+                { label: "Sent", value: sent },
+                { label: "Failed", value: failed },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="font-mono text-xl font-semibold tabular-nums">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {canManage && (
+              <Button onClick={sendNow} disabled={sending || queued === 0} size="sm" className="gap-1.5">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send {queued > 0 ? queued : ""} queued message{queued === 1 ? "" : "s"}
+              </Button>
+            )}
+
+            {failed > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Failed messages were rejected by the provider — usually a bad address or an
+                unverified sender domain. They are not retried automatically.
               </p>
             )}
           </>

@@ -33,6 +33,49 @@ const ROLE_RANK: Record<string, number> = {
 type AdminClient = ReturnType<typeof createClient>;
 
 /**
+ * Produce a set-password link for a newly invited user and get it to them.
+ *
+ * `generateLink` mints the link but does not deliver it — the previous code
+ * called it and threw the result away, so an invited user ended up with an
+ * account and a role but no way to sign in. Two deliveries now happen:
+ *
+ *  1. the link is queued as an email, which `process-message-queue` sends once
+ *     an email provider is configured; and
+ *  2. the link is returned to the caller, so whoever sent the invite can pass it
+ *     on directly. That matters because a school setting up for the first time
+ *     usually has no mail provider yet, and Supabase's built-in SMTP is heavily
+ *     rate limited.
+ */
+async function createInviteLink(
+  admin: AdminClient,
+  email: string,
+  orgId: string,
+  schoolName: string | null
+): Promise<string | null> {
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
+  if (error || !data?.properties?.action_link) {
+    console.error("Could not generate invite link:", error?.message);
+    return null;
+  }
+
+  const link = data.properties.action_link;
+  const where = schoolName ? ` at ${schoolName}` : "";
+
+  await admin.from("outbound_message_queue").insert({
+    org_id: orgId,
+    channel: "email",
+    recipient: email,
+    subject: `Your account${where} is ready`,
+    body:
+      `You have been invited to Smart School Admin${where}.\n\n` +
+      `Set your password to get started:\n${link}\n\n` +
+      `If you were not expecting this, you can ignore this message.`,
+  });
+
+  return link;
+}
+
+/**
  * Look up an auth user by email.
  *
  * `listUsers()` returns only the first page (50 users) by default, so a bare
@@ -205,12 +248,9 @@ Deno.serve(async (req) => {
         .eq("id", guardian_id);
       if (linkError) return jsonResponse({ error: linkError.message }, 400);
 
-      // Send password reset email so user can set their own password
-      if (isNew) {
-        await adminClient.auth.admin.generateLink({ type: "recovery", email });
-      }
+      const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, null) : null;
 
-      return jsonResponse({ success: true, user_id: userId, is_new: isNew });
+      return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
     }
 
     // Handle standard invite
@@ -293,13 +333,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send password reset email so invited user can set their own password
-    if (isNew) {
-      await adminClient.auth.admin.generateLink({ type: "recovery", email });
+    let schoolName: string | null = null;
+    if (school_id) {
+      const { data: school } = await adminClient.from("schools").select("name").eq("id", school_id).maybeSingle();
+      schoolName = school?.name ?? null;
     }
 
-    return jsonResponse({ success: true, user_id: userId, is_new: isNew });
+    const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, schoolName) : null;
+
+    return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
   } catch (err) {
-    return jsonResponse({ error: (err as Error).message }, 500);
+    return jsonResponse({ error: err instanceof Error ? err.message : "Invite failed" }, 500);
   }
 });

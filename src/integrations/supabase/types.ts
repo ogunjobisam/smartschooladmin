@@ -2132,6 +2132,10 @@ export type Database = {
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
+      my_outbox_summary: {
+        Args: never
+        Returns: { status: string; count: number }[]
+      }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       my_guardian_id: { Args: never; Returns: string }
       my_ai_entitlement: {
