@@ -173,8 +173,20 @@ export function canAccessPath(role: string | null, pathname: string): boolean {
     }
   }
 
-  if (!bestKey) return true;
+  // An app-shell path that matches no nav item is not something we can reason
+  // about, so it is refused rather than waved through.
+  if (!bestKey) return false;
   return keys.includes(bestKey);
+}
+
+/** Roles allowed to create, import or promote student records. */
+const STUDENT_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar",
+];
+
+/** Whether a role may change student records (as opposed to just reading them). */
+export function canManageStudents(role: string | null): boolean {
+  return STUDENT_WRITERS.includes((role || "") as AppRole);
 }
 
 /** Exported for tests. */
