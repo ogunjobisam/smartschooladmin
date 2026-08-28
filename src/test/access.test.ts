@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, navItemsForRole, portalPathForRole, profileLinkForRole } from "@/lib/access";
+import { canAccessPath, canManageStudents, navItemsForRole, portalPathForRole, profileLinkForRole } from "@/lib/access";
 
 describe("canAccessPath", () => {
   it("lets a proprietor everywhere in the app shell", () => {
@@ -144,5 +144,23 @@ describe("profileLinkForRole", () => {
     expect(profileLinkForRole("teacher")).toBe("/notification-settings");
     expect(profileLinkForRole("parent")).toBe("/notification-settings");
     expect(profileLinkForRole("student")).toBe("/notification-settings");
+  });
+});
+
+describe("canManageStudents", () => {
+  it("allows management roles and refuses everyone else", () => {
+    for (const role of ["proprietor", "group_admin", "school_admin", "principal", "bursar"]) {
+      expect(canManageStudents(role), role).toBe(true);
+    }
+    for (const role of ["teacher", "parent", "student", "finance_officer", "hr_admin", null]) {
+      expect(canManageStudents(role), String(role)).toBe(false);
+    }
+  });
+});
+
+describe("unknown app-shell paths", () => {
+  it("refuses paths that match no nav item", () => {
+    expect(canAccessPath("proprietor", "/not-a-real-page")).toBe(false);
+    expect(canAccessPath("teacher", "/secret")).toBe(false);
   });
 });

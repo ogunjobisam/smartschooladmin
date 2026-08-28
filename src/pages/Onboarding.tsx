@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
+import { portalPathForRole } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +38,7 @@ const countries = [
 ];
 
 export default function Onboarding() {
-  const { user } = useAuth();
+  const { user, orgId, userRole } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [seedDemo, setSeedDemo] = useState(true);
@@ -122,6 +124,10 @@ export default function Onboarding() {
   };
 
   const canNext = (step === 0 && orgName) || (step === 1 && schoolName) || (step === 2 && classes.length > 0) || step === 3;
+
+  // Somebody who already belongs to an organisation cannot set one up again:
+  // the final step would fail. Send them where they belong instead.
+  if (orgId) return <Navigate to={portalPathForRole(userRole) ?? "/dashboard"} replace />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
