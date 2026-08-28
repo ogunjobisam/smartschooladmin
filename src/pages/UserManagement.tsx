@@ -480,12 +480,7 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      <InviteLinkDialog
-        open={!!inviteLink}
-        onOpenChange={(open) => { if (!open) setInviteLink(null); }}
-        email={inviteLink?.email ?? ""}
-        link={inviteLink?.link ?? ""}
-      />
+      <InviteLinkDialog invite={inviteLink} onClose={() => setInviteLink(null)} />
     </div>
   );
 }
