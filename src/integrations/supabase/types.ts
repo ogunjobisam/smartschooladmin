@@ -981,6 +981,35 @@ export type Database = {
           },
         ]
       }
+      id_counters: {
+        Row: {
+          entity: string
+          last_number: number
+          school_id: string
+          year: number
+        }
+        Insert: {
+          entity: string
+          last_number?: number
+          school_id: string
+          year: number
+        }
+        Update: {
+          entity?: string
+          last_number?: number
+          school_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "id_counters_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -2046,6 +2075,50 @@ export type Database = {
           },
         ]
       }
+      school_id_formats: {
+        Row: {
+          created_at: string
+          entity: string
+          id: string
+          padding: number
+          prefix: string | null
+          school_id: string
+          separator: string
+          updated_at: string
+          year_position: string
+        }
+        Insert: {
+          created_at?: string
+          entity: string
+          id?: string
+          padding?: number
+          prefix?: string | null
+          school_id: string
+          separator?: string
+          updated_at?: string
+          year_position?: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          id?: string
+          padding?: number
+          prefix?: string | null
+          school_id?: string
+          separator?: string
+          updated_at?: string
+          year_position?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_id_formats_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_notices: {
         Row: {
           body: string | null
@@ -2344,32 +2417,6 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_counters: {
-        Row: {
-          last_number: number
-          school_id: string
-          year: number
-        }
-        Insert: {
-          last_number?: number
-          school_id: string
-          year: number
-        }
-        Update: {
-          last_number?: number
-          school_id?: string
-          year?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_counters_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2774,6 +2821,14 @@ export type Database = {
     }
     Functions: {
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
+      backfill_staff_id_numbers: {
+        Args: { _school_id: string }
+        Returns: number
+      }
+      backfill_student_id_numbers: {
+        Args: { _school_id: string }
+        Returns: number
+      }
       can_access_school_documents: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
@@ -2838,12 +2893,19 @@ export type Database = {
         Args: { _school_id: string }
         Returns: string
       }
-      next_student_id_number: { Args: { _school_id: string }; Returns: string }
+      next_entity_id_number: {
+        Args: { _entity: string; _school_id: string }
+        Returns: string
+      }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
       photo_path_subject_id: { Args: { _name: string }; Returns: string }
+      preview_id_format: {
+        Args: { _entity: string; _school_id: string }
+        Returns: string
+      }
       primary_user_role: {
         Args: { _user_id: string }
         Returns: {
