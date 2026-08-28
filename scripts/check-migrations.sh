@@ -83,6 +83,31 @@ public_grants=$(target -c "
 [[ -z "$public_grants" ]] || fail "anonymous access granted on admissions data: $public_grants"
 pass "no anonymous or public grant on applications or school_notices"
 
+# A view is a hole in row-level security unless it says otherwise. Postgres
+# runs a plain view with its owner's privileges, so it reads its base tables
+# past every policy on them — and Supabase grants SELECT on new public views to
+# anon and authenticated by default. users_with_multiple_roles shipped exactly
+# like that and exposed every account's org memberships to any signed-in user.
+#
+# Worse, the option is easy to lose again: CREATE OR REPLACE VIEW replaces
+# reloptions wholesale rather than merging them, so a later replace with no
+# WITH clause silently drops it.
+#
+# Deliberately not filtered by current grants. The replay database is not a
+# Supabase project and does not carry its default privileges, so at this point
+# nothing is granted to anon or authenticated yet — an earlier version of this
+# check joined on the grants and passed against a view that was provably
+# leaking. Every view in public is required to be security_invoker whether or
+# not this database happens to have granted it yet.
+leaky_views=$(target -c "
+  SELECT coalesce(string_agg(c.relname, ', ' ORDER BY c.relname), '')
+  FROM pg_class c
+  WHERE c.relnamespace = 'public'::regnamespace
+    AND c.relkind = 'v'
+    AND NOT coalesce(c.reloptions, '{}') @> ARRAY['security_invoker=true'];")
+[[ -z "$leaky_views" ]] || fail "view without security_invoker reads its base tables past row-level security: $leaky_views"
+pass "every view in public runs under the caller's row-level security"
+
 # has_role() gives super_admin every role except the self-service ones. If
 # 'student' were dropped from that exclusion, a platform admin would satisfy
 # every student-scoped policy.

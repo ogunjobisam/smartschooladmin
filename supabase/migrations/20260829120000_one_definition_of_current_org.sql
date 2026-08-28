@@ -98,7 +98,14 @@ $$;
 -- index would be the real answer, but existing accounts already carry
 -- duplicates and a failing migration helps nobody — so record it as a view an
 -- operator can check, and let setup-organisation stop new ones being made.
-CREATE OR REPLACE VIEW public.users_with_multiple_roles AS
+--
+-- security_invoker is not optional here. A plain view executes with its
+-- owner's privileges, so it reads user_roles straight past row-level security
+-- — and Supabase grants SELECT on new public views to authenticated by
+-- default. Without this the view hands any signed-in user of any tenant the
+-- org memberships of every account on the platform.
+CREATE OR REPLACE VIEW public.users_with_multiple_roles
+WITH (security_invoker = true) AS
   SELECT
     user_id,
     count(*) AS role_count,
