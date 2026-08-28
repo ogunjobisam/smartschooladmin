@@ -44,8 +44,17 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
   withdrawn: "border-border bg-muted text-muted-foreground",
 };
 
+/**
+ * The roles the "Admissions staff can manage applications" policy allows.
+ * Bursars can read the funnel — they plan fees around it — but every write they
+ * attempted was refused by row-level security, so the controls are hidden
+ * rather than left to fail.
+ */
+const MANAGER_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal"];
+
 export default function Admissions() {
-  const { schoolId } = useAuth();
+  const { schoolId, userRole } = useAuth();
+  const canManage = MANAGER_ROLES.includes(userRole || "");
   const queryClient = useQueryClient();
 
   const [filter, setFilter] = useState<ApplicationStatus | "open" | "all">("open");
@@ -242,7 +251,7 @@ export default function Admissions() {
                       </span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      {application.status === "accepted" && (
+                      {canManage && application.status === "accepted" && (
                         <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setConverting(application)}>
                           <UserPlus className="h-3.5 w-3.5" /> Enrol
                         </Button>
@@ -298,7 +307,12 @@ export default function Admissions() {
 
               <div className="space-y-2 border-t pt-3">
                 <p className="text-xs text-muted-foreground">{statusHint(selected.status)}</p>
-                {selected.status === "enrolled" ? (
+                {!canManage ? (
+                  <p className="text-sm text-muted-foreground">
+                    You can follow this application, but only an administrator or the
+                    principal can move it or enrol the applicant.
+                  </p>
+                ) : selected.status === "enrolled" ? (
                   <p className="text-sm text-muted-foreground">
                     This applicant is on the roll and can no longer be moved.
                   </p>
@@ -317,7 +331,7 @@ export default function Admissions() {
                     ))}
                   </div>
                 )}
-                {selected.status === "accepted" && (
+                {canManage && selected.status === "accepted" && (
                   <Button
                     size="sm"
                     className="mt-1 gap-1.5"

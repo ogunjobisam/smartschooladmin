@@ -16,22 +16,23 @@ import { useAuth } from "@/contexts/AuthContext";
  * upcoming and shows what comes back.
  */
 export function UpcomingEvents({ limit = 4 }: { limit?: number }) {
-  const { orgId } = useAuth();
+  const { orgId, schoolId } = useAuth();
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ["upcoming-events", orgId, limit],
+    queryKey: ["upcoming-events", orgId, schoolId, limit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("school_events")
         .select("id, title, location, starts_at, all_day")
         .eq("org_id", orgId!)
+        .or(`school_id.eq.${schoolId},school_id.is.null`)
         .gte("starts_at", new Date().toISOString())
         .order("starts_at")
         .limit(limit);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !!schoolId,
   });
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;

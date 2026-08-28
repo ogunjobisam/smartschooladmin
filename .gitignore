@@ -35,3 +35,6 @@ dist-ssr
 coverage
 playwright-report
 test-results
+
+# Supabase CLI scratch
+supabase/.temp

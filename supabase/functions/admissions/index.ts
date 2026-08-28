@@ -155,8 +155,11 @@ Deno.serve(async (req) => {
 
     // Two applications for the same child within the hour is a double-tap on the
     // submit button, not two children.
+    // `maybeSingle` would raise once a third attempt matched two existing rows,
+    // and the raise used to be swallowed — so the duplicate it was meant to stop
+    // got inserted anyway. Take the newest match instead.
     const anHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
+    const { data: recent, error: recentError } = await admin
       .from("applications")
       .select("reference")
       .eq("school_id", school.id)
@@ -164,10 +167,16 @@ Deno.serve(async (req) => {
       .eq("applicant_last_name", lastName)
       .eq("guardian_phone", guardianPhone)
       .gte("created_at", anHourAgo)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-    if (recent) {
-      return jsonResponse({ reference: recent.reference, duplicate: true });
+    if (recentError) {
+      console.error("Duplicate check failed:", recentError.message);
+      return jsonResponse({ error: "Could not record your application. Please try again." }, 500);
+    }
+
+    if (recent && recent.length > 0) {
+      return jsonResponse({ reference: recent[0].reference, duplicate: true });
     }
 
     const { data: application, error: insertError } = await admin
