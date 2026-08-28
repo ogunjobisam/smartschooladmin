@@ -178,7 +178,10 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["guardians"] });
-      toast({ title: "Student added", description: `${form.first_name} ${form.last_name} has been enrolled.` });
+      toast({
+        title: "Student added",
+        description: `${form.first_name} ${form.last_name} has been enrolled${data?.student_id_number ? ` as ${data.student_id_number}` : ""}.`,
+      });
       onOpenChange(false);
       setForm({ student_type: "day", add_guardian: false });
       setErrors({});
