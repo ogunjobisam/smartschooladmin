@@ -77,7 +77,7 @@ export default function NotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [prefs, setPrefs] = useState<Map<string, Preference>>(new Map());
 
-  const roleNames = (userRoles ?? []).map((r) => (typeof r === "string" ? r : r.role));
+  const roleNames = userRoles ?? [];
 
   const relevant = NOTIFICATION_TYPES.filter((nt) =>
     audienceMatchesRole(nt.audience as Audience, userRole, roleNames),
