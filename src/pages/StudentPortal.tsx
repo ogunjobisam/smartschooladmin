@@ -19,6 +19,7 @@ import { printInvoice } from "@/lib/print-documents";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
+import { displayClassName } from "@/lib/sections";
 
 /**
  * What a student sees when they sign in.
@@ -81,7 +82,7 @@ export default function StudentPortal() {
       status: invoice.status,
       studentName: `${student?.first_name ?? ""} ${student?.last_name ?? ""}`.trim(),
       studentId: student?.student_id_number || "",
-      className: student?.enrolments?.[0]?.classes?.name || "—",
+      className: displayClassName(student?.enrolments?.[0]?.classes?.name) || "—",
       periodName: invoice.academic_periods?.name || "—",
       schoolName: student?.schools?.name || "",
       schoolAddress: student?.schools?.address,
@@ -130,7 +131,7 @@ export default function StudentPortal() {
     );
   }
 
-  const className = student.enrolments?.[0]?.classes?.name || "—";
+  const className = displayClassName(student.enrolments?.[0]?.classes?.name) || "—";
 
   return (
     <div className="space-y-6">

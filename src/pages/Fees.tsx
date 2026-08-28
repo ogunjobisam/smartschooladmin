@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
 import {
+import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
@@ -67,7 +68,7 @@ export default function Fees() {
               schedules?.map((f) => (
                 <TableRow key={f.id} className="cursor-pointer">
                   <TableCell className="font-medium">{f.name}</TableCell>
-                  <TableCell>{f.classes?.name || "All"}</TableCell>
+                  <TableCell>{displayClassName(f.classes?.name) || "All"}</TableCell>
                   <TableCell className="text-muted-foreground">{f.academic_periods?.name || "—"}</TableCell>
                   <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(f.total_amount)}</TableCell>
                   <TableCell><StatusBadge status={f.is_active ? "active" : "inactive"} /></TableCell>

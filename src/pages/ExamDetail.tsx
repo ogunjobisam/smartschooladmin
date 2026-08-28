@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { displayClassName } from "@/lib/sections";
 
 interface ScoreEntry {
   studentId: string;
@@ -74,7 +75,7 @@ export default function ExamDetail() {
           <div class="student-info">
             <div><span class="label">Student Name: </span><strong>${student.first_name} ${student.last_name}</strong></div>
             <div><span class="label">Student ID: </span><strong>${student.student_id_number || "N/A"}</strong></div>
-            <div><span class="label">Class: </span><strong>${exam.classes?.name || "—"}</strong></div>
+            <div><span class="label">Class: </span><strong>${displayClassName(exam.classes?.name) || "—"}</strong></div>
             <div><span class="label">Term/Period: </span><strong>${exam.academic_periods?.name || "—"}</strong></div>
           </div>
           <table><thead><tr><th>#</th><th>Subject</th><th class="text-center">Score</th><th class="text-center">Max</th><th class="text-center">%</th><th class="text-center">Grade</th></tr></thead><tbody>${rows}</tbody></table>
@@ -306,7 +307,7 @@ export default function ExamDetail() {
     <div className="space-y-6">
       <PageHeader
         title={exam.name}
-        description={`${exam.classes?.name || "All Classes"} • ${exam.academic_periods?.name || ""} • Max Score: ${exam.max_score}`}
+        description={`${displayClassName(exam.classes?.name) || "All Classes"} • ${exam.academic_periods?.name || ""} • Max Score: ${exam.max_score}`}
       >
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate("/exams")}>

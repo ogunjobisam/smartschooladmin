@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrency } from "@/hooks/use-currency";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
+import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
@@ -132,7 +133,7 @@ export default function GuardianDetail() {
                       <TableRow key={sg.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                         <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{s.student_id_number || "—"}</TableCell>
-                        <TableCell>{s.enrolments?.[0]?.classes?.name || "—"}</TableCell>
+                        <TableCell>{displayClassName(s.enrolments?.[0]?.classes?.name) || "—"}</TableCell>
                         <TableCell className="capitalize text-muted-foreground">{sg.relationship || "—"}</TableCell>
                         <TableCell><StatusBadge status={s.status} /></TableCell>
                       </TableRow>

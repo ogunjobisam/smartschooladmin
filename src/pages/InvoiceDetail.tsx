@@ -14,6 +14,7 @@ import { printInvoice } from "@/lib/print-documents";
 import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
+import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 
@@ -91,7 +92,7 @@ export default function InvoiceDetail() {
 
   const student = invoice.students;
   const studentName = student ? `${student.first_name} ${student.last_name}` : "—";
-  const className = student?.enrolments?.[0]?.classes?.name || "—";
+  const className = displayClassName(student?.enrolments?.[0]?.classes?.name) || "—";
   const totalPaid = paymentHistory?.reduce((s, p) => s + (p.amount || 0), 0) || 0;
   const balance = (invoice.total_amount || 0) - totalPaid;
 

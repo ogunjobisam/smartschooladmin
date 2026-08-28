@@ -82,3 +82,25 @@ export function sortBySection<T extends { section?: SchoolSection | null; level_
     return a.name.localeCompare(b.name);
   });
 }
+
+/**
+ * Render a class name safely.
+ *
+ * Some schools were created by an older onboarding path that stored the whole
+ * `{ name, section }` object as the class name, so parents and students saw
+ * `{"name":"JSS1","section":"secondary"}` on their own records. The rows have
+ * been repaired, but anything reaching a screen goes through here so a stray
+ * JSON-shaped value can never be shown to a parent again.
+ */
+export function displayClassName(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  if (!text.startsWith("{")) return text;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed.name === "string") return parsed.name;
+  } catch {
+    // Not JSON after all — fall through and show what we were given.
+  }
+  return text;
+}

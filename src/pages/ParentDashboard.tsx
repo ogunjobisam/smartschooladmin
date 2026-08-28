@@ -24,6 +24,7 @@ import { summariseStudent } from "@/lib/performance";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
+import { displayClassName } from "@/lib/sections";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -131,7 +132,7 @@ export default function ParentDashboard() {
       logoUrl: inv.schools?.logo_url,
       studentName: student ? `${student.first_name} ${student.last_name}` : "—",
       studentId: student?.student_id_number || "—",
-      className: student?.enrolments?.[0]?.classes?.name || "—",
+      className: displayClassName(student?.enrolments?.[0]?.classes?.name) || "—",
       periodName: inv.academic_periods?.name || "—",
       lineItems: (lineItems || []).map((i) => ({
         description: i.description,
@@ -204,7 +205,7 @@ export default function ParentDashboard() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{child.first_name} {child.last_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {child.enrolments?.[0]?.classes?.name || "—"} • {child.schools?.name || "—"}
+                      {displayClassName(child.enrolments?.[0]?.classes?.name) || "—"} • {child.schools?.name || "—"}
                     </p>
                   </div>
                   <StatusBadge status={child.status} />
