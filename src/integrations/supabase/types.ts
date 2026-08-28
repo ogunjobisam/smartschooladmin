@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -146,24 +146,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      application_counters: {
-        Row: {
-          last_number: number
-          school_id: string
-          year: number
-        }
-        Insert: {
-          last_number?: number
-          school_id: string
-          year: number
-        }
-        Update: {
-          last_number?: number
-          school_id?: string
-          year?: number
-        }
-        Relationships: []
       }
       applications: {
         Row: {
@@ -1181,8 +1163,6 @@ export type Database = {
           processed_at: string | null
           recipient: string
           related_notification_id: string | null
-          reply_to: string | null
-          school_id: string | null
           status: string
           subject: string | null
         }
@@ -1197,8 +1177,6 @@ export type Database = {
           processed_at?: string | null
           recipient: string
           related_notification_id?: string | null
-          reply_to?: string | null
-          school_id?: string | null
           status?: string
           subject?: string | null
         }
@@ -1213,8 +1191,6 @@ export type Database = {
           processed_at?: string | null
           recipient?: string
           related_notification_id?: string | null
-          reply_to?: string | null
-          school_id?: string | null
           status?: string
           subject?: string | null
         }
