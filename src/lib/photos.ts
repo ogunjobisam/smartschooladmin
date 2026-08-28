@@ -26,10 +26,19 @@ export function schoolPhotoPath(schoolId: string, subject: PhotoSubject, subject
   return `${schoolId}/${subject}/${subjectId}-${Date.now()}.${extensionFor(file)}`;
 }
 
+/**
+ * Award photos are filed under the recognition itself, so the storage rules can
+ * show a published award's photo to that child's family.
+ */
+export function recognitionPhotoPath(schoolId: string, recognitionId: string, file: File): string {
+  return `${schoolId}/recognitions/${recognitionId}/${Date.now()}.${extensionFor(file)}`;
+}
+
 /** A user's own account picture is filed under them, not a school. */
 export function accountPhotoPath(userId: string, file: File): string {
   return `users/${userId}/avatar-${Date.now()}.${extensionFor(file)}`;
 }
+
 
 export function validatePhoto(file: File): string | null {
   if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
