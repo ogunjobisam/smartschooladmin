@@ -23,16 +23,17 @@ Lovable's full report: [`.lovable/plan/external-review-audit-findings-report-202
 
 ### Blockers found so far
 
-1. **`supabase db push` no longer works on a fresh project.** See below. This is
-   the most serious item and neither audit caught it.
+1. ~~**`supabase db push` no longer works on a fresh project.**~~ **Fixed.** See
+   below for what was wrong and how it was proven.
 2. **`RESEND_API_KEY` and `NOTIFICATIONS_FROM_EMAIL` are not set** as edge
    function secrets. Admissions acknowledgements, invites and fee reminders queue
    in `outbound_message_queue` and never send. Set them as function secrets —
-   never in `.env` or any `VITE_*` variable.
+   never in `.env` or any `VITE_*` variable. **Still outstanding** — this one
+   needs credentials, so it is yours to do.
 
 ---
 
-## Blocker 1 — the migration set is no longer replayable
+## Blocker 1 — the migration set was no longer replayable (fixed)
 
 Applying the schema to the live project produced a **second, overlapping set of
 migration files**, and the two sets sort in the wrong order relative to each
@@ -78,67 +79,95 @@ parent or student enumerate every stop on every route. Lovable's Part 4 answer �
 "not a problem, the deployed policy has the guard" — is right about the live
 database and does not hold for a replay.
 
-**Suggested fix**, in order of preference:
+### What was done
 
-1. Squash `20260828*` into one baseline migration that matches the live schema,
-   generated with `supabase db diff`, and delete the overlapping files. Cleanest,
-   and the live database is the source of truth to diff against.
-2. Failing that, give every `CREATE POLICY` in the seven hand-written files a
-   matching `DROP POLICY IF EXISTS` immediately above it, and re-check that the
-   *later* file is the version you want to win — for transport stops it is not.
+The generated set turned out to be a strict superset of the hand-written one —
+every table, function, policy, type, trigger and column the nine later files
+created is also created by the generated files, which additionally carry the
+hardening. So the nine were **deleted** rather than patched. Nothing was lost and
+the hardened definitions now win.
 
-Until one of those is done, treat the live project as the only deployable
-environment and do not promise a second tenant a fresh install.
+This was proven, not assumed. A scratch PostgreSQL 16 cluster with a minimal
+stand-in for the Supabase-managed schemas (`auth`, `storage`, the roles, the
+realtime publication) replayed every migration in filename order:
+
+- **Before:** failed at `20260828170000_class_teachers.sql` —
+  `policy "Staff can view class teachers in their org" ... already exists`.
+- **After:** applies cleanly. All 8 new tables present, **no table left with RLS
+  on and no SELECT policy**, `"Staff can view transport stops"` carries the
+  `is_self_service_role` guard, and `has_role` still excludes `student`.
+
+### If the deleted versions were already applied to the live project
+
+Deleting migration files does not touch the live database, but the Supabase CLI
+tracks applied versions in `supabase_migrations.schema_migrations`. If those nine
+versions were recorded there, `supabase migration list` will now show them as
+remote-only. That is cosmetic, and `supabase db push` still works because no new
+local file sorts before them. To tidy it:
+
+```sh
+supabase migration repair --status reverted 20260828160000 20260828170000 \
+  20260828180000 20260828180100 20260828190000 20260828200000 \
+  20260828210000 20260828220000 20260828230000
+```
+
+Run it only if `supabase migration list` actually reports them; if the schema was
+only ever applied through Lovable, they were never recorded and there is nothing
+to repair.
 
 ---
 
 ## Confirmed defects
 
-From Part 4. Ranked; none are fixed yet.
+From Part 4, ranked. Six are fixed; three remain open.
 
-**Boundary and correctness**
+### Fixed
 
-1. **Parent invites carry no `school_id`.** `invite-user/index.ts` `invite_guardian`
-   inserts `{user_id, role:'parent', org_id}`, while `invite_student` and the staff
-   invite both set `school_id`. `AuthContext` falls back to the org's first school,
-   so in a multi-school group a parent is pinned to the wrong one — and that now
-   decides which notices and events they see. Derive it from the guardian's linked
-   student, and backfill existing rows.
-2. **Events are org-scoped, not school-scoped.** `school_events.school_id` is
-   written but neither the RLS policies nor `Events.tsx` filter on it, so every
-   school in a group sees every other school's events. Filter on `school_id`,
-   treating `NULL` as an org-wide event.
-3. **The admissions duplicate check can error and insert a duplicate anyway.** The
-   one-hour window query uses `.maybeSingle()` on something that can match several
-   rows; the error is destructured away and ignored. Use `order by created_at desc,
-   limit 1` and check the error.
-4. **`student_transport`'s unique constraint does not bind without a current term.**
-   `UNIQUE (student_id, academic_period_id)` — Postgres treats NULLs as distinct,
-   so two rows are creatable and `StudentTransportCard`'s `.maybeSingle()` then
-   throws `PGRST116`. Use `NULLS NOT DISTINCT`, or require the period.
+1. **Parent invites carried no `school_id`.** `invite_guardian` inserted
+   `{user_id, role:'parent', org_id}` while `invite_student` and the staff invite
+   both set `school_id`, so `AuthContext` fell back to the organisation's first
+   school and a parent in a group was shown another school's notices and events.
+   The invite now derives the school from the guardian's linked children, and a
+   backfill in `20260828235900` fixes existing rows. A guardian whose children
+   attend two different schools stays organisation-level rather than being
+   guessed at.
+2. **Events were organisation-scoped, not school-scoped.** `school_events` stored
+   `school_id` but neither the policies nor the queries used it. Both policies now
+   filter through a new `get_user_school_id()` helper, and both queries ask for
+   this school's events plus the group-wide ones. An event with a `NULL`
+   `school_id` stays organisation-wide, which is what a proprietor's group
+   announcement wants.
+3. **The admissions duplicate check could error and insert a duplicate anyway.**
+   The one-hour window query used `.maybeSingle()`, which raises once two rows
+   match, and the raise was discarded — so the third submission got through. It
+   now takes the newest match with `order by ... limit 1` and checks the error.
+4. **A student could hold two transport assignments for the same term.**
+   `UNIQUE (student_id, academic_period_id)` does not bind when the period is
+   `NULL`, because Postgres treats NULLs as distinct. A partial unique index now
+   covers the NULL case — chosen over `NULLS NOT DISTINCT` so the migration does
+   not require PostgreSQL 15+.
+5. **Bursars saw an Admissions funnel they could not use.** The nav key and the
+   SELECT policy included bursar, the manage policy did not, and the page had no
+   role check at all — so the stage buttons and **Enrol** were visible and every
+   write was refused. Bursars keep the read-only funnel, which is what they want
+   it for; the controls are now hidden and the detail panel says who can move an
+   application. Introduced in PR #3.
+6. **School admins were locked out of the new Settings cards.** `canManage`
+   omitted `school_admin` though RLS grants it manage rights on classes, notices
+   and applications.
 
-**Dead ends in the UI**
+### Open
 
-5. **Bursars see an Admissions funnel they cannot use.** `access.ts` grants bursar
-   the `admissions` nav key and the SELECT policy includes them, but the manage
-   policy does not — and `Admissions.tsx` has no role check at all, so the stage
-   buttons and **Enrol** are visible and every write fails. Decide which way it
-   goes: read-only funnel for bursars (hide the controls) or add them to the manage
-   policy. This one is mine, introduced in PR #3.
-6. **School admins are locked out of the new Settings cards.** `SettingsPage.tsx`
-   computes `canManage` without `school_admin`, though RLS grants it manage rights
-   on both `school_notices` and `applications`.
 7. **Transport fees are never billed.** `generate-invoices` has no reference to
-   transport. Add a line per rider using `fee_override ?? fee_per_term`.
+   transport, so a route carries a per-term fee that nothing charges. Left alone
+   deliberately: it needs a decision about which fee category the line belongs to
+   and whether it should appear on every invoice or only the rider's.
 8. **A route can only be retired by deleting it**, which cascades away its stops
    and every rider assignment. `is_active` is filtered on but has no UI.
-
-**Loose ends**
-
-9. Columns declared and never written: `applications.desired_class_id`,
+9. **Columns declared and never written:** `applications.desired_class_id`,
    `transport_stops.dropoff_time`, `transport_routes.description`. Either surface
-   them or drop them. (`school_events.created_by` *is* written — that suspicion was
-   refuted.)
+   them or drop them. (`school_events.created_by` *is* written — that suspicion
+   was refuted.)
 
 ---
 

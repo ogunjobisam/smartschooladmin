@@ -207,6 +207,25 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!guardian) return jsonResponse({ error: "Guardian not found in your organisation" }, 404);
 
+      // A parent belongs to the school their children attend. Without this the
+      // role row carried no school_id and the app fell back to the org's first
+      // school, so in a group a parent was shown another school's notices and
+      // events. Nulls stay null: a guardian with no linked student yet is
+      // org-level until one is added.
+      const { data: guardianStudents } = await adminClient
+        .from("student_guardians")
+        .select("students(school_id)")
+        .eq("guardian_id", guardian_id);
+
+      const schoolIds = [...new Set(
+        (guardianStudents || [])
+          .map((row) => (row.students as { school_id?: string } | null)?.school_id)
+          .filter((id): id is string => !!id)
+      )];
+      // Children split across two schools in the same group is rare but real;
+      // pinning to one would be a guess, so leave it org-level.
+      const guardianSchoolId = schoolIds.length === 1 ? schoolIds[0] : null;
+
       // Check if user exists
       const existingUser = await findUserByEmail(adminClient, email);
 
@@ -239,6 +258,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         role: "parent",
         org_id,
+        school_id: guardianSchoolId,
       });
       if (roleError) return jsonResponse({ error: roleError.message }, 400);
 

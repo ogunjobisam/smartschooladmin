@@ -34,7 +34,10 @@ export default function SettingsPage() {
   const { branding, refetch } = useSchoolBranding();
   const queryClient = useQueryClient();
   const canEditBranding = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin";
-  const canManage = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin" || userRole === "principal";
+  // school_admin is granted manage rights by row-level security on classes,
+  // notices and applications, so leaving it out here locked the role out of
+  // settings it was allowed to change.
+  const canManage = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin" || userRole === "principal" || userRole === "school_admin";
 
   // ── Branding state ──
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);

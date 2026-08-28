@@ -55,17 +55,21 @@ export default function Events() {
   const [audience, setAudience] = useState<Audience>("all");
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ["school-events", orgId],
+    queryKey: ["school-events", orgId, schoolId],
     queryFn: async () => {
+      // This school's events plus the group-wide ones. Row-level security
+      // enforces the same rule; without the filter a group admin, who is not
+      // tied to one school, would see every school's calendar at once.
       const { data, error } = await supabase
         .from("school_events")
         .select("*")
         .eq("org_id", orgId!)
+        .or(`school_id.eq.${schoolId},school_id.is.null`)
         .order("starts_at");
       if (error) throw error;
       return data || [];
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !!schoolId,
   });
 
   // Past events stay visible but out of the way — a calendar that hides last
