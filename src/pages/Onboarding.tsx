@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getErrorMessage } from "@/lib/errors";
 
 const steps = ["Organisation", "School", "Classes", "Academic Year"];
 
@@ -108,8 +109,8 @@ export default function Onboarding() {
 
       toast.success("Setup complete! Welcome to Smart School Admin.");
       window.location.href = "/dashboard";
-    } catch (err: any) {
-      toast.error(err.message || "Setup failed. Please try again.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Setup failed. Please try again."));
     } finally {
       setLoading(false);
     }

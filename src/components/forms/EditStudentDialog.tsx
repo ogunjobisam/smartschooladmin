@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { getErrorMessage } from "@/lib/errors";
 
 interface StudentData {
   id: string;
@@ -94,8 +95,8 @@ export function EditStudentDialog({ open, onOpenChange, student }: Props) {
       queryClient.invalidateQueries({ queryKey: ["student", student.id] });
       queryClient.invalidateQueries({ queryKey: ["students"] });
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update student.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to update student."));
     } finally {
       setLoading(false);
     }

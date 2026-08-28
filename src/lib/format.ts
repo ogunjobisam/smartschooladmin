@@ -44,9 +44,13 @@ export function formatCurrency(value: number, currencyCode = "NGN"): string {
 
 export function formatCurrencyCompact(value: number, currencyCode = "NGN"): string {
   const symbol = currencySymbolMap[currencyCode] || currencyCode + " ";
-  if (value >= 1_000_000) return `${symbol}${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${symbol}${(value / 1_000).toFixed(0)}K`;
-  return `${symbol}${value}`;
+  // Abbreviate on magnitude and put the sign in front of the symbol. Balances go
+  // negative when a payment overshoots an invoice, and "₦-2500000" is unreadable.
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${sign}${symbol}${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}${symbol}${(abs / 1_000).toFixed(0)}K`;
+  return `${sign}${symbol}${abs}`;
 }
 
 // Legacy aliases for backward compatibility

@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonError(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -14,32 +21,42 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    let userId: string;
-    const authHeader = req.headers.get("Authorization");
-    
-    // Clone request to read body for user_id fallback
     const body = await req.json();
-    
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-      const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
-      if (user) {
-        userId = user.id;
-      } else if (body.user_id) {
-        // Allow service-role calls with explicit user_id
-        userId = body.user_id;
-      } else {
-        throw new Error("Unauthorized");
-      }
-    } else if (body.user_id) {
-      userId = body.user_id;
-    } else {
-      throw new Error("Unauthorized");
-    }
+
+    // Identity comes from the verified bearer token only. A `user_id` supplied in
+    // the request body is not proof of anything, so it is never trusted here.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return jsonError("Unauthorized", 401);
+    const token = authHeader.replace("Bearer ", "");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
+    if (!user) return jsonError("Unauthorized", 401);
+    const userId = user.id;
 
     const { org_id, school_id } = body;
     if (!org_id || !school_id) throw new Error("org_id and school_id required");
+
+    // Tenant isolation: seeding writes with the service role key, so confirm the
+    // caller actually administers the org/school they are asking us to fill.
+    const SEED_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin"];
+    const { data: callerRole } = await supabase
+      .from("user_roles")
+      .select("role, org_id")
+      .eq("user_id", userId)
+      .in("role", SEED_ROLES)
+      .limit(1)
+      .maybeSingle();
+    if (!callerRole || callerRole.org_id !== org_id) {
+      return jsonError("Forbidden — you do not administer this organisation", 403);
+    }
+
+    const { data: seedSchool } = await supabase
+      .from("schools")
+      .select("id")
+      .eq("id", school_id)
+      .eq("org_id", org_id)
+      .maybeSingle();
+    if (!seedSchool) return jsonError("Forbidden — school does not belong to your organisation", 403);
 
     // Get classes for this school
     const { data: classes } = await supabase.from("classes").select("id, name").eq("school_id", school_id);
@@ -279,7 +296,7 @@ serve(async (req) => {
           .select("student_id, class_id, academic_period_id")
           .in("student_id", students.map(s => s.id));
 
-        const scoreInserts: any[] = [];
+        const scoreInserts: Record<string, unknown>[] = [];
         for (const exam of exams) {
           // Find students enrolled in this exam's class and period
           const enrolledStudents = (enrolments || []).filter(
@@ -319,7 +336,7 @@ serve(async (req) => {
       .select("id", { count: "exact", head: true }).eq("school_id", school_id);
 
     if ((existingAttendanceCount || 0) === 0 && students.length) {
-      const attendanceInserts: any[] = [];
+      const attendanceInserts: Record<string, unknown>[] = [];
       const statuses = ["present", "present", "present", "present", "present", "present", "late", "absent", "excused", "present"];
       // Generate 15 days of attendance
       for (let day = 1; day <= 15; day++) {
@@ -452,7 +469,7 @@ serve(async (req) => {
       paymentCount = payments?.length || 0;
 
       if (payments && invoices) {
-        const allocInserts: any[] = [];
+        const allocInserts: Record<string, unknown>[] = [];
         let pIdx = 0;
         for (let i = 0; i < invoices.length; i++) {
           if (invoiceInserts[i].amount_paid > 0 && pIdx < payments.length) {
@@ -560,9 +577,9 @@ serve(async (req) => {
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Seed error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Seeding failed" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

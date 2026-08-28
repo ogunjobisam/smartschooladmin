@@ -15,11 +15,22 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Verify the calling user
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Unauthorized");
     const token = authHeader.replace("Bearer ", "");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
     const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
     if (!user) throw new Error("Unauthorized");
+
+    // Onboarding runs once per user. Re-running it (a double submit, a stale tab)
+    // would otherwise leave orphaned organisations behind.
+    const { data: existingRole } = await supabase
+      .from("user_roles")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    if (existingRole?.org_id) throw new Error("This account already belongs to an organisation");
 
     const { orgName, country, currency, schoolName, campusName, academicYear, terms, classes: customClasses } = await req.json();
     if (!orgName || !schoolName) throw new Error("orgName and schoolName required");
@@ -107,9 +118,9 @@ serve(async (req) => {
       school_id: school.id,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Setup error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Setup failed" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -660,7 +661,6 @@ function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId
     if (!schoolId || !orgId) return;
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("delete-demo-data", {
         body: { school_id: schoolId, org_id: orgId },
       });
@@ -670,8 +670,8 @@ function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId
       queryClient.invalidateQueries();
       setOpen(false);
       setConfirmText("");
-    } catch (err: any) {
-      toast.error("Failed to delete data: " + (err.message || "Unknown error"));
+    } catch (err) {
+      toast.error("Failed to delete data: " + getErrorMessage(err, "Unknown error"));
     } finally {
       setDeleting(false);
     }
@@ -744,8 +744,8 @@ function AddSchoolCard({ orgId, queryClient }: { orgId: string | null; queryClie
       setName("");
       // Reload to pick up new school in switcher
       window.location.reload();
-    } catch (err: any) {
-      toast.error("Failed to add school: " + (err.message || "Unknown error"));
+    } catch (err) {
+      toast.error("Failed to add school: " + getErrorMessage(err, "Unknown error"));
     } finally {
       setAdding(false);
     }

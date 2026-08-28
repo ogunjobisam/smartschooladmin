@@ -1,58 +1,80 @@
+import { Suspense, lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
-import { useAuth } from "@/contexts/AuthContext";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SchoolBrandingProvider } from "@/contexts/SchoolBrandingContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-// Auth pages
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Onboarding from "./pages/Onboarding";
+// Entry points stay in the main bundle so the first paint needs no extra round trip.
 import Landing from "./pages/Landing";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsOfService from "./pages/TermsOfService";
-
-// App pages
-import Index from "./pages/Index";
-import Students from "./pages/Students";
-import StudentDetail from "./pages/StudentDetail";
-import Guardians from "./pages/Guardians";
-import GuardianDetail from "./pages/GuardianDetail";
-import Staff from "./pages/Staff";
-import StaffDetail from "./pages/StaffDetail";
-import Fees from "./pages/Fees";
-import Invoices from "./pages/Invoices";
-import InvoiceDetail from "./pages/InvoiceDetail";
-import Payments from "./pages/Payments";
-import RecordPayment from "./pages/RecordPayment";
-import Arrears from "./pages/Arrears";
-import Payroll from "./pages/Payroll";
-import PayrollRunDetail from "./pages/PayrollRunDetail";
-import Approvals from "./pages/Approvals";
-import Reports from "./pages/Reports";
-import AuditLog from "./pages/AuditLog";
-import SettingsPage from "./pages/SettingsPage";
-import ParentDashboard from "./pages/ParentDashboard";
-import UserManagement from "./pages/UserManagement";
-import NotificationHistory from "./pages/NotificationHistory";
-import ProprietorDashboard from "./pages/ProprietorDashboard";
-import Attendance from "./pages/Attendance";
-import Exams from "./pages/Exams";
-import ExamDetail from "./pages/ExamDetail";
-import Announcements from "./pages/Announcements";
-import NotificationSettings from "./pages/NotificationSettings";
-import NotificationTemplates from "./pages/NotificationTemplates";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Everything else is split per route: the app is large and most users only ever
+// touch a handful of these screens.
+const Signup = lazy(() => import("./pages/Signup"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+
+const Index = lazy(() => import("./pages/Index"));
+const Students = lazy(() => import("./pages/Students"));
+const StudentDetail = lazy(() => import("./pages/StudentDetail"));
+const Guardians = lazy(() => import("./pages/Guardians"));
+const GuardianDetail = lazy(() => import("./pages/GuardianDetail"));
+const Staff = lazy(() => import("./pages/Staff"));
+const StaffDetail = lazy(() => import("./pages/StaffDetail"));
+const Fees = lazy(() => import("./pages/Fees"));
+const Invoices = lazy(() => import("./pages/Invoices"));
+const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
+const Payments = lazy(() => import("./pages/Payments"));
+const RecordPayment = lazy(() => import("./pages/RecordPayment"));
+const Arrears = lazy(() => import("./pages/Arrears"));
+const Payroll = lazy(() => import("./pages/Payroll"));
+const PayrollRunDetail = lazy(() => import("./pages/PayrollRunDetail"));
+const Approvals = lazy(() => import("./pages/Approvals"));
+const Reports = lazy(() => import("./pages/Reports"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
+const ProprietorDashboard = lazy(() => import("./pages/ProprietorDashboard"));
+const Attendance = lazy(() => import("./pages/Attendance"));
+const Exams = lazy(() => import("./pages/Exams"));
+const ExamDetail = lazy(() => import("./pages/ExamDetail"));
+const Announcements = lazy(() => import("./pages/Announcements"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // A 401/403 from row-level security will never succeed on retry, and
+      // hammering it just delays the empty state the user needs to see.
+      retry: 1,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+    </div>
+  );
+}
 
 const withLayout = (page: React.ReactNode) => (
   <ProtectedRoute>
@@ -60,6 +82,63 @@ const withLayout = (page: React.ReactNode) => (
   </ProtectedRoute>
 );
 
+function AppRoutes() {
+  const location = useLocation();
+
+  return (
+    // Keyed on the path so navigating away from a broken page clears the error.
+    <ErrorBoundary resetKey={location.pathname}>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+
+          {/* Signed in, but before an organisation exists */}
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+
+          {/* Protected app routes */}
+          <Route path="/dashboard" element={withLayout(<Index />)} />
+          <Route path="/students" element={withLayout(<Students />)} />
+          <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
+          <Route path="/guardians" element={withLayout(<Guardians />)} />
+          <Route path="/guardians/:id" element={withLayout(<GuardianDetail />)} />
+          <Route path="/staff" element={withLayout(<Staff />)} />
+          <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
+          <Route path="/fees" element={withLayout(<Fees />)} />
+          <Route path="/invoices" element={withLayout(<Invoices />)} />
+          <Route path="/invoices/:id" element={withLayout(<InvoiceDetail />)} />
+          <Route path="/payments" element={withLayout(<Payments />)} />
+          <Route path="/payments/new" element={withLayout(<RecordPayment />)} />
+          <Route path="/arrears" element={withLayout(<Arrears />)} />
+          <Route path="/payroll" element={withLayout(<Payroll />)} />
+          <Route path="/payroll/:id" element={withLayout(<PayrollRunDetail />)} />
+          <Route path="/approvals" element={withLayout(<Approvals />)} />
+          <Route path="/reports" element={withLayout(<Reports />)} />
+          <Route path="/audit-log" element={withLayout(<AuditLog />)} />
+          <Route path="/settings" element={withLayout(<SettingsPage />)} />
+          <Route path="/users" element={withLayout(<UserManagement />)} />
+          <Route path="/parent" element={withLayout(<ParentDashboard />)} />
+          <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
+          <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
+          <Route path="/attendance" element={withLayout(<Attendance />)} />
+          <Route path="/exams" element={withLayout(<Exams />)} />
+          <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
+          <Route path="/announcements" element={withLayout(<Announcements />)} />
+          <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
+          <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -69,49 +148,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <SchoolBrandingProvider>
-          <Routes>
-            {/* Public auth routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-
-            {/* Protected app routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/dashboard" element={withLayout(<Index />)} />
-            <Route path="/students" element={withLayout(<Students />)} />
-            <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
-            <Route path="/guardians" element={withLayout(<Guardians />)} />
-            <Route path="/guardians/:id" element={withLayout(<GuardianDetail />)} />
-            <Route path="/staff" element={withLayout(<Staff />)} />
-            <Route path="/staff/:id" element={withLayout(<StaffDetail />)} />
-            <Route path="/fees" element={withLayout(<Fees />)} />
-            <Route path="/invoices" element={withLayout(<Invoices />)} />
-            <Route path="/invoices/:id" element={withLayout(<InvoiceDetail />)} />
-            <Route path="/payments" element={withLayout(<Payments />)} />
-            <Route path="/payments/new" element={withLayout(<RecordPayment />)} />
-            <Route path="/arrears" element={withLayout(<Arrears />)} />
-            <Route path="/payroll" element={withLayout(<Payroll />)} />
-            <Route path="/payroll/:id" element={withLayout(<PayrollRunDetail />)} />
-            <Route path="/approvals" element={withLayout(<Approvals />)} />
-            <Route path="/reports" element={withLayout(<Reports />)} />
-            <Route path="/audit-log" element={withLayout(<AuditLog />)} />
-            <Route path="/settings" element={withLayout(<SettingsPage />)} />
-            <Route path="/users" element={withLayout(<UserManagement />)} />
-            <Route path="/parent" element={withLayout(<ParentDashboard />)} />
-            <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
-            <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
-            <Route path="/attendance" element={withLayout(<Attendance />)} />
-            <Route path="/exams" element={withLayout(<Exams />)} />
-            <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
-            <Route path="/announcements" element={withLayout(<Announcements />)} />
-            <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
-            <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+            <AppRoutes />
           </SchoolBrandingProvider>
         </AuthProvider>
       </BrowserRouter>

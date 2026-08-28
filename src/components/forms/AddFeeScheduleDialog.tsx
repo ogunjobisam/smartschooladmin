@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/errors";
 
 interface FeeItem {
   description: string;
@@ -105,8 +106,8 @@ export function AddFeeScheduleDialog({ children }: { children: React.ReactNode }
       queryClient.invalidateQueries({ queryKey: ["fee-schedules"] });
       setOpen(false);
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create fee schedule.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to create fee schedule."));
     } finally {
       setLoading(false);
     }

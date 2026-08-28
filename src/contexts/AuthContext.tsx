@@ -56,37 +56,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch role, org, schools when user changes
+  // Fetch role, org and schools when the signed-in user changes.
+  //
+  // Keyed on the user id, not the user object: a token refresh hands us a new
+  // object for the same person, and re-running this would reset the school
+  // switcher back to the default while someone is working in another school.
+  const userId = user?.id ?? null;
+
   useEffect(() => {
-    if (!user) return;
-    
+    if (!userId) return;
+    let cancelled = false;
+
     const fetchRole = async () => {
-      const { data } = await supabase.rpc('get_my_role');
-      const row = Array.isArray(data) ? data[0] : data;
+      try {
+        const { data, error } = await supabase.rpc('get_my_role');
+        if (error) throw error;
+        if (cancelled) return;
 
-      setUserRole(row?.role ?? null);
-      setOrgId(row?.org_id ?? null);
+        const row = Array.isArray(data) ? data[0] : data;
+        setUserRole(row?.role ?? null);
+        setOrgId(row?.org_id ?? null);
 
-      // Fetch all schools in org for the switcher + org currency
-      if (row?.org_id) {
-        const [{ data: orgSchools }, { data: orgData }] = await Promise.all([
-          supabase.from('schools').select('id, name').eq('org_id', row.org_id).order('name'),
-          supabase.from('organisation_groups').select('currency').eq('id', row.org_id).maybeSingle(),
-        ]);
-        setSchools(orgSchools || []);
-        if (orgData?.currency) setCurrency(orgData.currency);
+        // Fetch all schools in org for the switcher + org currency
+        if (row?.org_id) {
+          const [{ data: orgSchools }, { data: orgData }] = await Promise.all([
+            supabase.from('schools').select('id, name').eq('org_id', row.org_id).order('name'),
+            supabase.from('organisation_groups').select('currency').eq('id', row.org_id).maybeSingle(),
+          ]);
+          if (cancelled) return;
 
-        // Set initial school
-        if (row?.school_id) {
-          setSchoolId(row.school_id);
-        } else if (orgSchools && orgSchools.length > 0) {
-          setSchoolId(orgSchools[0].id);
+          setSchools(orgSchools || []);
+          if (orgData?.currency) setCurrency(orgData.currency);
+
+          // Pick an initial school, but never override one already chosen.
+          setSchoolId((current) => current ?? row.school_id ?? orgSchools?.[0]?.id ?? null);
         }
+      } catch (err) {
+        // Never leave the app stuck behind a spinner. ProtectedRoute sends a
+        // user with no org to onboarding, which is the right place to land if
+        // we genuinely could not read their role.
+        console.error('Failed to load user role:', err);
+        if (!cancelled) {
+          setUserRole(null);
+          setOrgId(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     };
+
     fetchRole();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const signOut = async () => {
     await supabase.auth.signOut();

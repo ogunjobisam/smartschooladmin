@@ -109,7 +109,6 @@ export default function Attendance() {
   });
 
   // Build rows when data changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!studentData) return;
     const { students, records } = studentData;
