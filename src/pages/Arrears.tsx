@@ -1,6 +1,6 @@
 import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
-import { AlertTriangle, Users, Bell, Loader2 } from "lucide-react";
+import { AlertTriangle, Users, Bell, Loader2, Printer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-currency";
+import { LetterDialog, type LetterTarget } from "@/components/letters/LetterDialog";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -25,6 +26,16 @@ export default function Arrears() {
   const { schoolId, orgId, user } = useAuth();
   const { formatMoney } = useCurrency();
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [letterTargets, setLetterTargets] = useState<LetterTarget[]>([]);
+  const [letterLabel, setLetterLabel] = useState<string>("");
+  const [letterOpen, setLetterOpen] = useState(false);
+
+  const openLetters = (targets: LetterTarget[], label: string) => {
+    if (targets.length === 0) return;
+    setLetterTargets(targets);
+    setLetterLabel(label);
+    setLetterOpen(true);
+  };
 
   type OverdueInvoice = NonNullable<NonNullable<typeof data>["overdueInvoices"]>[number];
 
