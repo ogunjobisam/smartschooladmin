@@ -2348,6 +2348,32 @@ export type Database = {
           },
         ]
       }
+      student_counters: {
+        Row: {
+          last_number: number
+          school_id: string
+          year: number
+        }
+        Insert: {
+          last_number?: number
+          school_id: string
+          year: number
+        }
+        Update: {
+          last_number?: number
+          school_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_counters_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_guardians: {
         Row: {
           guardian_id: string
@@ -2812,6 +2838,7 @@ export type Database = {
         Args: { _school_id: string }
         Returns: string
       }
+      next_student_id_number: { Args: { _school_id: string }; Returns: string }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
@@ -2836,6 +2863,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      school_id_prefix: { Args: { _school_id: string }; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
