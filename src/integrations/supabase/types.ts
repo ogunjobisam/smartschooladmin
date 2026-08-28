@@ -1229,7 +1229,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          demo_expires_at: string | null
           id: string
+          is_demo: boolean
           logo_url: string | null
           name: string
           updated_at: string
@@ -1241,7 +1243,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          demo_expires_at?: string | null
           id?: string
+          is_demo?: boolean
           logo_url?: string | null
           name: string
           updated_at?: string
@@ -1253,7 +1257,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          demo_expires_at?: string | null
           id?: string
+          is_demo?: boolean
           logo_url?: string | null
           name?: string
           updated_at?: string
@@ -2687,6 +2693,11 @@ export type Database = {
         Returns: boolean
       }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      create_demo_org: {
+        Args: { _hours?: number; _label?: string }
+        Returns: Json
+      }
+      delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never

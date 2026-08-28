@@ -9,3 +9,7 @@ verify_jwt = false
 # The public application form is used by people who are not signed in.
 [functions.admissions]
 verify_jwt = false
+
+# Visitors start a demo before they have any account.
+[functions.start-demo]
+verify_jwt = false
