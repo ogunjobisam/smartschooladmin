@@ -10,7 +10,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { orgId } = useAuth();
+  const { orgId, userRole } = useAuth();
+  // Only people who can actually action an approval should be nagged about one.
+  const canReviewApprovals = canAccessPath(userRole, "/approvals");
 
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-approvals-count", orgId],
@@ -23,7 +25,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         .eq("status", "pending");
       return count || 0;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && canReviewApprovals,
   });
 
   return (
