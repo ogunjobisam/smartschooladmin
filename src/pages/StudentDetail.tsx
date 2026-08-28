@@ -2,7 +2,7 @@ import { displayClassName } from "@/lib/sections";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery , useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";

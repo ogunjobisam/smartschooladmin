@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery , useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
