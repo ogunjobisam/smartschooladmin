@@ -7,6 +7,7 @@ export type Status =
   | 'paid' | 'pending' | 'overdue' | 'void'
   // Students and staff
   | 'active' | 'inactive' | 'suspended' | 'withdrawn' | 'terminated' | 'on_leave'
+  | 'graduated' | 'expelled'
   // Approvals and payroll runs
   | 'approved' | 'draft' | 'rejected'
   // Attendance
@@ -26,6 +27,8 @@ const statusStyles: Record<Status, string> = {
   void: "bg-muted text-muted-foreground border-border",
   inactive: "bg-muted text-muted-foreground border-border",
   withdrawn: "bg-muted text-muted-foreground border-border",
+  graduated: "bg-primary/10 text-primary border-primary/20",
+  expelled: "bg-destructive/10 text-destructive border-destructive/20",
   present: "bg-success/10 text-success border-success/20",
   absent: "bg-destructive/10 text-destructive border-destructive/20",
   late: "bg-warning/10 text-warning border-warning/20",
