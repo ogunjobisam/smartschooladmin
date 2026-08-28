@@ -29,7 +29,7 @@ import { Navigate } from "react-router-dom";
 import { getErrorMessage } from "@/lib/errors";
 import {
   ROLES, ROLE_RANK, ADMIN_ROLES, roleBadgeClass, roleLabel,
-  roleAllowedAlongside, rolesCompatible, primaryRole,
+  roleAllowedAlongside, primaryRole,
 } from "@/lib/roles";
 
 interface UserRow {
