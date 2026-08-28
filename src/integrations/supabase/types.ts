@@ -1905,6 +1905,7 @@ export type Database = {
           ends_at: string | null
           id: string
           is_active: boolean
+          is_pinned: boolean
           org_id: string
           school_id: string | null
           sent_at: string | null
@@ -1925,6 +1926,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          is_pinned?: boolean
           org_id: string
           school_id?: string | null
           sent_at?: string | null
@@ -1945,6 +1947,7 @@ export type Database = {
           ends_at?: string | null
           id?: string
           is_active?: boolean
+          is_pinned?: boolean
           org_id?: string
           school_id?: string | null
           sent_at?: string | null
