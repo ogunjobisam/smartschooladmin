@@ -717,6 +717,22 @@ function RecognitionForm({
         status: publishNow && canPublish ? "published" : "draft",
       });
       if (error) throw error;
+
+      // A published award is announced straight away; drafts stay quiet.
+      if (publishNow && canPublish) {
+        await sendRecognitionNotifications({
+          orgId,
+          schoolId,
+          recognitionId,
+          subjectType: subject,
+          studentId: subject === "student" ? personId : null,
+          staffId: subject === "staff" ? personId : null,
+          recipientName: people.find((p) => p.id === personId)?.label ?? "The recipient",
+          title: title.trim() || categoryLabel(category),
+          citation: description.trim() || null,
+          awardDate,
+        });
+      }
     },
     onSuccess: () => {
       toast.success(publishNow && canPublish ? "Recognition published" : "Saved as a draft for approval");

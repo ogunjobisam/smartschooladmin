@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Award } from "lucide-react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { categoryLabel, type RecognitionSubject } from "@/lib/certificates";
 import { displayClassName } from "@/lib/sections";
+import { usePhotoUrls } from "@/hooks/usePhotoUrl";
 
 interface Props {
   subjectType: RecognitionSubject;
@@ -28,7 +30,7 @@ export function RecognitionsPanel({ subjectType, personId, hideWhenEmpty }: Prop
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recognitions")
-        .select("id, title, category, description, award_date, classes(name), academic_periods(name), subjects(name)")
+        .select("id, title, category, description, award_date, photo_path, classes(name), academic_periods(name), subjects(name)")
         .eq(column, personId)
         .eq("status", "published")
         .order("award_date", { ascending: false });
@@ -52,6 +54,8 @@ export function RecognitionsPanel({ subjectType, personId, hideWhenEmpty }: Prop
     },
     enabled: !!personId,
   });
+
+  const photoUrls = usePhotoUrls(recognitions.map((r) => r.photo_path));
 
   const empty = recognitions.length === 0 && appointments.length === 0;
   if (empty && hideWhenEmpty) return null;
@@ -86,7 +90,14 @@ export function RecognitionsPanel({ subjectType, personId, hideWhenEmpty }: Prop
         ))}
 
         {recognitions.map((r) => (
-          <div key={r.id} className="rounded-lg border p-3">
+          <div key={r.id} className="flex gap-3 rounded-lg border p-3">
+            {r.photo_path && (
+              <Avatar className="h-14 w-14 shrink-0 rounded-lg border border-border">
+                <AvatarImage src={photoUrls[r.photo_path]} alt="" className="object-cover" />
+                <AvatarFallback className="rounded-lg bg-muted">🏅</AvatarFallback>
+              </Avatar>
+            )}
+            <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{r.title}</span>
               <Badge variant="secondary">{categoryLabel(r.category)}</Badge>
@@ -102,6 +113,7 @@ export function RecognitionsPanel({ subjectType, personId, hideWhenEmpty }: Prop
               ].filter(Boolean).join(" · ")}
             </p>
             {r.description && <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>}
+            </div>
           </div>
         ))}
       </CardContent>
