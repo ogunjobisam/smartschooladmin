@@ -1,37 +1,23 @@
-# Persona-by-persona test sweep with gating checks
+# Fix garbled class names, then continue the persona test sweep
 
-Goal: walk the real app in the preview as each role, follow the main journeys end to end, and confirm gating holds at both the router and the data layer. Output is a bug report, not fixes.
+## What you spotted
+On the student record, the class reads `{"name":"JSS1","section":"secondary"} • day`. That is not a display bug — the class name is stored that way in the database.
 
-## Roles covered
-proprietor / group_admin, school_admin, principal, bursar, finance_officer, hr_admin, teacher, parent, student, plus a signed-out stranger.
+Confirmed: 14 class rows for **Smartever School of Life** hold a JSON blob as their `name` and have an empty `section`. Every exam name derived from those classes inherited the same text (e.g. `Mid-Term Test - {"name":"Nursery 1","section":"nursery"}`). No other school is affected; the classes created for the other schools are clean (`JSS1`, `secondary`).
 
-## What gets walked per persona
-- Sign in, land on the right home surface (staff dashboard, /parent, /student), sidebar shows only permitted links.
-- Core journey for that role:
-  - Admin/principal: admissions funnel (New to Enrolled), student create/enrol, class subjects, academic period, users and role changes.
-  - Bursar/finance officer: fee schedules, invoice generation, record payment, receipt, arrears reminder.
-  - HR admin: staff record, salary change, payroll run, payslip.
-  - Teacher: attendance marking, exam creation, score entry, report card.
-  - Parent: children, invoices, pay flow, notices, events, bus card.
-  - Student: own results, attendance, invoices, transport.
-- Dead-end hunt: buttons that do nothing, spinners that never resolve, empty states where data exists, broken row clicks and links.
+Cause: those rows were created by an older onboarding path that wrote the whole `{ name, section }` object into the name column instead of splitting it. The current setup function already handles the object correctly, so new schools are fine.
 
-## Gating checks (two layers)
-1. Router: type restricted URLs directly (/payroll, /settings, /users, /audit-log, /admissions, /transport, /reports) as each lower-privileged role; expect the refusal screen, not a blank or broken page.
-2. Data layer: run the same reads the page would make with that role's token; expect empty or denied rather than rows. Includes cross-org reads, parent reading another family's student, student reading another student's scores, and role-escalation attempts (bursar granting super_admin).
+## Fix (data repair, one migration)
+1. For classes whose name starts with `{`: set `name` to the JSON's `name` value and `section` to its `section` value, leaving `level_order` untouched.
+2. For exams whose name contains that same blob: rewrite the trailing part to the plain class name.
+3. Verify no rows remain with `{` in the name in classes, exams, fee_schedules, or announcements titles.
 
-## Method
-- Mint a preview session per role with the platform auth-session tool; drive the app with Playwright at desktop and 375px, capturing screenshots and verbatim console/network errors.
-- Use existing Test School demo data where possible. If a persona has no user, create the minimum needed rows, tag them, record before/after row counts, and delete exactly what was created at the end with counts proven back to prior values.
+## Guard against a repeat
+Add a small display-side safety net so a malformed name never reaches a parent or student again: a shared class-name helper that unwraps a JSON-shaped value before rendering, used wherever a class name is shown (student record, transcript, report card, attendance, exams).
 
-## Constraints
-- No application code, migration, or config changes in this pass. Findings and proposed fixes in words only.
-- No service role key anywhere in .env, VITE_ vars, or src/.
-- No pre-existing row modified or deleted.
+## Then: continue the approved persona sweep
+Resume the persona-by-persona walk already approved: proprietor/group_admin, school_admin, principal, bursar, finance_officer, hr_admin, teacher, parent, student, plus a signed-out stranger — journeys, router gating, data-layer gating, dead-end hunt, desktop and 375px. Any demo data created gets removed with row counts proven back to prior values. Findings reported for us to triage together.
 
-## Report order
-1. Dead ends and broken journeys
-2. Gating or tenant/family boundary leaks
-3. Per-role journey pass/fail table
-4. Design and copy notes (desktop + mobile)
-5. Demo data created and confirmation of its removal
+## Technical notes
+- Migration is `UPDATE` only, scoped by `name LIKE '{%'`; no schema change, no row deletion.
+- Cosmetic React warning also seen in the console (`StatCard` given a ref without `forwardRef`) — noted, fixed only if you want it in this pass.
