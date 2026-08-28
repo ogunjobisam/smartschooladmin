@@ -561,6 +561,122 @@ serve(async (req) => {
       ]);
     }
 
+    // ===== CLASS TEACHERS =====
+    // Without these a teacher signs in to an empty app: every teacher-scoped
+    // policy resolves to nothing until they are attached to a class.
+    if (staffList.length && classes.length) {
+      const teacherLinks = classes.map((c, i) => ({
+        class_id: c.id,
+        staff_id: staffList[i % staffList.length].id,
+        is_form_teacher: true,
+      }));
+      await supabase.from("class_teachers").insert(teacherLinks);
+    }
+
+    // ===== TRANSPORT =====
+    // Two routes with real Lagos-shaped stop names, and about a fifth of the
+    // school riding — including one negotiated fare, so the override is visible.
+    let riderCount = 0;
+    const { data: routes } = await supabase.from("transport_routes").insert([
+      {
+        school_id, name: "Ikoyi – Obalende", fee_per_term: 4500000,
+        driver_name: "Musa Bello", driver_phone: "+234 803 555 0111",
+        vehicle_registration: "LAG-482-KJA", capacity: 18,
+      },
+      {
+        school_id, name: "Yaba – Surulere", fee_per_term: 3800000,
+        driver_name: "Emeka Obi", driver_phone: "+234 802 555 0143",
+        vehicle_registration: "LAG-119-EPE", capacity: 14,
+      },
+    ]).select("id, fee_per_term");
+
+    if (routes?.length) {
+      await supabase.from("transport_stops").insert([
+        { route_id: routes[0].id, name: "Awolowo Road", stop_order: 1, pickup_time: "06:40", dropoff_time: "15:30" },
+        { route_id: routes[0].id, name: "Falomo Roundabout", stop_order: 2, pickup_time: "06:55", dropoff_time: "15:15" },
+        { route_id: routes[0].id, name: "Obalende Bus Stop", stop_order: 3, pickup_time: "07:10", dropoff_time: "15:00" },
+        { route_id: routes[1].id, name: "Herbert Macaulay Way", stop_order: 1, pickup_time: "06:30", dropoff_time: "15:40" },
+        { route_id: routes[1].id, name: "Ojuelaba Junction", stop_order: 2, pickup_time: "06:50", dropoff_time: "15:20" },
+      ]);
+
+      const riders = students.slice(0, 12).map((st, i) => ({
+        student_id: st.id,
+        route_id: routes[i % routes.length].id,
+        academic_period_id: currentPeriod?.id ?? null,
+        // One sibling on a reduced fare, so the override shows on the invoice.
+        fee_override: i === 0 ? 3000000 : null,
+      }));
+      const { data: seededRiders } = await supabase.from("student_transport").insert(riders).select("id");
+      riderCount = seededRiders?.length ?? 0;
+    }
+
+    // ===== NOTICES =====
+    // One live, one scheduled and one draft, so all three states are visible.
+    const today = new Date();
+    const inTwoWeeks = new Date(today.getTime() + 14 * 86400000).toISOString().slice(0, 10);
+    await supabase.from("school_notices").insert([
+      {
+        school_id, title: "Second term resumes 6 January",
+        body: "Boarders return on the 5th. Fees are due before resumption.",
+        is_published: true, display_order: 0,
+      },
+      {
+        school_id, title: "Admissions open for the 2027/2028 session",
+        body: "Application forms are available online. Entrance assessment holds in March.",
+        is_published: true, display_order: 1,
+      },
+      {
+        school_id, title: "Inter-house sports — date to be confirmed",
+        body: "Draft notice, not yet published.",
+        is_published: false, starts_on: inTwoWeeks, display_order: 2,
+      },
+    ]);
+
+    // ===== EVENTS =====
+    const day = (offset: number) => new Date(today.getTime() + offset * 86400000).toISOString();
+    await supabase.from("school_events").insert([
+      { org_id, school_id, title: "PTA meeting", description: "Termly parents and teachers meeting.", location: "School hall", starts_at: day(7), ends_at: day(7), audience: "parents", created_by: userId },
+      { org_id, school_id, title: "Mid-term break", starts_at: day(21), ends_at: day(25), all_day: true, audience: "all", created_by: userId },
+      { org_id, school_id, title: "Staff briefing", location: "Staff room", starts_at: day(2), ends_at: day(2), audience: "staff", created_by: userId },
+      { org_id, school_id, title: "Inter-house sports", location: "Main field", starts_at: day(35), ends_at: day(35), all_day: true, audience: "all", created_by: userId },
+    ]);
+
+    // ===== ADMISSIONS =====
+    // A funnel with something at every stage, so the counts across the top of
+    // /admissions are not all zero on a demo.
+    await supabase.from("schools").update({
+      admissions_open: true,
+      admissions_intro: "Admissions are open for the 2027/2028 session, from Nursery through to SS3. Entrance assessment holds in March.",
+    }).eq("id", school_id);
+
+    const applicantNames: [string, string, string, string][] = [
+      ["Zainab", "Bello", "Alhaja Fatima Bello", "new"],
+      ["Tobi", "Adeyemi", "Mr Kunle Adeyemi", "new"],
+      ["Chiamaka", "Eze", "Mrs Ngozi Eze", "reviewing"],
+      ["Daniel", "Okonkwo", "Chief Emeka Okonkwo", "interview"],
+      ["Aisha", "Yusuf", "Dr Halima Yusuf", "offered"],
+      ["Segun", "Balogun", "Mr Tunde Balogun", "accepted"],
+      ["Ifeoma", "Nwachukwu", "Mrs Chioma Nwachukwu", "rejected"],
+    ];
+    const sections = ["nursery", "primary", "primary", "secondary", "secondary", "primary", "nursery"];
+    await supabase.from("applications").insert(
+      applicantNames.map(([first, last, guardian, status], i) => ({
+        school_id,
+        applicant_first_name: first,
+        applicant_last_name: last,
+        guardian_name: guardian,
+        guardian_phone: `+234 80${i} 555 01${String(i).padStart(2, "0")}`,
+        guardian_email: `${first.toLowerCase()}.${last.toLowerCase()}@example.com`,
+        section: sections[i],
+        status,
+        previous_school: i % 3 === 0 ? "Little Angels Nursery" : null,
+        source: ["A friend or family member", "Facebook or Instagram", "Walked or drove past"][i % 3],
+        // Spread arrivals over the last fortnight so the "waiting" column varies
+        // and the stale flag has something to show.
+        created_at: new Date(today.getTime() - (i * 3 + 1) * 86400000).toISOString(),
+      }))
+    );
+
     // ===== AUDIT LOG =====
     await supabase.from("audit_logs").insert([
       { org_id, action: "seed", entity_type: "system", detail: "Seeded comprehensive demo data for all features", user_id: userId },
@@ -574,6 +690,8 @@ serve(async (req) => {
         subjects: subjectsList.length,
         invoices: invoiceCount,
         payments: paymentCount,
+        riders: riderCount,
+        applications: 7,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
