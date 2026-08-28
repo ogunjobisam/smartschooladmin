@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
+import { describeIdError } from "@/lib/id-numbers";
 import type { Enums } from "@/integrations/supabase/types";
 
 interface StaffData {
@@ -108,7 +109,7 @@ export function EditStaffDialog({ open, onOpenChange, staff }: Props) {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       onOpenChange(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to update staff."));
+      toast.error(describeIdError(err, "staff", "Failed to update staff."));
     } finally {
       setLoading(false);
     }

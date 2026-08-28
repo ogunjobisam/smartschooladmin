@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { describeIdError } from "@/lib/id-numbers";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -193,7 +194,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
         err.errors.forEach(e => { if (e.path[0]) fieldErrors[e.path[0] as string] = e.message; });
         setErrors(fieldErrors);
       } else {
-        toast({ title: "Error", description: err.message || "Failed to add student.", variant: "destructive" });
+        toast({ title: "Error", description: describeIdError(err, "student", "Failed to add student."), variant: "destructive" });
       }
     },
   });
