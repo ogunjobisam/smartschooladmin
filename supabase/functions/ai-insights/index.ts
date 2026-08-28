@@ -109,16 +109,20 @@ Deno.serve(async (req) => {
       return json({ error: "Your role cannot run this analysis" }, 403);
     }
 
-    // Entitlement: the add-on is paid for separately, so it is off unless bought.
+    // Entitlement: every organisation gets FREE_MONTHLY_ANALYSES a month for
+    // free; buying the add-on raises the ceiling to its own monthly limit.
     const { data: org } = await admin
       .from("organisation_groups")
       .select("id, name, currency, ai_addon_enabled, ai_monthly_limit")
       .eq("id", callerRole.org_id)
       .maybeSingle();
     if (!org) return json({ error: "Organisation not found" }, 404);
-    if (!org.ai_addon_enabled) {
-      return json({ error: "The AI analysis add-on is not enabled for your organisation.", code: "addon_disabled" }, 402);
-    }
+
+    const FREE_MONTHLY_ANALYSES = 5;
+    const effectiveLimit = org.ai_addon_enabled
+      ? Math.max(org.ai_monthly_limit ?? 0, FREE_MONTHLY_ANALYSES)
+      : FREE_MONTHLY_ANALYSES;
+
 
     const monthStart = new Date();
     monthStart.setUTCDate(1);
@@ -131,11 +135,13 @@ Deno.serve(async (req) => {
       .eq("status", "succeeded")
       .gte("created_at", monthStart.toISOString());
 
-    if ((usedThisMonth ?? 0) >= org.ai_monthly_limit) {
+    if ((usedThisMonth ?? 0) >= effectiveLimit) {
       return json(
         {
-          error: `Your organisation has used all ${org.ai_monthly_limit} AI analyses for this month.`,
-          code: "limit_reached",
+          error: org.ai_addon_enabled
+            ? `Your organisation has used all ${effectiveLimit} AI analyses for this month.`
+            : `Your organisation has used all ${effectiveLimit} free AI analyses for this month. Buy the AI Analysis add-on for a larger monthly allowance.`,
+          code: org.ai_addon_enabled ? "limit_reached" : "free_limit_reached",
         },
         429
       );
@@ -230,7 +236,8 @@ Deno.serve(async (req) => {
       analysis_type: analysisType,
       usage: {
         used_this_month: (usedThisMonth ?? 0) + 1,
-        monthly_limit: org.ai_monthly_limit,
+        monthly_limit: effectiveLimit,
+        has_addon: org.ai_addon_enabled,
       },
     });
   } catch (err) {

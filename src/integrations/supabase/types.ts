@@ -2875,6 +2875,7 @@ export type Database = {
         Args: never
         Returns: {
           enabled: boolean
+          has_addon: boolean
           monthly_limit: number
           used: number
         }[]
