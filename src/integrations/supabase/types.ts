@@ -694,6 +694,89 @@ export type Database = {
           },
         ]
       }
+      exam_grade_bands: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          label: string
+          min_percent: number
+          remark: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          label: string
+          min_percent: number
+          remark?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          label?: string
+          min_percent?: number
+          remark?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_grade_bands_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_subjects: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          max_score: number
+          subject_id: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          max_score?: number
+          subject_id: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          max_score?: number
+          subject_id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_subjects_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exams: {
         Row: {
           academic_period_id: string | null
