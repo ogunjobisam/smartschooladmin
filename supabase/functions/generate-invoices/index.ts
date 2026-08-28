@@ -29,7 +29,7 @@ serve(async (req) => {
     const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
     if (!user) return jsonError("Unauthorized", 401);
 
-    const { fee_schedule_id, school_id, due_date } = await req.json();
+    const { fee_schedule_id, school_id, due_date, include_transport } = await req.json();
     if (!fee_schedule_id || !school_id) throw new Error("fee_schedule_id and school_id required");
 
     // Tenant isolation: everything below runs with the service role key and so
@@ -113,6 +113,62 @@ serve(async (req) => {
       });
     }
 
+    // 3b. Transport, when the bursar asked for it on this run.
+    //
+    // A route carries a per-term fee and a rider may have a negotiated one, and
+    // until now nothing ever charged either — the fee was recorded and then
+    // ignored. Riders are matched on the period being invoiced; an assignment
+    // with no period is treated as standing, so a school that has not set a
+    // current term still bills correctly.
+    const transportByStudent = new Map<string, { amount: number; route: string }>();
+    let transportCategoryId: string | null = null;
+
+    if (include_transport) {
+      let riderQuery = supabase
+        .from("student_transport")
+        .select("student_id, fee_override, academic_period_id, transport_routes(name, fee_per_term)")
+        .in("student_id", newStudentIds);
+      if (schedule.academic_period_id) {
+        riderQuery = riderQuery.or(
+          `academic_period_id.eq.${schedule.academic_period_id},academic_period_id.is.null`
+        );
+      }
+      const { data: riders, error: riderErr } = await riderQuery;
+      if (riderErr) throw riderErr;
+
+      for (const rider of riders || []) {
+        const route = rider.transport_routes as { name: string; fee_per_term: number } | null;
+        if (!route) continue;
+        const amount = rider.fee_override ?? route.fee_per_term ?? 0;
+        // A zero fee is a free ride, not a line worth printing.
+        if (amount <= 0) continue;
+        transportByStudent.set(rider.student_id, { amount, route: route.name });
+      }
+
+      if (transportByStudent.size > 0) {
+        // One shared category per organisation, created on first use so a
+        // school never has to set one up before transport can be billed.
+        const { data: existing } = await supabase
+          .from("fee_categories")
+          .select("id")
+          .eq("org_id", targetSchool.org_id)
+          .ilike("name", "transport")
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          transportCategoryId = existing.id;
+        } else {
+          const { data: created } = await supabase
+            .from("fee_categories")
+            .insert({ org_id: targetSchool.org_id, name: "Transport", description: "School bus fees" })
+            .select("id")
+            .single();
+          transportCategoryId = created?.id ?? null;
+        }
+      }
+    }
+
     // 4. Get next invoice number
     const { data: lastInvoice } = await supabase
       .from("invoices")
@@ -133,7 +189,7 @@ serve(async (req) => {
       school_id,
       student_id: studentId,
       invoice_number: `INV-${String(nextNum + i).padStart(5, "0")}`,
-      total_amount: schedule.total_amount,
+      total_amount: schedule.total_amount + (transportByStudent.get(studentId)?.amount ?? 0),
       amount_paid: 0,
       status: "pending" as const,
       academic_period_id: schedule.academic_period_id || null,
@@ -144,16 +200,31 @@ serve(async (req) => {
     const { data: createdInvoices, error: invErr } = await supabase
       .from("invoices")
       .insert(invoiceInserts)
-      .select("id");
+      .select("id, student_id");
     if (invErr) throw invErr;
 
     // 6. Create invoice items based on fee schedule name
     if (createdInvoices) {
-      const itemInserts = createdInvoices.map((inv) => ({
-        invoice_id: inv.id,
-        description: schedule.name,
-        amount: schedule.total_amount,
-      }));
+      const itemInserts: Record<string, unknown>[] = [];
+      for (const inv of createdInvoices) {
+        itemInserts.push({
+          invoice_id: inv.id,
+          description: schedule.name,
+          amount: schedule.total_amount,
+        });
+
+        // A separate line, so a parent can see what the bus costs rather than
+        // finding the term's fee mysteriously larger than the published one.
+        const transport = transportByStudent.get(inv.student_id);
+        if (transport) {
+          itemInserts.push({
+            invoice_id: inv.id,
+            description: `Transport — ${transport.route}`,
+            amount: transport.amount,
+            fee_category_id: transportCategoryId,
+          });
+        }
+      }
 
       // Insert in batches of 100
       for (let b = 0; b < itemInserts.length; b += 100) {
@@ -166,7 +237,9 @@ serve(async (req) => {
       org_id: targetSchool.org_id,
       action: "bulk_create",
       entity_type: "invoice",
-      detail: `Generated ${createdInvoices?.length} invoices from fee schedule "${schedule.name}"`,
+      detail:
+        `Generated ${createdInvoices?.length} invoices from fee schedule "${schedule.name}"` +
+        (transportByStudent.size > 0 ? `, including transport for ${transportByStudent.size} rider(s)` : ""),
       user_id: user.id,
     });
 

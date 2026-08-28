@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
   open: boolean;
@@ -29,6 +30,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ created: number; skipped: number; total_amount?: number } | null>(null);
+  const [includeTransport, setIncludeTransport] = useState(true);
 
   const { data: schedules } = useQuery({
     queryKey: ["fee-schedules-active", schoolId],
@@ -47,6 +49,48 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
 
   const selectedSchedule = schedules?.find((s) => s.id === scheduleId);
 
+  // What transport would add to this run, shown before the bursar commits to it.
+  // The edge function decides for real; this is the same rule, for the preview.
+  const { data: transportPreview } = useQuery({
+    queryKey: ["transport-preview", scheduleId, selectedSchedule?.class_id, selectedSchedule?.academic_period_id],
+    queryFn: async () => {
+      if (!selectedSchedule?.class_id) return { riders: 0, total: 0 };
+
+      let enrolQuery = supabase
+        .from("enrolments")
+        .select("student_id")
+        .eq("class_id", selectedSchedule.class_id);
+      if (selectedSchedule.academic_period_id) {
+        enrolQuery = enrolQuery.eq("academic_period_id", selectedSchedule.academic_period_id);
+      }
+      const { data: enrolments } = await enrolQuery;
+      const studentIds = [...new Set((enrolments || []).map((e) => e.student_id))];
+      if (studentIds.length === 0) return { riders: 0, total: 0 };
+
+      let riderQuery = supabase
+        .from("student_transport")
+        .select("student_id, fee_override, transport_routes(fee_per_term)")
+        .in("student_id", studentIds);
+      if (selectedSchedule.academic_period_id) {
+        riderQuery = riderQuery.or(
+          `academic_period_id.eq.${selectedSchedule.academic_period_id},academic_period_id.is.null`
+        );
+      }
+      const { data: riders } = await riderQuery;
+
+      let total = 0;
+      let count = 0;
+      for (const rider of riders || []) {
+        const amount = rider.fee_override ?? rider.transport_routes?.fee_per_term ?? 0;
+        if (amount <= 0) continue;
+        total += amount;
+        count += 1;
+      }
+      return { riders: count, total };
+    },
+    enabled: !!scheduleId && !!selectedSchedule?.class_id && open,
+  });
+
   const handleGenerate = async () => {
     if (!scheduleId || !schoolId) return;
     setLoading(true);
@@ -54,7 +98,12 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-invoices", {
-        body: { fee_schedule_id: scheduleId, school_id: schoolId, due_date: dueDate || null },
+        body: {
+          fee_schedule_id: scheduleId,
+          school_id: schoolId,
+          due_date: dueDate || null,
+          include_transport: includeTransport,
+        },
       });
 
       if (error) throw error;
@@ -148,6 +197,25 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                   <span className="font-mono font-medium">{formatMoney(selectedSchedule.total_amount)}</span>
                 </div>
               </div>
+            )}
+
+            {selectedSchedule && (transportPreview?.riders ?? 0) > 0 && (
+              <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+                <Checkbox
+                  checked={includeTransport}
+                  onCheckedChange={(v) => setIncludeTransport(v === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Add transport to riders&rsquo; invoices
+                  <span className="block text-xs text-muted-foreground">
+                    {transportPreview!.riders} of these students ride the bus, adding{" "}
+                    <span className="font-mono">{formatMoney(transportPreview!.total)}</span> in
+                    total. Each gets its own line on the invoice. Untick this if you bill
+                    transport separately.
+                  </span>
+                </span>
+              </label>
             )}
 
             <div className="space-y-2">
