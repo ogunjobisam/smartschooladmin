@@ -22,6 +22,7 @@ import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
 import { printTranscript, TranscriptData } from "@/lib/print-documents";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
+import { InviteStudentButton } from "@/components/students/InviteStudentButton";
 import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
@@ -226,7 +227,12 @@ export default function StudentDetail() {
               <p className="text-sm text-muted-foreground">{className} • {student.student_type || "Day"}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <InviteStudentButton
+              studentId={student.id}
+              studentName={`${student.first_name} ${student.last_name}`}
+              hasLogin={!!student.user_id}
+            />
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintTranscript}><Printer className="h-3.5 w-3.5" /> Transcript</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
           </div>

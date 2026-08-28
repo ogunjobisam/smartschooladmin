@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, navItemsForRole, profileLinkForRole } from "@/lib/access";
+import { canAccessPath, navItemsForRole, portalPathForRole, profileLinkForRole } from "@/lib/access";
 
 describe("canAccessPath", () => {
   it("lets a proprietor everywhere in the app shell", () => {
@@ -30,10 +30,24 @@ describe("canAccessPath", () => {
     expect(canAccessPath("parent", "/students")).toBe(false);
   });
 
-  it("always allows the parent portal, notifications and onboarding", () => {
+  it("always allows the self-service portals, notifications and onboarding", () => {
     expect(canAccessPath("parent", "/parent")).toBe(true);
+    expect(canAccessPath("student", "/student")).toBe(true);
     expect(canAccessPath("teacher", "/notifications")).toBe(true);
     expect(canAccessPath("parent", "/onboarding")).toBe(true);
+  });
+
+  it("keeps a student out of every staff page", () => {
+    for (const path of ["/students", "/staff", "/invoices", "/payments", "/attendance",
+                        "/exams", "/performance", "/payroll", "/reports", "/settings", "/users"]) {
+      expect(canAccessPath("student", path), path).toBe(false);
+    }
+  });
+
+  it("lets a student reach their own portal and preferences", () => {
+    expect(canAccessPath("student", "/student")).toBe(true);
+    expect(canAccessPath("student", "/notification-settings")).toBe(true);
+    expect(canAccessPath("student", "/notifications")).toBe(true);
   });
 
   it("inherits access on detail routes from their list page", () => {
@@ -60,6 +74,14 @@ describe("canAccessPath", () => {
 });
 
 describe("navItemsForRole", () => {
+  it("shows a student only their own preferences in the nav", () => {
+    const urls = navItemsForRole("student").map((i) => i.url);
+    expect(urls).toContain("/dashboard");
+    expect(urls).not.toContain("/students");
+    expect(urls).not.toContain("/exams");
+    expect(urls).not.toContain("/invoices");
+  });
+
   it("shows a parent only what their portal covers", () => {
     const urls = navItemsForRole("parent").map((i) => i.url);
     expect(urls).toContain("/dashboard");
@@ -76,7 +98,7 @@ describe("navItemsForRole", () => {
 
   it("never offers a link the router would then refuse", () => {
     const roles = ["super_admin", "proprietor", "group_admin", "school_admin", "principal",
-      "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
+      "bursar", "finance_officer", "hr_admin", "teacher", "parent", "student"];
     for (const role of roles) {
       for (const item of navItemsForRole(role)) {
         expect(canAccessPath(role, item.url), `${role} -> ${item.url}`).toBe(true);
@@ -85,10 +107,24 @@ describe("navItemsForRole", () => {
   });
 });
 
+describe("portalPathForRole", () => {
+  it("sends self-service roles to their own portal", () => {
+    expect(portalPathForRole("parent")).toBe("/parent");
+    expect(portalPathForRole("student")).toBe("/student");
+  });
+
+  it("leaves staff on the school dashboard", () => {
+    expect(portalPathForRole("bursar")).toBeNull();
+    expect(portalPathForRole("proprietor")).toBeNull();
+    expect(portalPathForRole(null)).toBeNull();
+  });
+});
+
 describe("profileLinkForRole", () => {
   it("sends roles without settings access to their own preferences instead", () => {
     expect(profileLinkForRole("proprietor")).toBe("/settings");
     expect(profileLinkForRole("teacher")).toBe("/notification-settings");
     expect(profileLinkForRole("parent")).toBe("/notification-settings");
+    expect(profileLinkForRole("student")).toBe("/notification-settings");
   });
 });

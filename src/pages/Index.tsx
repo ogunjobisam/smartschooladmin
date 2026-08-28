@@ -10,6 +10,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { useCurrency } from "@/hooks/use-currency";
+import { portalPathForRole } from "@/lib/access";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -28,7 +29,9 @@ export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const { formatMoney } = useCurrency();
-  const isParent = userRole === "parent";
+  // Parents and students each have their own portal; the school dashboard is
+  // not theirs to see.
+  const portalPath = portalPathForRole(userRole);
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", schoolId, orgId],
@@ -56,7 +59,7 @@ export default function Dashboard() {
         pendingApprovals: approvalsRes.count || 0,
       };
     },
-    enabled: !!schoolId && !isParent,
+    enabled: !!schoolId && !portalPath,
   });
 
   const { data: approvals } = useQuery({
@@ -72,7 +75,7 @@ export default function Dashboard() {
         .limit(5);
       return data || [];
     },
-    enabled: !!orgId && !isParent,
+    enabled: !!orgId && !portalPath,
   });
 
   const { data: auditLogs } = useQuery({
@@ -87,7 +90,7 @@ export default function Dashboard() {
         .limit(5);
       return data || [];
     },
-    enabled: !!orgId && !isParent,
+    enabled: !!orgId && !portalPath,
   });
 
   const activityIcons: Record<string, typeof Receipt> = {
@@ -111,10 +114,10 @@ export default function Dashboard() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // Parents get their own portal. This has to come after every hook above:
-  // returning early while `userRole` is still resolving would change the hook
-  // count between renders and crash the page.
-  if (isParent) return <Navigate to="/parent" replace />;
+  // This has to come after every hook above: returning early while `userRole`
+  // is still resolving would change the hook count between renders and crash
+  // the page.
+  if (portalPath) return <Navigate to={portalPath} replace />;
 
   return (
     <div className="space-y-6">

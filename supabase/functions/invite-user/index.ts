@@ -14,7 +14,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin"];
-const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent"];
+const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent", "student"];
 
 // Role hierarchy: lower index = higher privilege
 const ROLE_RANK: Record<string, number> = {
@@ -28,6 +28,7 @@ const ROLE_RANK: Record<string, number> = {
   hr_admin: 7,
   teacher: 8,
   parent: 9,
+  student: 10,
 };
 
 type AdminClient = ReturnType<typeof createClient>;
@@ -158,7 +159,7 @@ Deno.serve(async (req) => {
     // School-level admins may only hand out these roles. The rank check in
     // canAssignRole() alone would let a school_admin create a principal, which
     // is a school-wide authority they should not be able to grant.
-    const SCHOOL_ADMIN_ALLOWED_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent"];
+    const SCHOOL_ADMIN_ALLOWED_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent", "student"];
     const assignableByCaller = (targetRole: string) =>
       canAssignRole(callerRole.role, targetRole) &&
       (!callerIsSchoolLevel || SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole));
@@ -249,6 +250,77 @@ Deno.serve(async (req) => {
       if (linkError) return jsonResponse({ error: linkError.message }, 400);
 
       const inviteLink = isNew ? await createInviteLink(adminClient, email, org_id, null) : null;
+
+      return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
+    }
+
+    // Invite a student to the portal, linking the login to their student record.
+    if (action === "invite_student") {
+      const { email, full_name, org_id, student_id } = body;
+      if (!email || !org_id || !student_id) return jsonResponse({ error: "email, org_id, and student_id required" }, 400);
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email) || email.length > 255) return jsonResponse({ error: "Invalid email format" }, 400);
+
+      // The student must be in a school belonging to the caller's org, and a
+      // school-level caller may only invite students at their own school.
+      const { data: student } = await adminClient
+        .from("students")
+        .select("id, school_id, first_name, last_name, schools!inner(id, org_id, name)")
+        .eq("id", student_id)
+        .maybeSingle();
+
+      const studentSchool = student?.schools as { org_id: string; name: string } | null;
+      if (!student || studentSchool?.org_id !== org_id) {
+        return jsonResponse({ error: "Student not found in your organisation" }, 404);
+      }
+      if (callerIsSchoolLevel && student.school_id !== callerSchoolId) {
+        return jsonResponse({ error: "Cannot invite students from other schools" }, 403);
+      }
+
+      const existingUser = await findUserByEmail(adminClient, email);
+
+      let userId: string;
+      let isNew = false;
+      if (existingUser) {
+        userId = existingUser.id;
+        const { data: existingRole } = await adminClient
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", existingUser.id)
+          .eq("org_id", org_id)
+          .maybeSingle();
+        if (existingRole) return jsonResponse({ error: "User already has a role in this organisation" }, 409);
+      } else {
+        const tempPassword = crypto.randomUUID() + "Aa1!";
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { full_name: full_name || `${student.first_name} ${student.last_name}` },
+        });
+        if (createError || !newUser?.user) return jsonResponse({ error: createError?.message || "Failed to create user" }, 400);
+        userId = newUser.user.id;
+        isNew = true;
+      }
+
+      const { error: roleError } = await adminClient.from("user_roles").insert({
+        user_id: userId,
+        role: "student",
+        org_id,
+        school_id: student.school_id,
+      });
+      if (roleError) return jsonResponse({ error: roleError.message }, 400);
+
+      const { error: linkError } = await adminClient
+        .from("students")
+        .update({ user_id: userId })
+        .eq("id", student_id);
+      if (linkError) return jsonResponse({ error: linkError.message }, 400);
+
+      const inviteLink = isNew
+        ? await createInviteLink(adminClient, email, org_id, studentSchool?.name ?? null)
+        : null;
 
       return jsonResponse({ success: true, user_id: userId, is_new: isNew, invite_link: inviteLink });
     }

@@ -2037,6 +2037,7 @@ export type Database = {
           status: Database["public"]["Enums"]["student_status"]
           student_id_number: string | null
           student_type: string | null
+          user_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2052,6 +2053,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["student_status"]
           student_id_number?: string | null
           student_type?: string | null
+          user_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2067,6 +2069,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["student_status"]
           student_id_number?: string | null
           student_type?: string | null
+          user_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2172,6 +2175,8 @@ export type Database = {
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
       my_staff_id: { Args: never; Returns: string }
+      my_student_id: { Args: never; Returns: string }
+      is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
@@ -2208,6 +2213,7 @@ export type Database = {
         | "hr_admin"
         | "teacher"
         | "parent"
+        | "student"
         | "school_admin"
       approval_status: "pending" | "approved" | "rejected"
       approval_type:

@@ -20,7 +20,8 @@ export type AppRole =
   | "finance_officer"
   | "hr_admin"
   | "teacher"
-  | "parent";
+  | "parent"
+  | "student";
 
 export type NavGroup = "overview" | "finance" | "communications" | "operations" | "system";
 
@@ -64,7 +65,7 @@ export const NAV_ITEMS: NavItem[] = [
  * Routes every signed-in user can reach regardless of role: their own portal,
  * their own notifications, and onboarding.
  */
-const ALWAYS_ALLOWED = ["/onboarding", "/notifications", "/parent"];
+const ALWAYS_ALLOWED = ["/onboarding", "/notifications", "/parent", "/student"];
 
 /**
  * Detail and sub-routes inherit access from the list page they belong to.
@@ -117,6 +118,12 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "dashboard",
     "preferences",
   ],
+  // A student sees their own portal and their own notification preferences.
+  // Everything else on the dashboard is the school's, not theirs.
+  student: [
+    "dashboard",
+    "preferences",
+  ],
 };
 
 const URL_BY_KEY = new Map(NAV_ITEMS.map((i) => [i.key, i.url]));
@@ -126,6 +133,13 @@ export function navItemsForRole(role: string | null): NavItem[] {
   const keys = NAV_KEY_BY_ROLE[(role || "teacher") as AppRole] ?? NAV_KEY_BY_ROLE.teacher;
   const allowed = new Set(keys);
   return NAV_ITEMS.filter((i) => allowed.has(i.key));
+}
+
+/** The self-service portal for a role, or null for staff. */
+export function portalPathForRole(role: string | null): string | null {
+  if (role === "parent") return "/parent";
+  if (role === "student") return "/student";
+  return null;
 }
 
 /** Where the "Profile & Settings" link should point for this role. */

@@ -46,6 +46,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
+const StudentPortal = lazy(() => import("./pages/StudentPortal"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 const ProprietorDashboard = lazy(() => import("./pages/ProprietorDashboard"));
@@ -127,6 +128,7 @@ function AppRoutes() {
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />
           <Route path="/parent" element={withLayout(<ParentDashboard />)} />
+          <Route path="/student" element={withLayout(<StudentPortal />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />
