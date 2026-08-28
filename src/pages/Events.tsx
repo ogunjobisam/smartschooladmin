@@ -26,6 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
 import { sendEventNotifications } from "@/lib/notification-dispatcher";
+import { EventRsvp } from "@/components/events/EventRsvp";
+import { AddToCalendarButton, SubscribeCalendarButton } from "@/components/events/AddToCalendar";
 import type { Enums } from "@/integrations/supabase/types";
 
 type Audience = Enums<"event_audience">;
@@ -73,6 +75,19 @@ export default function Events() {
       return data || [];
     },
     enabled: !!orgId && !!schoolId,
+  });
+
+  const { data: school } = useQuery({
+    queryKey: ["school-calendar-meta", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("schools")
+        .select("name, admissions_slug")
+        .eq("id", schoolId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!schoolId,
   });
 
   // Past events stay visible but out of the way — a calendar that hides last
@@ -137,6 +152,7 @@ export default function Events() {
         description: description.trim() || null,
         audience,
         channels,
+        startsAt: start.toISOString(),
       });
     },
     onSuccess: (result) => {
@@ -208,6 +224,12 @@ export default function Events() {
               </p>
             )}
             {event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}
+            {!muted && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <EventRsvp eventId={event.id} eventSchoolId={event.school_id} />
+                <AddToCalendarButton event={event} compact />
+              </div>
+            )}
           </div>
         </div>
 
@@ -244,6 +266,11 @@ export default function Events() {
   return (
     <div className="space-y-6">
       <PageHeader title="Events" description="Term dates, exams, meetings and everything else on the school calendar.">
+        <SubscribeCalendarButton
+          events={upcoming}
+          calendarName={school?.name ? `${school.name} events` : "School events"}
+          feedSlug={school?.admissions_slug}
+        />
         {canManage && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
             <DialogTrigger asChild>

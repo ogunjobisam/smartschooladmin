@@ -41,6 +41,7 @@ const NOTIFICATION_TYPES = [
   { type: "staff_invite", label: "Staff invitation", description: "Onboarding invitations for colleagues", audience: "staff", group: "account" },
 
   { type: "school_announcement", label: "School announcements", description: "General news and updates from the school", audience: "everyone", group: "school" },
+  { type: "school_event", label: "School events", description: "New events on the calendar, plus a reminder before each one", audience: "everyone", group: "school" },
 ] as const;
 
 const GROUPS: { key: string; title: string; description: string }[] = [
@@ -102,6 +103,8 @@ interface Delivery {
   quiet_start: string;
   quiet_end: string;
   timezone: string;
+  event_reminders_enabled: boolean;
+  event_reminder_lead_minutes: number;
 }
 
 const DEFAULT_DELIVERY: Delivery = {
@@ -112,7 +115,18 @@ const DEFAULT_DELIVERY: Delivery = {
   quiet_start: "21:00",
   quiet_end: "07:00",
   timezone: "Africa/Lagos",
+  event_reminders_enabled: true,
+  event_reminder_lead_minutes: 1440,
 };
+
+const REMINDER_LEADS: { value: number; label: string }[] = [
+  { value: 60, label: "1 hour before" },
+  { value: 180, label: "3 hours before" },
+  { value: 720, label: "12 hours before" },
+  { value: 1440, label: "A day before" },
+  { value: 4320, label: "3 days before" },
+  { value: 10080, label: "A week before" },
+];
 
 const FREQ_KEY: Record<Channel, keyof Delivery> = {
   in_app: "in_app_frequency",
@@ -214,6 +228,8 @@ export default function NotificationSettings() {
       quiet_start: trimTime(savedDelivery.quiet_start),
       quiet_end: trimTime(savedDelivery.quiet_end),
       timezone: savedDelivery.timezone,
+      event_reminders_enabled: savedDelivery.event_reminders_enabled,
+      event_reminder_lead_minutes: savedDelivery.event_reminder_lead_minutes,
     });
   }, [savedDelivery]);
 
@@ -288,6 +304,8 @@ export default function NotificationSettings() {
               quiet_start: trimTime(savedDelivery.quiet_start),
               quiet_end: trimTime(savedDelivery.quiet_end),
               timezone: savedDelivery.timezone,
+              event_reminders_enabled: savedDelivery.event_reminders_enabled,
+              event_reminder_lead_minutes: savedDelivery.event_reminder_lead_minutes,
             }
           : null,
         channels: (savedPrefs || []).map((p) => ({
@@ -438,6 +456,42 @@ export default function NotificationSettings() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Event reminders */}
+          <div className="rounded-lg border p-4 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Remind me about events</p>
+                <p className="text-xs text-muted-foreground">
+                  A single reminder before each event you are invited to, on the channels you ticked
+                  below. Turn this off to hear about an event only when it is first added.
+                </p>
+              </div>
+              <Switch
+                checked={delivery.event_reminders_enabled}
+                onCheckedChange={(checked) => setDelivery((d) => ({ ...d, event_reminders_enabled: checked }))}
+              />
+            </div>
+
+            {delivery.event_reminders_enabled && (
+              <div className="space-y-1.5 sm:max-w-xs">
+                <Label className="text-xs">Send the reminder</Label>
+                <Select
+                  value={String(delivery.event_reminder_lead_minutes)}
+                  onValueChange={(value) =>
+                    setDelivery((d) => ({ ...d, event_reminder_lead_minutes: Number(value) }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {REMINDER_LEADS.map((lead) => (
+                      <SelectItem key={lead.value} value={String(lead.value)}>{lead.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>

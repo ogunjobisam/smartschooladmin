@@ -694,6 +694,67 @@ export type Database = {
           },
         ]
       }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          event_id: string
+          guests: number
+          id: string
+          note: string | null
+          org_id: string
+          school_id: string | null
+          status: Database["public"]["Enums"]["event_rsvp_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          guests?: number
+          id?: string
+          note?: string | null
+          org_id: string
+          school_id?: string | null
+          status: Database["public"]["Enums"]["event_rsvp_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          guests?: number
+          id?: string
+          note?: string | null
+          org_id?: string
+          school_id?: string | null
+          status?: Database["public"]["Enums"]["event_rsvp_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "school_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_grade_bands: {
         Row: {
           created_at: string
@@ -1153,6 +1214,8 @@ export type Database = {
         Row: {
           created_at: string
           email_frequency: string
+          event_reminder_lead_minutes: number
+          event_reminders_enabled: boolean
           id: string
           in_app_frequency: string
           quiet_end: string
@@ -1166,6 +1229,8 @@ export type Database = {
         Insert: {
           created_at?: string
           email_frequency?: string
+          event_reminder_lead_minutes?: number
+          event_reminders_enabled?: boolean
           id?: string
           in_app_frequency?: string
           quiet_end?: string
@@ -1179,6 +1244,8 @@ export type Database = {
         Update: {
           created_at?: string
           email_frequency?: string
+          event_reminder_lead_minutes?: number
+          event_reminders_enabled?: boolean
           id?: string
           in_app_frequency?: string
           quiet_end?: string
@@ -1343,13 +1410,18 @@ export type Database = {
           body: string
           channel: string
           created_at: string
+          entity_id: string | null
+          entity_type: string | null
           error_message: string | null
           id: string
+          last_attempt_at: string | null
           org_id: string
           processed_at: string | null
           recipient: string
           related_notification_id: string | null
           reply_to: string | null
+          retried_by: string | null
+          scheduled_for: string | null
           school_id: string | null
           status: string
           subject: string | null
@@ -1359,13 +1431,18 @@ export type Database = {
           body: string
           channel: string
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           error_message?: string | null
           id?: string
+          last_attempt_at?: string | null
           org_id: string
           processed_at?: string | null
           recipient: string
           related_notification_id?: string | null
           reply_to?: string | null
+          retried_by?: string | null
+          scheduled_for?: string | null
           school_id?: string | null
           status?: string
           subject?: string | null
@@ -1375,13 +1452,18 @@ export type Database = {
           body?: string
           channel?: string
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
           error_message?: string | null
           id?: string
+          last_attempt_at?: string | null
           org_id?: string
           processed_at?: string | null
           recipient?: string
           related_notification_id?: string | null
           reply_to?: string | null
+          retried_by?: string | null
+          scheduled_for?: string | null
           school_id?: string | null
           status?: string
           subject?: string | null
@@ -2963,6 +3045,7 @@ export type Database = {
         | "discount"
       attendance_status: "present" | "absent" | "late" | "excused"
       event_audience: "all" | "staff" | "parents" | "students"
+      event_rsvp_status: "going" | "maybe" | "not_going"
       invoice_status: "draft" | "pending" | "paid" | "overdue" | "void"
       notification_type:
         | "invoice_generated"
@@ -2975,6 +3058,7 @@ export type Database = {
         | "fee_reminder"
         | "payment_confirmation"
         | "school_announcement"
+        | "school_event"
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
@@ -3153,6 +3237,7 @@ export const Constants = {
       ],
       attendance_status: ["present", "absent", "late", "excused"],
       event_audience: ["all", "staff", "parents", "students"],
+      event_rsvp_status: ["going", "maybe", "not_going"],
       invoice_status: ["draft", "pending", "paid", "overdue", "void"],
       notification_type: [
         "invoice_generated",
@@ -3165,6 +3250,7 @@ export const Constants = {
         "fee_reminder",
         "payment_confirmation",
         "school_announcement",
+        "school_event",
       ],
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],

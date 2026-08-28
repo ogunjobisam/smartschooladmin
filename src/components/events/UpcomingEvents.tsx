@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { EventRsvp } from "@/components/events/EventRsvp";
+import { AddToCalendarButton } from "@/components/events/AddToCalendar";
 
 /**
  * The next few events, for a portal front page.
@@ -23,7 +25,7 @@ export function UpcomingEvents({ limit = 4 }: { limit?: number }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("school_events")
-        .select("id, title, location, starts_at, all_day")
+        .select("id, title, description, location, starts_at, ends_at, all_day, school_id")
         .eq("org_id", orgId!)
         .or(`school_id.eq.${schoolId},school_id.is.null`)
         .gte("starts_at", new Date().toISOString())
@@ -71,6 +73,10 @@ export function UpcomingEvents({ limit = 4 }: { limit?: number }) {
                   </span>
                 )}
               </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <EventRsvp eventId={event.id} eventSchoolId={event.school_id} compact />
+                <AddToCalendarButton event={event} compact />
+              </div>
             </div>
           </div>
         ))}
