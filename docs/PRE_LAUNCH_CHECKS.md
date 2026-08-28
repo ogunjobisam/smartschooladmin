@@ -312,19 +312,67 @@ resolve the same organisation across repeated rewrites of the role rows, and
 `assertWrote()` (`src/lib/writes.ts`) makes a write that changes nothing report
 a failure instead of a success.
 
-### Repairing an account that already has two
+### Repairing an account that already has more than one
 
-The fix stops new ones appearing and lands you in the newer organisation, but
-the older one is still there. To find affected accounts:
+The fix stops new ones appearing and lands you in the most recently created
+organisation, but the earlier ones are still there. To find affected accounts,
+in the SQL editor (the view is revoked from `anon` and `authenticated`, so it
+is readable only as the service role):
 
 ```sql
 SELECT * FROM public.users_with_multiple_roles;
 ```
 
-`resolves_to` is the organisation that account will actually land in. The others
-are unreachable — there is a school switcher in the interface but no
-organisation switcher. Delete the stray `user_roles` row (and the empty
-organisation behind it, if nothing else uses it) from the Supabase dashboard.
+| Column | What it tells you |
+| --- | --- |
+| `account`, `email` | Whose account this is |
+| `role_count`, `roles` | How many role rows, and which roles |
+| `organisations` | Every organisation the account holds a role in, by name |
+| `signs_in_to`, `signs_in_to_school` | Where they actually land — **the one to keep** |
+| `unreachable` | The abandoned ones, by name |
+| `keep_org_id`, `stray_org_ids` | The same, as ids, for the delete below |
+
+`unreachable` organisations cannot be reached from the interface at all: there
+is a school switcher but no organisation switcher.
+
+**Before deleting, check the strays are actually empty.** An abandoned setup
+attempt usually is, but a demo seeded into one is not, and deleting the
+organisation cascades to everything under it:
+
+```sql
+SELECT og.name,
+       (SELECT count(*) FROM schools s WHERE s.org_id = og.id)  AS schools,
+       (SELECT count(*) FROM students st
+          JOIN schools s ON s.id = st.school_id WHERE s.org_id = og.id) AS students
+FROM organisation_groups og
+WHERE og.id = ANY (
+  SELECT unnest(stray_org_ids) FROM public.users_with_multiple_roles
+  WHERE email = 'you@example.com'
+);
+```
+
+Then, once the counts look like something you are willing to lose:
+
+```sql
+-- The role rows first: while they exist, the organisation cannot be removed.
+DELETE FROM public.user_roles
+WHERE user_id = (SELECT user_id FROM public.users_with_multiple_roles
+                 WHERE email = 'you@example.com')
+  AND org_id = ANY (SELECT unnest(stray_org_ids)
+                    FROM public.users_with_multiple_roles
+                    WHERE email = 'you@example.com');
+
+-- Then the organisations themselves, which cascades to their schools.
+DELETE FROM public.organisation_groups og
+WHERE og.id IN (…the ids you just checked…)
+  AND NOT EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.org_id = og.id);
+```
+
+The `NOT EXISTS` guard is deliberate: if anyone else — an invited teacher, a
+parent — still holds a role in that organisation, this leaves it alone rather
+than deleting the ground from under them.
+
+Re-run the first query afterwards. An account that no longer appears is fixed.
 
 ---
 
