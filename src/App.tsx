@@ -55,6 +55,7 @@ const Exams = lazy(() => import("./pages/Exams"));
 const Performance = lazy(() => import("./pages/Performance"));
 const ExamDetail = lazy(() => import("./pages/ExamDetail"));
 const Announcements = lazy(() => import("./pages/Announcements"));
+const Events = lazy(() => import("./pages/Events"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
 
@@ -136,6 +137,7 @@ function AppRoutes() {
           <Route path="/performance" element={withLayout(<Performance />)} />
           <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
           <Route path="/announcements" element={withLayout(<Announcements />)} />
+          <Route path="/events" element={withLayout(<Events />)} />
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
           <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
 

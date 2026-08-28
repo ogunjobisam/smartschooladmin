@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -147,6 +148,8 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      <UpcomingEvents limit={3} />
 
       {/* Bottom Row */}
       <div className="grid gap-6 xl:grid-cols-5">

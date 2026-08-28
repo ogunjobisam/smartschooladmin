@@ -16,6 +16,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { printInvoice } from "@/lib/print-documents";
+import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 
 /**
  * What a student sees when they sign in.
@@ -159,6 +160,8 @@ export default function StudentPortal() {
           subtitle={`${formatMoney(totalPaid)} paid`}
         />
       </div>
+
+      <UpcomingEvents />
 
       <Card>
         <CardHeader className="pb-2">

@@ -1680,6 +1680,54 @@ export type Database = {
           },
         ]
       }
+      school_events: {
+        Row: {
+          all_day: boolean
+          audience: Database["public"]["Enums"]["event_audience"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          location: string | null
+          org_id: string
+          school_id: string | null
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          audience?: Database["public"]["Enums"]["event_audience"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          org_id: string
+          school_id?: string | null
+          starts_at: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          audience?: Database["public"]["Enums"]["event_audience"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          org_id?: string
+          school_id?: string | null
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       schools: {
         Row: {
           accent_color: string | null
@@ -2242,6 +2290,7 @@ export type Database = {
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
+      event_audience: "all" | "staff" | "parents" | "students"
       school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: "active" | "inactive" | "suspended" | "withdrawn"
       transaction_status:
@@ -2415,6 +2464,7 @@ export const Constants = {
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
+      event_audience: "all" | "staff" | "parents" | "students"
       school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: ["active", "inactive", "suspended", "withdrawn"],
       transaction_status: [

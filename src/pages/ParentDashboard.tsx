@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
+import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -259,6 +260,8 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      <UpcomingEvents />
 
       {/* Each child's academic performance — the same analysis staff see, for
           their own children only. */}

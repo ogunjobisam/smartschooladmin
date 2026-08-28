@@ -47,6 +47,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "payments", title: "Payments", url: "/payments", group: "finance" },
   { key: "arrears", title: "Arrears", url: "/arrears", group: "finance" },
 
+  { key: "events", title: "Events", url: "/events", group: "communications" },
   { key: "announcements", title: "Announcements", url: "/announcements", group: "communications" },
   { key: "templates", title: "Templates", url: "/notification-templates", group: "communications" },
   { key: "preferences", title: "My Preferences", url: "/notification-settings", group: "communications" },
@@ -79,50 +80,50 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   school_admin: [
     "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
-    "announcements", "templates", "preferences",
+    "announcements", "templates", "events", "preferences",
     "approvals", "reports",
     "settings", "users",
   ],
   principal: [
     "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
-    "announcements", "templates", "preferences",
+    "announcements", "templates", "events", "preferences",
     "approvals", "reports",
     "users",
   ],
   bursar: [
     "dashboard", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
-    "announcements", "preferences",
+    "announcements", "events", "preferences",
     "payroll", "reports",
     "users",
   ],
   finance_officer: [
     "dashboard", "students",
     "invoices", "payments", "arrears",
-    "preferences",
+    "events", "preferences",
     "reports",
     "users",
   ],
   hr_admin: [
     "dashboard", "staff",
-    "announcements", "preferences",
+    "announcements", "events", "preferences",
     "payroll", "reports",
     "users",
   ],
   teacher: [
     "dashboard", "students", "attendance", "exams", "performance",
-    "announcements", "preferences",
+    "announcements", "events", "preferences",
   ],
   parent: [
     "dashboard",
-    "preferences",
+    "events", "preferences",
   ],
   // A student sees their own portal and their own notification preferences.
   // Everything else on the dashboard is the school's, not theirs.
   student: [
     "dashboard",
-    "preferences",
+    "events", "preferences",
   ],
 };
 
