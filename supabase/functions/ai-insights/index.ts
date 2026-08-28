@@ -109,16 +109,20 @@ Deno.serve(async (req) => {
       return json({ error: "Your role cannot run this analysis" }, 403);
     }
 
-    // Entitlement: the add-on is paid for separately, so it is off unless bought.
+    // Entitlement: every organisation gets FREE_MONTHLY_ANALYSES a month for
+    // free; buying the add-on raises the ceiling to its own monthly limit.
     const { data: org } = await admin
       .from("organisation_groups")
       .select("id, name, currency, ai_addon_enabled, ai_monthly_limit")
       .eq("id", callerRole.org_id)
       .maybeSingle();
     if (!org) return json({ error: "Organisation not found" }, 404);
-    if (!org.ai_addon_enabled) {
-      return json({ error: "The AI analysis add-on is not enabled for your organisation.", code: "addon_disabled" }, 402);
-    }
+
+    const FREE_MONTHLY_ANALYSES = 5;
+    const effectiveLimit = org.ai_addon_enabled
+      ? Math.max(org.ai_monthly_limit ?? 0, FREE_MONTHLY_ANALYSES)
+      : FREE_MONTHLY_ANALYSES;
+
 
     const monthStart = new Date();
     monthStart.setUTCDate(1);
