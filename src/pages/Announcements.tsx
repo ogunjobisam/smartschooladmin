@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Send, Plus, Loader2, Pencil, Trash2, Infinity as InfinityIcon, CalendarClock } from "lucide-react";
+import { Megaphone, Send, Plus, Loader2, Pencil, Trash2, Infinity as InfinityIcon, CalendarClock, Pin } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ interface AnnouncementRow {
   starts_at: string | null;
   ends_at: string | null;
   is_active: boolean;
+  is_pinned: boolean;
   created_at: string;
 }
 
@@ -82,6 +83,7 @@ export default function Announcements() {
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [editPinned, setEditPinned] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [removing, setRemoving] = useState<AnnouncementRow | null>(null);
 
@@ -255,6 +257,7 @@ export default function Announcements() {
       starts_at: editMode === "one_off" ? editing.starts_at : toIso(editStart),
       ends_at: editMode === "scheduled" ? toIso(editEnd) : null,
       is_active: editActive,
+      is_pinned: editPinned,
       updated_by: user?.id,
     };
 
@@ -276,6 +279,7 @@ export default function Announcements() {
       oldValues: {
         title: editing.title, body: editing.body, display_mode: editing.display_mode,
         starts_at: editing.starts_at, ends_at: editing.ends_at, is_active: editing.is_active,
+        is_pinned: editing.is_pinned,
       },
       newValues: next,
     });
@@ -305,7 +309,7 @@ export default function Announcements() {
       oldValues: {
         title: target.title, body: target.body, audience: target.audience,
         display_mode: target.display_mode, starts_at: target.starts_at,
-        ends_at: target.ends_at, is_active: target.is_active,
+        ends_at: target.ends_at, is_active: target.is_active, is_pinned: target.is_pinned,
       },
     });
 
@@ -374,6 +378,16 @@ export default function Announcements() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">{MODES.find((m) => m.value === mode)!.hint}</p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Pin as a banner</p>
+                  <p className="text-xs text-muted-foreground">
+                    Shows at the top of every page for this audience until they dismiss it.
+                  </p>
+                </div>
+                <Switch checked={isPinned} onCheckedChange={setIsPinned} />
               </div>
 
               {mode !== "one_off" && (
@@ -489,7 +503,12 @@ export default function Announcements() {
                         <p className="text-sm font-medium">{a.title}</p>
                         <p className="max-w-[280px] truncate text-xs text-muted-foreground">{a.body}</p>
                       </TableCell>
-                      <TableCell>{modeBadge(a)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {modeBadge(a)}
+                          {a.is_pinned && <Badge variant="outline" className="gap-1 text-[10px]"><Pin className="h-3 w-3" /> Pinned</Badge>}
+                        </div>
+                      </TableCell>
                       <TableCell><Badge variant="secondary" className="text-xs">{audienceLabel(a.audience)}</Badge></TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{window_(a)}</TableCell>
                       <TableCell>
@@ -626,6 +645,13 @@ export default function Announcements() {
                 <p className="text-xs text-muted-foreground">Switch off to take it down without deleting it.</p>
               </div>
               <Switch checked={editActive} onCheckedChange={setEditActive} />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Pinned as a banner</p>
+                <p className="text-xs text-muted-foreground">Shows at the top of every page for this audience.</p>
+              </div>
+              <Switch checked={editPinned} onCheckedChange={setEditPinned} />
             </div>
           </div>
           <DialogFooter>
