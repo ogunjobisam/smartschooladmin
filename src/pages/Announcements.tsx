@@ -170,6 +170,7 @@ export default function Announcements() {
         starts_at: startIso,
         ends_at: endIso,
         is_active: true,
+        is_pinned: isPinned,
         updated_by: user?.id,
       })
       .select("id")
