@@ -17,6 +17,20 @@ import {
   GraduationCap, CreditCard, FileText, Receipt, Printer, Info
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
+import { useStudentPerformanceData } from "@/hooks/use-performance-data";
+import { summariseStudent } from "@/lib/performance";
+
+function ChildPerformance({ studentId }: { studentId: string }) {
+  const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
+  return (
+    <PerformanceSummary
+      performance={summariseStudent(studentId, scores, attendance)}
+      isLoading={isLoading}
+    />
+  );
+}
 
 export default function ParentDashboard() {
   const { user } = useAuth();
@@ -243,6 +257,32 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Each child's academic performance — the same analysis staff see, for
+          their own children only. */}
+      {children && children.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <GraduationCap className="h-4 w-4 text-accent" /> Academic performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue={children[0].id}>
+              <TabsList>
+                {children.map((child: any) => (
+                  <TabsTrigger key={child.id} value={child.id}>{child.first_name}</TabsTrigger>
+                ))}
+              </TabsList>
+              {children.map((child: any) => (
+                <TabsContent key={child.id} value={child.id} className="mt-4">
+                  <ChildPerformance studentId={child.id} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Paying fees.
 

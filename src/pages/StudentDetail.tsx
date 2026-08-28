@@ -21,10 +21,18 @@ import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
 import { printTranscript, TranscriptData } from "@/lib/print-documents";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
+import { useStudentPerformanceData } from "@/hooks/use-performance-data";
+import { summariseStudent } from "@/lib/performance";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId } = useAuth();
+  const {
+    scores: performanceScores,
+    attendance: performanceAttendance,
+    isLoading: performanceLoading,
+  } = useStudentPerformanceData(id);
   const { formatMoney } = useCurrency();
   const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
@@ -250,6 +258,7 @@ export default function StudentDetail() {
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="grades">Grades</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -367,6 +376,13 @@ export default function StudentDetail() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="performance" className="mt-4">
+          <PerformanceSummary
+            performance={summariseStudent(id!, performanceScores, performanceAttendance)}
+            isLoading={performanceLoading}
+          />
         </TabsContent>
 
         <TabsContent value="grades" className="mt-4">

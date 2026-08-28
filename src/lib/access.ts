@@ -39,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
   { key: "attendance", title: "Attendance", url: "/attendance", group: "overview" },
   { key: "exams", title: "Exams", url: "/exams", group: "overview" },
+  { key: "performance", title: "Performance", url: "/performance", group: "overview" },
 
   { key: "fees", title: "Fee Schedules", url: "/fees", group: "finance" },
   { key: "invoices", title: "Invoices", url: "/invoices", group: "finance" },
@@ -75,14 +76,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams",
+    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "preferences",
     "approvals", "reports",
     "settings", "users",
   ],
   principal: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams",
+    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
     "announcements", "templates", "preferences",
     "approvals", "reports",
@@ -109,7 +110,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "users",
   ],
   teacher: [
-    "dashboard", "students", "attendance", "exams",
+    "dashboard", "students", "attendance", "exams", "performance",
     "announcements", "preferences",
   ],
   parent: [

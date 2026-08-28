@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { gradeForScore as computeGrade } from "@/lib/performance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -16,17 +17,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
-
-function computeGrade(score: number, maxScore: number): string {
-  const pct = (score / maxScore) * 100;
-  if (pct >= 90) return "A+";
-  if (pct >= 80) return "A";
-  if (pct >= 70) return "B";
-  if (pct >= 60) return "C";
-  if (pct >= 50) return "D";
-  if (pct >= 40) return "E";
-  return "F";
-}
 
 interface ScoreEntry {
   studentId: string;

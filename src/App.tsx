@@ -51,6 +51,7 @@ const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 const ProprietorDashboard = lazy(() => import("./pages/ProprietorDashboard"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Exams = lazy(() => import("./pages/Exams"));
+const Performance = lazy(() => import("./pages/Performance"));
 const ExamDetail = lazy(() => import("./pages/ExamDetail"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
@@ -130,6 +131,7 @@ function AppRoutes() {
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />
           <Route path="/exams" element={withLayout(<Exams />)} />
+          <Route path="/performance" element={withLayout(<Performance />)} />
           <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
           <Route path="/announcements" element={withLayout(<Announcements />)} />
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
