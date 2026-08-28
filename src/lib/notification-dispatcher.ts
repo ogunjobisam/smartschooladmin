@@ -182,31 +182,41 @@ export async function sendAnnouncementNotifications(params: {
   channels: string[];
 }) {
   let userIds: string[] = [];
+  // Collected alongside the ids so the announcement can also be emailed. The
+  // `channels` argument used to be accepted and ignored, which made the email
+  // and SMS checkboxes on the announcement dialog silently do nothing.
+  const emails: string[] = [];
 
   if (params.audience === "parents" || params.audience === "all") {
     // Get all guardians with user_ids
     const { data: guardians } = await supabase
       .from("guardians")
-      .select("user_id")
+      .select("user_id, email")
       .eq("org_id", params.orgId)
       .not("user_id", "is", null);
-    if (guardians) userIds.push(...guardians.map((g) => g.user_id!));
+    if (guardians) {
+      userIds.push(...guardians.map((g) => g.user_id!));
+      emails.push(...guardians.map((g) => g.email).filter((e): e is string => !!e));
+    }
   }
 
   if (params.audience === "staff" || params.audience === "all") {
     const { data: staffMembers } = await supabase
       .from("staff")
-      .select("user_id")
+      .select("user_id, email")
       .eq("school_id", params.schoolId)
       .not("user_id", "is", null);
-    if (staffMembers) userIds.push(...staffMembers.map((s) => s.user_id!));
+    if (staffMembers) {
+      userIds.push(...staffMembers.map((s) => s.user_id!));
+      emails.push(...staffMembers.map((s) => s.email).filter((e): e is string => !!e));
+    }
   }
 
   if (params.audience === "class" && params.targetClassId) {
     // Get students in class → their guardians
     const { data: enrolments } = await supabase
       .from("enrolments")
-      .select("students(student_guardians(guardians(user_id)))")
+      .select("students(student_guardians(guardians(user_id, email)))")
       .eq("class_id", params.targetClassId);
     if (enrolments) {
       for (const e of enrolments) {
@@ -214,6 +224,7 @@ export async function sendAnnouncementNotifications(params: {
         const links = student?.student_guardians || [];
         for (const link of links) {
           if (link.guardians?.user_id) userIds.push(link.guardians.user_id);
+          if (link.guardians?.email) emails.push(link.guardians.email);
         }
       }
     }
@@ -237,5 +248,27 @@ export async function sendAnnouncementNotifications(params: {
 
   await createBulkNotifications(notifications);
 
-  return { sent: userIds.length };
+  // Queue the email copies. They wait in the outbox until someone drains it
+  // from Settings → Notifications, so `queued` here means "will go out", not
+  // "has gone out" — the caller reports it as such.
+  let queuedEmails = 0;
+  if (params.channels.includes("email")) {
+    const recipients = [...new Set(emails)];
+    if (recipients.length > 0) {
+      const { error } = await supabase.from("outbound_message_queue").insert(
+        recipients.map((recipient) => ({
+          org_id: params.orgId,
+          channel: "email",
+          recipient,
+          subject: params.title,
+          body: params.body || params.title,
+          status: "queued",
+        }))
+      );
+      if (error) console.error("Failed to queue announcement emails:", error);
+      else queuedEmails = recipients.length;
+    }
+  }
+
+  return { sent: userIds.length, queuedEmails };
 }

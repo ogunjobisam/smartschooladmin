@@ -1183,9 +1183,18 @@ function AiAddonCard({ orgId, canManage }: { orgId: string | null; canManage: bo
   );
 }
 
+interface OutboxSenderState {
+  email_configured: boolean;
+  sender: string;
+  sender_is_default: boolean;
+}
+
 function MessageOutboxCard({ canManage }: { canManage: boolean }) {
   const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
+  const [requeueing, setRequeueing] = useState(false);
+  // Learned from the last send — the function reports which sender it used.
+  const [senderState, setSenderState] = useState<OutboxSenderState | null>(null);
 
   const { data: summary = [], isLoading } = useQuery({
     queryKey: ["outbox-summary"],
@@ -1208,13 +1217,22 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      setSenderState({
+        email_configured: !!data.email_configured,
+        sender: data.sender ?? "",
+        sender_is_default: !!data.sender_is_default,
+      });
+
       if (data.sent > 0) toast.success(`Sent ${data.sent} message${data.sent === 1 ? "" : "s"}`);
       if (data.failed > 0) toast.error(`${data.failed} message${data.failed === 1 ? "" : "s"} could not be delivered`);
       if (data.sent === 0 && data.failed === 0) {
         toast.info(
-          data.email_configured
-            ? "Nothing waiting to send"
-            : "No email provider is configured yet, so messages are still waiting."
+          !data.email_configured
+            ? "No email provider is configured yet, so messages are still waiting."
+            : data.deferred > 0
+              // Deferred means the provider refused the sender, not the message.
+              ? "The email provider would not accept the sender, so messages are still waiting."
+              : "Nothing waiting to send"
         );
       }
       queryClient.invalidateQueries({ queryKey: ["outbox-summary"] });
@@ -1222,6 +1240,26 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
       toast.error(getErrorMessage(err, "Could not send queued messages"));
     } finally {
       setSending(false);
+    }
+  };
+
+  const requeueFailed = async () => {
+    setRequeueing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-message-queue", {
+        body: { action: "requeue" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(
+        `${data.requeued} message${data.requeued === 1 ? "" : "s"} put back in the queue`,
+        { description: "Fix the sender first, then send again." }
+      );
+      queryClient.invalidateQueries({ queryKey: ["outbox-summary"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not requeue the failed messages"));
+    } finally {
+      setRequeueing(false);
     }
   };
 
@@ -1233,8 +1271,8 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
         </CardTitle>
         <CardDescription>
           Fee reminders, invites and announcements are queued here before they go out.
-          Delivery needs an email provider — set the RESEND_API_KEY and
-          NOTIFICATIONS_FROM_EMAIL function secrets, then schedule or run the send below.
+          Delivery needs the <code>RESEND_API_KEY</code> function secret. Nothing sends on
+          a schedule yet, so use the button below.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1255,17 +1293,61 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
               ))}
             </div>
 
+            {senderState && (
+              <div
+                className={`rounded-lg border p-3 text-xs ${
+                  senderState.sender_is_default || !senderState.email_configured
+                    ? "border-warning/40 bg-warning/5"
+                    : "bg-muted/40"
+                }`}
+              >
+                {!senderState.email_configured ? (
+                  <p>
+                    No email provider yet. Set the <code>RESEND_API_KEY</code> function secret,
+                    then send again — nothing has been lost, the messages are still waiting.
+                  </p>
+                ) : senderState.sender_is_default ? (
+                  <p>
+                    Sending as <strong>{senderState.sender}</strong>, Resend&rsquo;s test sender.
+                    It only reaches the address that owns your Resend account — everyone else is
+                    refused, and those messages stay queued rather than failing. To reach parents,
+                    verify your school&rsquo;s domain in Resend and set{" "}
+                    <code>NOTIFICATIONS_FROM_EMAIL</code> to an address on it.
+                  </p>
+                ) : (
+                  <p>
+                    Sending as <strong>{senderState.sender}</strong>.
+                  </p>
+                )}
+              </div>
+            )}
+
             {canManage && (
-              <Button onClick={sendNow} disabled={sending || queued === 0} size="sm" className="gap-1.5">
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send {queued > 0 ? queued : ""} queued message{queued === 1 ? "" : "s"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={sendNow} disabled={sending || queued === 0} size="sm" className="gap-1.5">
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Send {queued > 0 ? queued : ""} queued message{queued === 1 ? "" : "s"}
+                </Button>
+                {failed > 0 && (
+                  <Button
+                    onClick={requeueFailed}
+                    disabled={requeueing}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                  >
+                    {requeueing && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Try {failed} failed message{failed === 1 ? "" : "s"} again
+                  </Button>
+                )}
+              </div>
             )}
 
             {failed > 0 && (
               <p className="text-xs text-muted-foreground">
-                Failed messages were rejected by the provider — usually a bad address or an
-                unverified sender domain. They are not retried automatically.
+                Failed messages were rejected by the provider — usually a bad address.
+                They are not retried automatically, but you can put them back in the
+                queue once the cause is fixed.
               </p>
             )}
           </>

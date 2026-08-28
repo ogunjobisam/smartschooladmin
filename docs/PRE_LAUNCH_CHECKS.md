@@ -2,10 +2,11 @@
 
 Verification of the work merged in PRs #1–#3, and the prompts used to run it.
 
-The app's own test suite proves the code compiles and the pure logic is right. It
-proves nothing about the live Supabase project, and the repository has no CI. So
-these checks are run by pasting the prompts below into Lovable, whose agent can
-query the connected project and drive the live preview.
+The app's own test suite proves the code compiles and the pure logic is right,
+and CI now runs it on every pull request along with a full migration replay. What
+neither can prove is anything about the *live* Supabase project or a rendered
+screen — so those checks are run by pasting the prompts below into Lovable, whose
+agent can query the connected project and drive the live preview.
 
 ---
 
@@ -25,11 +26,31 @@ Lovable's full report: [`.lovable/plan/external-review-audit-findings-report-202
 
 1. ~~**`supabase db push` no longer works on a fresh project.**~~ **Fixed.** See
    below for what was wrong and how it was proven.
-2. **`RESEND_API_KEY` and `NOTIFICATIONS_FROM_EMAIL` are not set** as edge
-   function secrets. Admissions acknowledgements, invites and fee reminders queue
-   in `outbound_message_queue` and never send. Set them as function secrets —
-   never in `.env` or any `VITE_*` variable. **Still outstanding** — this one
-   needs credentials, so it is yours to do.
+2. ~~**`RESEND_API_KEY` and `NOTIFICATIONS_FROM_EMAIL` are not set.**~~
+   `RESEND_API_KEY` is now set, and the code no longer needs the second secret:
+   a missing `NOTIFICATIONS_FROM_EMAIL` falls back to Resend's built-in sender
+   instead of blocking the whole queue.
+
+   **One thing remains, and it is a real limit rather than a bug.** The built-in
+   sender only delivers to the address that owns the Resend account. Until a
+   school domain is verified in Resend and `NOTIFICATIONS_FROM_EMAIL` is set to
+   an address on it, **parents will not receive anything.** Those messages are no
+   longer destroyed by the attempt — see below — they simply wait.
+
+### The trap that was avoided
+
+Setting the second secret without verifying a domain would have been worse than
+doing nothing. Resend answers **403** for an unverified sender, and the queue
+processor classified any 4xx except 429 as *permanent*: one drain would have
+marked every queued invite and admissions acknowledgement `failed` on its first
+attempt. Nothing in the app could move a row out of `failed` — no UPDATE policy
+for `authenticated`, no UI control — so verifying the domain afterwards would not
+have brought them back.
+
+Sender refusals are now classified as `unconfigured`, which costs no attempt and
+leaves the row queued, and there is a **Try failed messages again** control on
+the outbox card for anything already lost. The classification is pinned by tests
+in `src/test/email-result.test.ts`.
 
 ---
 
