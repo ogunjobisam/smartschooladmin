@@ -32,6 +32,7 @@ export default function StaffDetail() {
   const { formatMoney } = useCurrency();
   const { schoolId, orgId, userRole } = useAuth();
   const queryClient = useQueryClient();
+  const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
   const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
   const [payrollProfileOpen, setPayrollProfileOpen] = useState(false);
