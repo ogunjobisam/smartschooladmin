@@ -295,6 +295,23 @@ export default function InvoiceDetail() {
           }}
         />
       )}
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        defaultKind={invoice.status === "overdue" ? "overdue_notice" : "fee_reminder"}
+        contextLabel={`${studentName} — ${invoice.invoice_number}`}
+        targets={[{
+          studentId: invoice.student_id,
+          studentName,
+          studentIdNumber: student?.student_id_number,
+          className,
+          invoiceNumber: invoice.invoice_number,
+          balance,
+          dueDate: invoice.due_date,
+          periodName: invoice.academic_periods?.name,
+        }]}
+      />
     </div>
   );
 }
