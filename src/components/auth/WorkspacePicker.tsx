@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatRoleLabel } from "@/lib/roles";
+import { roleLabel } from "@/lib/roles";
 
 /**
  * Sign-in step for accounts that span more than one organisation or school.
@@ -82,7 +82,7 @@ export function WorkspacePicker() {
 
         {userRole && (
           <p className="text-center text-xs text-muted-foreground">
-            You will sign in as {formatRoleLabel(userRole)}.
+            You will sign in as {roleLabel(userRole)}.
           </p>
         )}
 
