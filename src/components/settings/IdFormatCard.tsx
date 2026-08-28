@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Hash, Loader2, Wand2 } from "lucide-react";
+import { Hash, Loader2, ShieldCheck, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { logAudit } from "@/lib/audit";
 import { DEFAULT_ID_FORMAT, defaultPrefix, previewId, type IdFormat, type YearPosition } from "@/lib/id-numbers";
 
 type Entity = "student" | "staff";
@@ -17,6 +29,7 @@ type Entity = "student" | "staff";
 interface Props {
   schoolId: string | null;
   schoolName: string | null;
+  orgId?: string | null;
   canManage: boolean;
 }
 
@@ -27,7 +40,18 @@ const SEPARATORS: { value: string; label: string }[] = [
   { value: "", label: "None" },
 ];
 
-export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
+const YEAR_LABELS: Record<YearPosition, string> = {
+  before: "before the number",
+  after: "after the number",
+  none: "not included",
+};
+
+function describeFormat(format: IdFormat, fallback: string): string {
+  const sep = format.separator === "" ? "no separator" : `"${format.separator}"`;
+  return `prefix ${format.prefix.trim() || `${fallback} (school initials)`}, year ${YEAR_LABELS[format.year_position]}, ${format.padding} digits, ${sep}`;
+}
+
+export function IdFormatCard({ schoolId, schoolName, orgId, canManage }: Props) {
   const queryClient = useQueryClient();
 
   const { data: formats, isLoading } = useQuery({
@@ -43,21 +67,32 @@ export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
     },
   });
 
-  const { data: missing } = useQuery({
-    queryKey: ["missing-id-counts", schoolId],
+  const { data: counts } = useQuery({
+    queryKey: ["id-number-counts", schoolId],
     enabled: !!schoolId,
     queryFn: async () => {
-      const students = await supabase
+      const blankStudents = await supabase
         .from("students")
         .select("id", { count: "exact", head: true })
         .eq("school_id", schoolId!)
         .or("student_id_number.is.null,student_id_number.eq.");
-      const staff = await supabase
+      const totalStudents = await supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId!);
+      const blankStaff = await supabase
         .from("staff")
         .select("id", { count: "exact", head: true })
         .eq("school_id", schoolId!)
         .or("staff_id_number.is.null,staff_id_number.eq.");
-      return { student: students.count || 0, staff: staff.count || 0 };
+      const totalStaff = await supabase
+        .from("staff")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId!);
+      return {
+        student: { blank: blankStudents.count || 0, total: totalStudents.count || 0 },
+        staff: { blank: blankStaff.count || 0, total: totalStaff.count || 0 },
+      };
     },
   });
 
@@ -68,7 +103,8 @@ export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
           <Hash className="h-4 w-4" /> ID Numbering
         </CardTitle>
         <CardDescription>
-          Choose how student and staff ID numbers are built. Numbers are issued in order and can never repeat within this school.
+          Choose how student and staff ID numbers are built. Changing the format only affects records that do not have an ID yet —
+          IDs already issued are never rewritten, so printed cards, receipts and registers stay correct.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -82,9 +118,10 @@ export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
               entity="student"
               schoolId={schoolId}
               schoolName={schoolName}
+              orgId={orgId}
               canManage={canManage}
               saved={formats?.find((f) => f.entity === "student")}
-              missingCount={missing?.student ?? 0}
+              counts={counts?.student ?? { blank: 0, total: 0 }}
               queryClient={queryClient}
             />
             <Separator />
@@ -92,9 +129,10 @@ export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
               entity="staff"
               schoolId={schoolId}
               schoolName={schoolName}
+              orgId={orgId}
               canManage={canManage}
               saved={formats?.find((f) => f.entity === "staff")}
-              missingCount={missing?.staff ?? 0}
+              counts={counts?.staff ?? { blank: 0, total: 0 }}
               queryClient={queryClient}
             />
           </>
@@ -107,37 +145,76 @@ export function IdFormatCard({ schoolId, schoolName, canManage }: Props) {
 interface EntityProps extends Props {
   entity: Entity;
   saved?: { prefix: string | null; year_position: string; padding: number; separator: string };
-  missingCount: number;
+  counts: { blank: number; total: number };
   queryClient: ReturnType<typeof useQueryClient>;
 }
 
-function EntityFormat({ entity, schoolId, schoolName, canManage, saved, missingCount, queryClient }: EntityProps) {
+function EntityFormat({ entity, schoolId, schoolName, orgId, canManage, saved, counts, queryClient }: EntityProps) {
   const [form, setForm] = useState<IdFormat>(DEFAULT_ID_FORMAT);
   const [saving, setSaving] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [alsoBackfill, setAlsoBackfill] = useState(false);
+
+  const savedFormat: IdFormat = saved
+    ? {
+        prefix: saved.prefix || "",
+        year_position: (saved.year_position as YearPosition) || "before",
+        padding: saved.padding ?? 4,
+        separator: saved.separator ?? "/",
+      }
+    : DEFAULT_ID_FORMAT;
 
   useEffect(() => {
-    setForm(
-      saved
-        ? {
-            prefix: saved.prefix || "",
-            year_position: (saved.year_position as YearPosition) || "before",
-            padding: saved.padding ?? 4,
-            separator: saved.separator ?? "/",
-          }
-        : DEFAULT_ID_FORMAT,
-    );
+    setForm(savedFormat);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved]);
 
   const fallback = defaultPrefix(schoolName, entity);
   const label = entity === "student" ? "Student IDs" : "Staff IDs";
+  const noun = entity === "student" ? "student" : "staff member";
+  const plural = entity === "student" ? "students" : "staff";
+  const changed = JSON.stringify(form) !== JSON.stringify(savedFormat);
+  const keptCount = Math.max(counts.total - counts.blank, 0);
 
-  const save = async () => {
-    if (!schoolId) return;
+  const validate = () => {
     if (form.prefix && !/^[A-Za-z0-9-]{1,12}$/.test(form.prefix.trim())) {
       toast.error("The prefix can only contain letters, numbers and hyphens (up to 12 characters).");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const runBackfill = async (silent = false) => {
+    if (!schoolId) return 0;
+    const fn = entity === "student" ? "backfill_student_id_numbers" : "backfill_staff_id_numbers";
+    const { data, error } = await supabase.rpc(fn, { _school_id: schoolId });
+    if (error) {
+      toast.error(getErrorMessage(error, "Could not generate the missing IDs."));
+      return 0;
+    }
+    const count = Number(data ?? 0);
+    if (orgId && count > 0) {
+      await logAudit({
+        orgId,
+        action: "id_numbers_backfilled",
+        entityType: entity === "student" ? "student_id_number" : "staff_id_number",
+        entityId: schoolId,
+        detail: `Generated ${count} missing ${plural} ID${count === 1 ? "" : "s"} using ${describeFormat(form, fallback)}. Existing IDs were left unchanged.`,
+        newValues: { generated: count, format: form },
+      });
+    }
+    if (!silent) {
+      toast.success(count === 0 ? `Every ${noun} already has an ID.` : `Generated ${count} ${plural} ID${count === 1 ? "" : "s"}.`);
+    }
+    queryClient.invalidateQueries({ queryKey: ["id-number-counts", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["students"] });
+    queryClient.invalidateQueries({ queryKey: ["staff"] });
+    return count;
+  };
+
+  const applyChange = async () => {
+    if (!schoolId) return;
     setSaving(true);
     const { error } = await supabase.from("school_id_formats").upsert(
       {
@@ -150,30 +227,35 @@ function EntityFormat({ entity, schoolId, schoolName, canManage, saved, missingC
       },
       { onConflict: "school_id,entity" },
     );
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(getErrorMessage(error, "Could not save the ID format."));
       return;
     }
-    toast.success(`${label} format saved. New records will use ${previewId(form, fallback)}.`);
-    queryClient.invalidateQueries({ queryKey: ["school-id-formats", schoolId] });
-  };
 
-  const backfill = async () => {
-    if (!schoolId) return;
-    setBackfilling(true);
-    const fn = entity === "student" ? "backfill_student_id_numbers" : "backfill_staff_id_numbers";
-    const { data, error } = await supabase.rpc(fn, { _school_id: schoolId });
-    setBackfilling(false);
-    if (error) {
-      toast.error(getErrorMessage(error, "Could not generate the missing IDs."));
-      return;
+    if (orgId) {
+      await logAudit({
+        orgId,
+        action: "id_format_changed",
+        entityType: entity === "student" ? "student_id_format" : "staff_id_format",
+        entityId: schoolId,
+        detail: `${label} format changed from "${describeFormat(savedFormat, fallback)}" to "${describeFormat(form, fallback)}". Applies to new and blank IDs only; ${keptCount} existing ID${keptCount === 1 ? "" : "s"} left unchanged.`,
+        oldValues: savedFormat,
+        newValues: form,
+      });
     }
-    const count = Number(data ?? 0);
-    toast.success(count === 0 ? `Every ${entity} already has an ID.` : `Generated ${count} ${entity} ID${count === 1 ? "" : "s"}.`);
-    queryClient.invalidateQueries({ queryKey: ["missing-id-counts", schoolId] });
-    queryClient.invalidateQueries({ queryKey: ["students"] });
-    queryClient.invalidateQueries({ queryKey: ["staff"] });
+
+    let generated = 0;
+    if (alsoBackfill && counts.blank > 0) generated = await runBackfill(true);
+
+    setSaving(false);
+    setConfirmOpen(false);
+    setAlsoBackfill(false);
+    toast.success(
+      `${label} format saved. New IDs look like ${previewId(form, fallback)}.` +
+        (generated > 0 ? ` ${generated} blank ID${generated === 1 ? "" : "s"} filled in.` : ""),
+    );
+    queryClient.invalidateQueries({ queryKey: ["school-id-formats", schoolId] });
   };
 
   return (
@@ -186,9 +268,9 @@ function EntityFormat({ entity, schoolId, schoolName, canManage, saved, missingC
           </p>
         </div>
         {canManage && (
-          <Button variant="outline" size="sm" onClick={backfill} disabled={backfilling || missingCount === 0}>
+          <Button variant="outline" size="sm" onClick={() => runBackfill()} disabled={backfilling || counts.blank === 0}>
             {backfilling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            {missingCount === 0 ? "No missing IDs" : `Generate ${missingCount} missing ID${missingCount === 1 ? "" : "s"}`}
+            {counts.blank === 0 ? "No missing IDs" : `Generate ${counts.blank} missing ID${counts.blank === 1 ? "" : "s"}`}
           </Button>
         )}
       </div>
@@ -250,11 +332,77 @@ function EntityFormat({ entity, schoolId, schoolName, canManage, saved, missingC
       </div>
 
       {canManage && (
-        <Button size="sm" onClick={save} disabled={saving}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save {label.toLowerCase()} format
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            disabled={saving || !changed}
+            onClick={() => {
+              if (!validate()) return;
+              setAlsoBackfill(counts.blank > 0);
+              setConfirmOpen(true);
+            }}
+          >
+            Review and save {label.toLowerCase()} format
+          </Button>
+          {!changed && <span className="text-xs text-muted-foreground">No unsaved changes.</span>}
+        </div>
       )}
+
+      <AlertDialog open={confirmOpen} onOpenChange={(o) => !saving && setConfirmOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Confirm the new {label.toLowerCase()} format
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <div className="rounded-md border p-3 text-sm">
+                  <p className="text-muted-foreground">Current</p>
+                  <p className="font-mono">{previewId(savedFormat, fallback)}</p>
+                  <p className="mt-2 text-muted-foreground">New</p>
+                  <p className="font-mono">{previewId(form, fallback)}</p>
+                </div>
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  <li>
+                    <strong>{keptCount}</strong> {plural} already have an ID — these keep exactly the ID they have today.
+                  </li>
+                  <li>
+                    <strong>{counts.blank}</strong> {plural} have no ID yet — these, and everyone added from now on, will use the new
+                    format.
+                  </li>
+                  <li>Numbering continues in sequence, so no two {plural} can ever share an ID.</li>
+                  <li>The change is written to the audit log with your name, the old settings and the new ones.</li>
+                </ul>
+                {counts.blank > 0 && (
+                  <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+                    <Checkbox
+                      checked={alsoBackfill}
+                      onCheckedChange={(v) => setAlsoBackfill(v === true)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Also generate the {counts.blank} missing ID{counts.blank === 1 ? "" : "s"} now using the new format.
+                    </span>
+                  </label>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void applyChange();
+              }}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save format
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
