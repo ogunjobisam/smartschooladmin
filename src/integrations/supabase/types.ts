@@ -1163,6 +1163,8 @@ export type Database = {
           processed_at: string | null
           recipient: string
           related_notification_id: string | null
+          reply_to: string | null
+          school_id: string | null
           status: string
           subject: string | null
         }
@@ -1177,6 +1179,8 @@ export type Database = {
           processed_at?: string | null
           recipient: string
           related_notification_id?: string | null
+          reply_to?: string | null
+          school_id?: string | null
           status?: string
           subject?: string | null
         }
@@ -1191,6 +1195,8 @@ export type Database = {
           processed_at?: string | null
           recipient?: string
           related_notification_id?: string | null
+          reply_to?: string | null
+          school_id?: string | null
           status?: string
           subject?: string | null
         }
@@ -1207,6 +1213,13 @@ export type Database = {
             columns: ["related_notification_id"]
             isOneToOne: false
             referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_message_queue_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
