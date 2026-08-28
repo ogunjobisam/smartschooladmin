@@ -147,6 +147,32 @@ export type Database = {
           },
         ]
       }
+      application_counters: {
+        Row: {
+          last_number: number
+          school_id: string
+          year: number
+        }
+        Insert: {
+          last_number?: number
+          school_id: string
+          year: number
+        }
+        Update: {
+          last_number?: number
+          school_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_counters_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           applicant_first_name: string
@@ -164,7 +190,7 @@ export type Database = {
           id: string
           message: string | null
           previous_school: string | null
-          reference: string
+          reference: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           school_id: string
@@ -189,7 +215,7 @@ export type Database = {
           id?: string
           message?: string | null
           previous_school?: string | null
-          reference?: string
+          reference?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           school_id: string
@@ -214,7 +240,7 @@ export type Database = {
           id?: string
           message?: string | null
           previous_school?: string | null
-          reference?: string
+          reference?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           school_id?: string
@@ -1163,6 +1189,8 @@ export type Database = {
           processed_at: string | null
           recipient: string
           related_notification_id: string | null
+          reply_to: string | null
+          school_id: string | null
           status: string
           subject: string | null
         }
@@ -1177,6 +1205,8 @@ export type Database = {
           processed_at?: string | null
           recipient: string
           related_notification_id?: string | null
+          reply_to?: string | null
+          school_id?: string | null
           status?: string
           subject?: string | null
         }
@@ -1191,6 +1221,8 @@ export type Database = {
           processed_at?: string | null
           recipient?: string
           related_notification_id?: string | null
+          reply_to?: string | null
+          school_id?: string | null
           status?: string
           subject?: string | null
         }
@@ -1207,6 +1239,13 @@ export type Database = {
             columns: ["related_notification_id"]
             isOneToOne: false
             referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbound_message_queue_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2548,7 +2587,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      users_with_multiple_roles: {
+        Row: {
+          org_ids: string[] | null
+          resolves_to: string | null
+          role_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
@@ -2556,6 +2603,7 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
         Returns: {
@@ -2565,6 +2613,7 @@ export type Database = {
         }[]
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
+      get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2574,6 +2623,7 @@ export type Database = {
       }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_school_manager: { Args: { _user_id: string }; Returns: boolean }
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
       my_ai_entitlement: {
@@ -2594,7 +2644,20 @@ export type Database = {
       }
       my_staff_id: { Args: never; Returns: string }
       my_student_id: { Args: never; Returns: string }
+      next_application_reference: {
+        Args: { _school_id: string }
+        Returns: string
+      }
+      primary_user_role: {
+        Args: { _user_id: string }
+        Returns: {
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id: string
+        }[]
+      }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
+      student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
     }
