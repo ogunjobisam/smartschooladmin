@@ -2710,7 +2710,13 @@ export type Database = {
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
       school_section: "toddler" | "nursery" | "primary" | "secondary"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
-      student_status: "active" | "inactive" | "suspended" | "withdrawn"
+      student_status:
+        | "active"
+        | "inactive"
+        | "suspended"
+        | "withdrawn"
+        | "graduated"
+        | "expelled"
       transaction_status:
         | "initiated"
         | "pending"
@@ -2895,7 +2901,14 @@ export const Constants = {
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       school_section: ["toddler", "nursery", "primary", "secondary"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
-      student_status: ["active", "inactive", "suspended", "withdrawn"],
+      student_status: [
+        "active",
+        "inactive",
+        "suspended",
+        "withdrawn",
+        "graduated",
+        "expelled",
+      ],
       transaction_status: [
         "initiated",
         "pending",
