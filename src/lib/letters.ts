@@ -220,15 +220,11 @@ function letterHtml(recipient: LetterRecipient, opts: LetterOptions, school: Let
  * Opens a print window holding one letter per recipient, one per page, so a
  * bursar can print a whole class in a single pass.
  */
-export function printLetters(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): boolean {
-  if (recipients.length === 0) return false;
-  const win = window.open("", "_blank");
-  if (!win) return false;
-
+export function buildLettersDocument(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): string {
   const title = `${letterSubject(opts.kind, opts.subject)} — ${school.name}`;
   const body = recipients.map((r, i) => letterHtml(r, opts, school, i)).join("");
 
-  win.document.write(`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
   @page { margin: 18mm; }
@@ -243,7 +239,14 @@ export function printLetters(recipients: LetterRecipient[], opts: LetterOptions,
     </button>
   </div>
   ${body}
-</body></html>`);
+</body></html>`;
+}
+
+export function printLetters(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): boolean {
+  if (recipients.length === 0) return false;
+  const win = window.open("", "_blank");
+  if (!win) return false;
+  win.document.write(buildLettersDocument(recipients, opts, school));
   win.document.close();
   return true;
 }
