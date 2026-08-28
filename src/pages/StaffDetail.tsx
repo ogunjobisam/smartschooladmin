@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp, IdCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoUpload } from "@/components/common/PhotoUpload";
 import { schoolPhotoPath } from "@/lib/photos";
 import { canManageStaff } from "@/lib/access";
+import { getPhotoUrl } from "@/lib/photos";
+import { printIdCard } from "@/lib/print-documents";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -105,6 +108,24 @@ export default function StaffDetail() {
   const salary = calculatePayrollLine(pp || {});
   const { gross: grossPay, pension: pensionDeduction, tax: taxDeduction, netPay } = salary;
 
+  const handlePrintIdCard = async () => {
+    const photoUrl = await getPhotoUrl(staff.photo_url);
+    printIdCard({
+      schoolName: staff.schools?.name || branding.name,
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      holderName: `${staff.first_name} ${staff.last_name}`,
+      holderKind: "Staff",
+      idNumber: staff.staff_id_number || "—",
+      subtitle: [currentPos?.title, currentPos?.department].filter(Boolean).join(" • ") || "Staff",
+      photoUrl,
+      extraRows: [
+        ...(staff.phone ? [{ label: "Phone", value: staff.phone }] : []),
+        ...(staff.employment_date ? [{ label: "Since", value: new Date(staff.employment_date).toLocaleDateString() }] : []),
+      ],
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -142,6 +163,7 @@ export default function StaffDetail() {
           </div>
           <div className="flex gap-2">
             <InviteStaffButton staffId={staff.id} staffName={`${staff.first_name} ${staff.last_name}`} staffEmail={staff.email} hasUserId={!!staff.user_id} />
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
           </div>
         </div>
