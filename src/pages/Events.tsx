@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
+import { sendEventNotifications } from "@/lib/notification-dispatcher";
 import type { Enums } from "@/integrations/supabase/types";
 
 type Audience = Enums<"event_audience">;
@@ -53,6 +54,8 @@ export default function Events() {
   const [endsAt, setEndsAt] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifySms, setNotifySms] = useState(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["school-events", orgId, schoolId],
@@ -86,6 +89,7 @@ export default function Events() {
   const reset = () => {
     setTitle(""); setDescription(""); setLocation("");
     setStartsAt(""); setEndsAt(""); setAllDay(false); setAudience("all");
+    setNotifyEmail(true); setNotifySms(false);
   };
 
   const create = useMutation({
@@ -299,6 +303,23 @@ export default function Events() {
                       {AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-sm font-medium">Let people know</p>
+                  <p className="text-xs text-muted-foreground">
+                    Everyone in the audience gets an alert in the app and sees the event on their
+                    dashboard. Tick these to also send it to the contacts with an email or phone
+                    number on file.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={notifyEmail} onCheckedChange={(v) => setNotifyEmail(v === true)} />
+                    Email those with an address
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={notifySms} onCheckedChange={(v) => setNotifySms(v === true)} />
+                    Text those with a phone number
+                  </label>
                 </div>
 
                 <div className="space-y-1.5">
