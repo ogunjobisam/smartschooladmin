@@ -90,48 +90,6 @@ export type Database = {
           },
         ]
       }
-      ai_usage_events: {
-        Row: {
-          analysis_type: string
-          created_at: string
-          error_message: string | null
-          id: string
-          input_tokens: number
-          model: string | null
-          org_id: string
-          output_tokens: number
-          school_id: string | null
-          status: string
-          user_id: string | null
-        }
-        Insert: {
-          analysis_type: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          input_tokens?: number
-          model?: string | null
-          org_id: string
-          output_tokens?: number
-          school_id?: string | null
-          status?: string
-          user_id?: string | null
-        }
-        Update: {
-          analysis_type?: string
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          input_tokens?: number
-          model?: string | null
-          org_id?: string
-          output_tokens?: number
-          school_id?: string | null
-          status?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       approval_requests: {
         Row: {
           amount: number | null
@@ -370,129 +328,11 @@ export type Database = {
           },
         ]
       }
-      class_teachers: {
-        Row: {
-          class_id: string
-          created_at: string
-          id: string
-          is_form_teacher: boolean
-          staff_id: string
-        }
-        Insert: {
-          class_id: string
-          created_at?: string
-          id?: string
-          is_form_teacher?: boolean
-          staff_id: string
-        }
-        Update: {
-          class_id?: string
-          created_at?: string
-          id?: string
-          is_form_teacher?: boolean
-          staff_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "class_teachers_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "class_teachers_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      applications: {
-        Row: {
-          applicant_first_name: string
-          applicant_last_name: string
-          converted_student_id: string | null
-          created_at: string
-          date_of_birth: string | null
-          decision_notes: string | null
-          desired_class_id: string | null
-          gender: string | null
-          guardian_address: string | null
-          guardian_email: string | null
-          guardian_name: string
-          guardian_phone: string
-          id: string
-          message: string | null
-          previous_school: string | null
-          reference: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          school_id: string
-          section: Database["public"]["Enums"]["school_section"] | null
-          source: string | null
-          status: Database["public"]["Enums"]["application_status"]
-          updated_at: string
-        }
-        Insert: {
-          applicant_first_name: string
-          applicant_last_name: string
-          converted_student_id?: string | null
-          created_at?: string
-          date_of_birth?: string | null
-          decision_notes?: string | null
-          desired_class_id?: string | null
-          gender?: string | null
-          guardian_address?: string | null
-          guardian_email?: string | null
-          guardian_name: string
-          guardian_phone: string
-          id?: string
-          message?: string | null
-          previous_school?: string | null
-          reference?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          school_id: string
-          section?: Database["public"]["Enums"]["school_section"] | null
-          source?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
-          updated_at?: string
-        }
-        Update: {
-          applicant_first_name?: string
-          applicant_last_name?: string
-          converted_student_id?: string | null
-          created_at?: string
-          date_of_birth?: string | null
-          decision_notes?: string | null
-          desired_class_id?: string | null
-          gender?: string | null
-          guardian_address?: string | null
-          guardian_email?: string | null
-          guardian_name?: string
-          guardian_phone?: string
-          id?: string
-          message?: string | null
-          previous_school?: string | null
-          reference?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          school_id?: string
-          section?: Database["public"]["Enums"]["school_section"] | null
-          source?: string | null
-          status?: Database["public"]["Enums"]["application_status"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
       classes: {
         Row: {
           created_at: string
           id: string
           level_order: number | null
-          section: Database["public"]["Enums"]["school_section"] | null
           name: string
           school_id: string
         }
@@ -500,7 +340,6 @@ export type Database = {
           created_at?: string
           id?: string
           level_order?: number | null
-          section?: Database["public"]["Enums"]["school_section"] | null
           name: string
           school_id: string
         }
@@ -508,7 +347,6 @@ export type Database = {
           created_at?: string
           id?: string
           level_order?: number | null
-          section?: Database["public"]["Enums"]["school_section"] | null
           name?: string
           school_id?: string
         }
@@ -1077,8 +915,6 @@ export type Database = {
       }
       organisation_groups: {
         Row: {
-          ai_addon_enabled: boolean
-          ai_monthly_limit: number
           country: string
           created_at: string
           created_by: string | null
@@ -1089,8 +925,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          ai_addon_enabled?: boolean
-          ai_monthly_limit?: number
           country?: string
           created_at?: string
           created_by?: string | null
@@ -1101,8 +935,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          ai_addon_enabled?: boolean
-          ai_monthly_limit?: number
           country?: string
           created_at?: string
           created_by?: string | null
@@ -1758,100 +1590,10 @@ export type Database = {
           },
         ]
       }
-      school_events: {
-        Row: {
-          all_day: boolean
-          audience: Database["public"]["Enums"]["event_audience"]
-          created_at: string
-          created_by: string | null
-          description: string | null
-          ends_at: string | null
-          id: string
-          location: string | null
-          org_id: string
-          school_id: string | null
-          starts_at: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          all_day?: boolean
-          audience?: Database["public"]["Enums"]["event_audience"]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          ends_at?: string | null
-          id?: string
-          location?: string | null
-          org_id: string
-          school_id?: string | null
-          starts_at: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          all_day?: boolean
-          audience?: Database["public"]["Enums"]["event_audience"]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          ends_at?: string | null
-          id?: string
-          location?: string | null
-          org_id?: string
-          school_id?: string | null
-          starts_at?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      school_notices: {
-        Row: {
-          body: string | null
-          created_at: string
-          display_order: number
-          ends_on: string | null
-          id: string
-          is_published: boolean
-          school_id: string
-          starts_on: string | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          display_order?: number
-          ends_on?: string | null
-          id?: string
-          is_published?: boolean
-          school_id: string
-          starts_on?: string | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          display_order?: number
-          ends_on?: string | null
-          id?: string
-          is_published?: boolean
-          school_id?: string
-          starts_on?: string | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       schools: {
         Row: {
           accent_color: string | null
           address: string | null
-          admissions_intro: string | null
-          admissions_open: boolean
-          admissions_slug: string | null
           created_at: string
           email: string | null
           id: string
@@ -1866,9 +1608,6 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           address?: string | null
-          admissions_intro?: string | null
-          admissions_open?: boolean
-          admissions_slug?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -1883,9 +1622,6 @@ export type Database = {
         Update: {
           accent_color?: string | null
           address?: string | null
-          admissions_intro?: string | null
-          admissions_open?: boolean
-          admissions_slug?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -2214,7 +1950,6 @@ export type Database = {
           status: Database["public"]["Enums"]["student_status"]
           student_id_number: string | null
           student_type: string | null
-          user_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2230,7 +1965,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["student_status"]
           student_id_number?: string | null
           student_type?: string | null
-          user_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2246,7 +1980,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["student_status"]
           student_id_number?: string | null
           student_type?: string | null
-          user_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2290,141 +2023,6 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      transport_routes: {
-        Row: {
-          capacity: number | null
-          created_at: string
-          description: string | null
-          driver_name: string | null
-          driver_phone: string | null
-          fee_per_term: number
-          id: string
-          is_active: boolean
-          name: string
-          school_id: string
-          updated_at: string
-          vehicle_registration: string | null
-        }
-        Insert: {
-          capacity?: number | null
-          created_at?: string
-          description?: string | null
-          driver_name?: string | null
-          driver_phone?: string | null
-          fee_per_term?: number
-          id?: string
-          is_active?: boolean
-          name: string
-          school_id: string
-          updated_at?: string
-          vehicle_registration?: string | null
-        }
-        Update: {
-          capacity?: number | null
-          created_at?: string
-          description?: string | null
-          driver_name?: string | null
-          driver_phone?: string | null
-          fee_per_term?: number
-          id?: string
-          is_active?: boolean
-          name?: string
-          school_id?: string
-          updated_at?: string
-          vehicle_registration?: string | null
-        }
-        Relationships: []
-      }
-      transport_stops: {
-        Row: {
-          created_at: string
-          dropoff_time: string | null
-          id: string
-          name: string
-          pickup_time: string | null
-          route_id: string
-          stop_order: number
-        }
-        Insert: {
-          created_at?: string
-          dropoff_time?: string | null
-          id?: string
-          name: string
-          pickup_time?: string | null
-          route_id: string
-          stop_order?: number
-        }
-        Update: {
-          created_at?: string
-          dropoff_time?: string | null
-          id?: string
-          name?: string
-          pickup_time?: string | null
-          route_id?: string
-          stop_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transport_stops_route_id_fkey"
-            columns: ["route_id"]
-            isOneToOne: false
-            referencedRelation: "transport_routes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      student_transport: {
-        Row: {
-          academic_period_id: string | null
-          created_at: string
-          fee_override: number | null
-          id: string
-          route_id: string
-          stop_id: string | null
-          student_id: string
-        }
-        Insert: {
-          academic_period_id?: string | null
-          created_at?: string
-          fee_override?: number | null
-          id?: string
-          route_id: string
-          stop_id?: string | null
-          student_id: string
-        }
-        Update: {
-          academic_period_id?: string | null
-          created_at?: string
-          fee_override?: number | null
-          id?: string
-          route_id?: string
-          stop_id?: string | null
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_transport_route_id_fkey"
-            columns: ["route_id"]
-            isOneToOne: false
-            referencedRelation: "transport_routes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_transport_stop_id_fkey"
-            columns: ["stop_id"]
-            isOneToOne: false
-            referencedRelation: "transport_stops"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "student_transport_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
             referencedColumns: ["id"]
           },
         ]
@@ -2485,27 +2083,6 @@ export type Database = {
         }[]
       }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
-      ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
-      my_staff_id: { Args: never; Returns: string }
-      my_student_id: { Args: never; Returns: string }
-      is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
-      teaches_class: { Args: { _class_id: string }; Returns: boolean }
-      teaches_student: { Args: { _student_id: string }; Returns: boolean }
-      is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
-      my_outbox_summary: {
-        Args: never
-        Returns: { status: string; count: number }[]
-      }
-      is_my_child: { Args: { _student_id: string }; Returns: boolean }
-      my_guardian_id: { Args: never; Returns: string }
-      my_ai_entitlement: {
-        Args: never
-        Returns: {
-          enabled: boolean
-          used: number
-          monthly_limit: number
-        }[]
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2525,7 +2102,6 @@ export type Database = {
         | "hr_admin"
         | "teacher"
         | "parent"
-        | "student"
         | "school_admin"
       approval_status: "pending" | "approved" | "rejected"
       approval_type:
@@ -2551,17 +2127,6 @@ export type Database = {
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
-      application_status:
-        | "new"
-        | "reviewing"
-        | "interview"
-        | "offered"
-        | "accepted"
-        | "enrolled"
-        | "rejected"
-        | "withdrawn"
-      event_audience: "all" | "staff" | "parents" | "students"
-      school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: "active" | "inactive" | "suspended" | "withdrawn"
       transaction_status:
         | "initiated"
@@ -2734,18 +2299,6 @@ export const Constants = {
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
-      application_status: [
-        "new",
-        "reviewing",
-        "interview",
-        "offered",
-        "accepted",
-        "enrolled",
-        "rejected",
-        "withdrawn",
-      ],
-      event_audience: ["all", "staff", "parents", "students"],
-      school_section: ["toddler", "nursery", "primary", "secondary"],
       student_status: ["active", "inactive", "suspended", "withdrawn"],
       transaction_status: [
         "initiated",
