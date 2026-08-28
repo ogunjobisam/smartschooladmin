@@ -151,6 +151,31 @@ Deno.serve(async (req) => {
     // 17. fee_schedules
     await del("fee_schedules", { school_id });
 
+    // Admissions, transport, notices, events and teacher assignments.
+    //
+    // Deleting students already cascades their attendance, scores, guardian
+    // links, enrolments and bus assignments; these are the school-scoped rows
+    // that survive it, and a demo that cannot be reset cleanly is worse than no
+    // demo at all.
+    await del("applications", { school_id });
+    // Clears the numbering too, so a fresh demo starts again at APP-<year>-00001.
+    // Not via del(): that helper returns `id`, and this table is keyed on
+    // (school_id, year) with no id column.
+    {
+      const { data, error } = await admin
+        .from("application_counters")
+        .delete()
+        .eq("school_id", school_id)
+        .select("school_id");
+      if (error) console.error("Error deleting application_counters:", error.message);
+      counts["application_counters"] = data?.length ?? 0;
+    }
+    await del("school_notices", { school_id });
+    await del("school_events", { school_id });
+    // Cascades transport_stops and any remaining student_transport rows.
+    await del("transport_routes", { school_id });
+    await delVia("class_teachers", "class_id", "classes", { school_id });
+
     const totalDeleted = Object.values(counts).reduce((a, b) => a + b, 0);
 
     return new Response(

@@ -43,6 +43,8 @@ vi.mock("@/contexts/AuthContext", () => ({
     session: {},
     loading: false,
     currency: "NGN",
+    roleError: null as ReturnType<typeof import("@/lib/errors").diagnoseError> | null,
+    retryRole: () => {},
     setSchoolId: () => {},
     signOut: async () => {},
   }),

@@ -236,6 +236,44 @@ honorific, so the parent portal greeted "Welcome, Mrs".
 
 ---
 
+## If sign-in lands nowhere
+
+Signing in successfully and then ending up at the onboarding wizard — or on a
+screen with nothing on it — is not an authentication failure. The password was
+accepted; what failed is the step straight after it, where the app asks the
+database which school you belong to.
+
+That step used to fail silently: the error went to the browser console and the
+app treated "we could not read your role" as "this person has no school yet",
+which is the same state as a brand-new signup. So a working account was sent to
+the wizard, and the only thing on offer there was to create a *second*
+organisation.
+
+Two screens now stand in the way of that.
+
+**"We couldn't load your account"** — the lookup itself failed. The screen
+carries the Postgres or PostgREST code and a sentence about what it usually
+means. The three worth recognising:
+
+| Code | What it means |
+| --- | --- |
+| `42501` | A row-level security policy is blocking the read, or the policy that should allow it was never applied |
+| `42P17` | Two policies refer to each other in a loop; nothing can be read until one is rewritten |
+| `42883` / `PGRST202` | The function the app calls does not exist on this project — **almost always a migration that was never pushed** |
+
+A `42883` or `PGRST202` on `get_my_role` means the live database is behind the
+repository. Run `npx supabase db push` and sign in again.
+
+**"Your account isn't attached to a school"** — the lookup worked and found a
+role, but with no organisation behind it. That is a data problem on the account,
+not a deployment problem; the role needs reissuing from user management.
+
+Both screens carry **Try again**, which repeats the lookup without a full
+sign-out, and both are reached only when the account is genuinely stranded — a
+real new signup still goes to onboarding as before.
+
+---
+
 ## Prompt A — the audit (already run)
 
 Kept so it can be re-run after fixes. Paste into Lovable as one message.
