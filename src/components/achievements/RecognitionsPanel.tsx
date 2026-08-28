@@ -11,6 +11,8 @@ import { displayClassName } from "@/lib/sections";
 interface Props {
   subjectType: RecognitionSubject;
   personId: string;
+  /** Used where the panel sits alongside other cards rather than in its own tab. */
+  hideWhenEmpty?: boolean;
 }
 
 /**
@@ -18,7 +20,7 @@ interface Props {
  * promise the school has not yet approved, so the profile reads the same list
  * a parent would see.
  */
-export function RecognitionsPanel({ subjectType, personId }: Props) {
+export function RecognitionsPanel({ subjectType, personId, hideWhenEmpty }: Props) {
   const column = subjectType === "student" ? "student_id" : "staff_id";
 
   const { data: recognitions = [] } = useQuery({
@@ -51,7 +53,8 @@ export function RecognitionsPanel({ subjectType, personId }: Props) {
     enabled: !!personId,
   });
 
-  if (recognitions.length === 0 && appointments.length === 0) return null;
+  const empty = recognitions.length === 0 && appointments.length === 0;
+  if (empty && hideWhenEmpty) return null;
 
   return (
     <Card>
@@ -61,6 +64,11 @@ export function RecognitionsPanel({ subjectType, personId }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {empty && (
+          <p className="text-sm text-muted-foreground">
+            No published achievements yet. Awards appear here once a school manager publishes them.
+          </p>
+        )}
         {appointments.map((a) => (
           <div key={a.id} className="rounded-lg border p-3">
             <div className="flex flex-wrap items-center gap-2">

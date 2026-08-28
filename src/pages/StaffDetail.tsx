@@ -288,6 +288,10 @@ export default function StaffDetail() {
           </div>
         </TabsContent>
 
+        <TabsContent value="achievements" className="mt-4">
+          <RecognitionsPanel subjectType="staff" personId={id!} />
+        </TabsContent>
+
         <TabsContent value="documents" className="mt-4">
           {schoolId && orgId && (
             <DocumentsTab entityType="staff" entityId={id!} schoolId={schoolId} orgId={orgId} />
