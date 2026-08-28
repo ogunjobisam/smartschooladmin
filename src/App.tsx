@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SchoolBrandingProvider } from "@/contexts/SchoolBrandingContext";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ProtectedRoute, RequireAccess } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { AppLayout } from "@/components/layout/AppLayout";
 
@@ -78,7 +78,9 @@ function PageLoader() {
 
 const withLayout = (page: React.ReactNode) => (
   <ProtectedRoute>
-    <AppLayout>{page}</AppLayout>
+    <AppLayout>
+      <RequireAccess>{page}</RequireAccess>
+    </AppLayout>
   </ProtectedRoute>
 );
 

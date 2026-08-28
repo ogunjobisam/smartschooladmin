@@ -18,6 +18,8 @@ import { EditStaffDialog } from "@/components/forms/EditStaffDialog";
 import { InviteStaffButton } from "@/components/staff/InviteStaffButton";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { SalaryChangeDialog } from "@/components/payroll/SalaryChangeDialog";
+import { EditPayrollProfileDialog } from "@/components/payroll/EditPayrollProfileDialog";
+import { calculatePayrollLine } from "@/lib/payroll";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +27,7 @@ export default function StaffDetail() {
   const { schoolId, orgId, userRole } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
+  const [payrollProfileOpen, setPayrollProfileOpen] = useState(false);
   const canRequestSalaryChange = userRole === "super_admin" || userRole === "proprietor" || userRole === "bursar" || userRole === "hr_admin";
 
   const { data: staff, isLoading } = useQuery({
@@ -93,10 +96,10 @@ export default function StaffDetail() {
   const initials = `${staff.first_name[0]}${staff.last_name[0]}`.toUpperCase();
 
   const pp = payrollProfile;
-  const grossPay = pp ? (pp.basic_salary || 0) + (pp.housing_allowance || 0) + (pp.transport_allowance || 0) + (pp.other_allowances || 0) : 0;
-  const pensionDeduction = pp ? Math.round(grossPay * ((pp.pension_rate || 0) / 100)) : 0;
-  const taxDeduction = pp ? Math.round(grossPay * ((pp.tax_rate || 0) / 100)) : 0;
-  const netPay = grossPay - pensionDeduction - taxDeduction;
+  // Shared with the payroll run so the profile preview and the payslip agree.
+  // The local version here charged pension on gross rather than basic.
+  const salary = calculatePayrollLine(pp || {});
+  const { gross: grossPay, pension: pensionDeduction, tax: taxDeduction, netPay } = salary;
 
   return (
     <div className="space-y-6">
@@ -144,11 +147,16 @@ export default function StaffDetail() {
         </TabsList>
 
         <TabsContent value="salary" className="mt-4 space-y-4">
-          {canRequestSalaryChange && pp && (
-            <div className="flex justify-end">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSalaryChangeOpen(true)}>
-                <TrendingUp className="h-3.5 w-3.5" /> Request Salary Change
+          {canRequestSalaryChange && (
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPayrollProfileOpen(true)}>
+                <Banknote className="h-3.5 w-3.5" /> {pp ? "Edit Salary" : "Set Up Salary"}
               </Button>
+              {pp && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setSalaryChangeOpen(true)}>
+                  <TrendingUp className="h-3.5 w-3.5" /> Request Salary Change
+                </Button>
+              )}
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -168,7 +176,16 @@ export default function StaffDetail() {
                   <div className="flex justify-between font-bold text-success"><span>Net Pay</span><span className="font-mono tabular-nums">{formatMoney(netPay)}</span></div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground py-4">No payroll profile configured.</p>
+                <div className="py-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    No salary set up yet. Payroll runs skip staff without a salary.
+                  </p>
+                  {canRequestSalaryChange && (
+                    <Button size="sm" variant="outline" onClick={() => setPayrollProfileOpen(true)}>
+                      Set up salary
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -181,7 +198,17 @@ export default function StaffDetail() {
                   <div className="flex justify-between"><span className="text-muted-foreground">Account Name</span><span>{bankDetails.account_name}</span></div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground py-4">No bank details on file.</p>
+                <div className="py-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    No bank details on file. Without these this staff member is left out of the
+                    payroll bank batch export.
+                  </p>
+                  {canRequestSalaryChange && (
+                    <Button size="sm" variant="outline" onClick={() => setPayrollProfileOpen(true)}>
+                      Add bank details
+                    </Button>
+                  )}
+                </div>
               )}
               <p className="text-[11px] text-muted-foreground italic">Bank details are restricted to authorised finance roles.</p>
             </div>
@@ -229,6 +256,16 @@ export default function StaffDetail() {
       </Tabs>
 
       {staff && <EditStaffDialog open={editOpen} onOpenChange={setEditOpen} staff={staff} />}
+      {staff && (
+        <EditPayrollProfileDialog
+          open={payrollProfileOpen}
+          onOpenChange={setPayrollProfileOpen}
+          staffId={staff.id}
+          staffName={`${staff.first_name} ${staff.last_name}`}
+          profile={pp}
+          bankDetails={bankDetails}
+        />
+      )}
       {staff && schoolId && (
         <SalaryChangeDialog
           open={salaryChangeOpen}

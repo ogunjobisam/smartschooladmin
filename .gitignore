@@ -28,6 +28,9 @@ dist-ssr
 .env.local
 .env.*.local
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Test output
 coverage
 playwright-report
