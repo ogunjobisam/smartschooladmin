@@ -102,5 +102,16 @@ for table in $expected_tables; do
 done
 pass "all expected tables exist"
 
+# --- Behaviour ---------------------------------------------------------------
+# The checks above prove the policies exist. These seed real rows and query as a
+# real teacher and student to prove they do the right thing. Every assertion in
+# there corresponds to a hole that was actually open.
+if ! rls_output=$(target -f "$ROOT/supabase/tests/rls.sql" 2>&1); then
+  printf '\n\033[31mFAIL\033[0m  row-level security behaviour\n' >&2
+  echo "$rls_output" | grep -E "ASSERTION FAILED|ERROR|DETAIL" >&2 || echo "$rls_output" >&2
+  exit 1
+fi
+pass "row-level security behaves correctly for a teacher and a student"
+
 echo
 echo "Migration replay checks passed."

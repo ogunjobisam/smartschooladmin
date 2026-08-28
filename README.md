@@ -267,6 +267,13 @@ empty database and then asserts that no table has row-level security on with no
 readable policy, that nothing grants `anon` or `PUBLIC` access to `applications`
 or `school_notices`, and that `has_role()` still excludes `student`.
 
+It then runs `supabase/tests/rls.sql`, which seeds a school and queries it as a
+real teacher and a real student to prove the policies *behave* — a teacher
+assigned to no class sees no students and cannot edit one, cannot read invoices
+or guardians, and cannot enumerate roles; a student can read their own scores but
+not change them. Every assertion there corresponds to a hole that was open at
+some point.
+
 It needs a PostgreSQL server and `psql`; connection comes from the usual `PG*`
 variables or `DATABASE_URL`. `supabase/tests/bootstrap.sql` stands in for the
 Supabase-managed schemas, so this proves the schema *applies* and the policies

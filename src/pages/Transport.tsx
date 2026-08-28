@@ -52,7 +52,7 @@ export default function Transport() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transport_routes")
-        .select("*, transport_stops(id, name, stop_order, pickup_time), student_transport(id)")
+        .select("*, transport_stops(id, name, stop_order, pickup_time), student_transport(id, fee_override)")
         .eq("school_id", schoolId!)
         .order("name");
       if (error) throw error;
@@ -62,8 +62,15 @@ export default function Transport() {
   });
 
   const riders = routes.reduce((sum, r) => sum + (r.student_transport?.length ?? 0), 0);
+  // What the riders are actually charged. Summing route fees alone overstated
+  // this for every student on a negotiated rate.
   const termRevenue = routes.reduce(
-    (sum, r) => sum + (r.student_transport?.length ?? 0) * (r.fee_per_term || 0),
+    (sum, r) =>
+      sum +
+      (r.student_transport ?? []).reduce(
+        (routeSum, rider) => routeSum + (rider.fee_override ?? r.fee_per_term ?? 0),
+        0
+      ),
     0
   );
 

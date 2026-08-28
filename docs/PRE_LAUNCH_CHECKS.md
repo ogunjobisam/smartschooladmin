@@ -15,10 +15,10 @@ agent can query the connected project and drive the live preview.
 | Part | What it covers | State |
 | --- | --- | --- |
 | 1 | Did the migrations, policies and function reach the live database | **Run — passed**, 2 blockers |
-| 2 | Functional walkthrough of every new feature | Not run — needs write access |
-| 3 | Security probe of the new tenant boundaries | Partly run (read-only probes only) |
+| 2 | Functional walkthrough of every new feature | **Run** — 7 dead ends found, all fixed |
+| 3 | Security probe of the new tenant boundaries | **Run** — isolation holds; 3 role-boundary holes found and fixed |
 | 4 | Confirm or refute nine suspected defects | **Run** — 8 confirmed, 1 refuted |
-| 5 | Design and copy review of the new screens | Not run |
+| 5 | Design and copy review of the new screens | **Run** — no overflow; currency and copy issues found |
 
 Lovable's full report: [`.lovable/plan/external-review-audit-findings-report-2026-08-28.md`](../.lovable/plan/external-review-audit-findings-report-2026-08-28.md).
 
@@ -189,6 +189,45 @@ From Part 4, ranked. Six are fixed; three remain open.
    `transport_stops.dropoff_time`, `transport_routes.description`. Either surface
    them or drop them. (`school_events.created_by` *is* written — that suspicion
    was refuted.)
+
+---
+
+## Parts 2, 3 and 5 — run, and what they found
+
+Run through Lovable against the live project. Full report in
+`.lovable/plan/`. It confirmed the bursar gating works, tenant isolation holds,
+anonymous access is refused, and the closed-admissions page behaves. It also
+found real holes, all now fixed in `20260829100000_close_role_boundary_holes.sql`
+and covered by the new behaviour tests in `supabase/tests/rls.sql`:
+
+| Finding | Was |
+| --- | --- |
+| Teachers could read and **write** every student in the org | A `FOR ALL` policy sat beside the scoped one; permissive policies combine with `OR`, so the scoping was decorative |
+| Teachers could read the whole school's invoices and guardians | No role check beyond "not a parent or student" |
+| Any member could enumerate `user_roles` | Including which account is `super_admin` |
+| **A student could write their own exam scores** | Write policies gated on `NOT has_role(…,'parent')`, written before the `student` role existed — a student is not a parent. Found while fixing the above, not by the audit |
+| Performance and transcripts 500'd everywhere | `exams` and `student_scores` policies subqueried each other → `42P17 infinite recursion`, hidden behind a "No performance data yet" empty state |
+| Every fresh sign-in landed on `/onboarding` | `get_my_role()` used `LIMIT 1` with no `ORDER BY`; a row with a null `org_id` could win, and users were then offered the org-creation wizard |
+
+Also fixed: the guardian list's Invite button navigated instead of inviting; the
+public form saved `section` as null; Settings linked an unsaved admissions slug;
+the Transport KPI ignored per-student fee overrides; guardian names kept the
+honorific, so the parent portal greeted "Welcome, Mrs".
+
+### Still outstanding
+
+- **Redeploy the edge functions.** The deployed `invite-user` predates the
+  `student` role and returns `400`, so the student portal has never worked in
+  production. The repo source is correct — it needs
+  `npx supabase functions deploy invite-user`.
+- **Three orphaned `auth.users`** from the audit (`audit.*@example.com`) with a
+  known password. They hold no role, which combined with the onboarding bug meant
+  they could have created a new organisation. Delete them from the dashboard.
+- **Check `admissions_open` on each school.** The audit toggled it and restored
+  it to `true`, but its own notes say all three started `false`.
+- **Organisation currency is GBP**, so money renders in £. Change it to NGN.
+- The application reference sequence is global, not per-school, so one school can
+  infer another's volume from the gaps.
 
 ---
 

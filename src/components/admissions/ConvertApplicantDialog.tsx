@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
 import { sortBySection } from "@/lib/sections";
+import { splitPersonName } from "@/lib/names";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Application = Tables<"applications">;
@@ -25,13 +26,6 @@ type Application = Tables<"applications">;
 interface ConvertApplicantDialogProps {
   application: Application | null;
   onOpenChange: (open: boolean) => void;
-}
-
-/** "Adebayo Ogunlesi" → first "Adebayo", last "Ogunlesi"; a single word stays whole. */
-function splitName(full: string): { first: string; last: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 1) return { first: parts[0], last: parts[0] };
-  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
 
 /**
@@ -111,7 +105,7 @@ export function ConvertApplicantDialog({ application, onOpenChange }: ConvertApp
       if (enrolError) throw enrolError;
 
       if (createGuardian) {
-        const { first, last } = splitName(application.guardian_name);
+        const { first, last } = splitPersonName(application.guardian_name);
         const { data: guardian, error: guardianError } = await supabase
           .from("guardians")
           .insert({
