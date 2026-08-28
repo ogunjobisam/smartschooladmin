@@ -35,6 +35,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", title: "Dashboard", url: "/dashboard", group: "overview" },
+  { key: "admissions", title: "Admissions", url: "/admissions", group: "overview" },
   { key: "students", title: "Students", url: "/students", group: "overview" },
   { key: "guardians", title: "Guardians", url: "/guardians", group: "overview" },
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
@@ -79,21 +80,21 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
+    "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "events", "preferences",
     "transport", "approvals", "reports",
     "settings", "users",
   ],
   principal: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
+    "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
     "announcements", "templates", "events", "preferences",
     "transport", "approvals", "reports",
     "users",
   ],
   bursar: [
-    "dashboard", "students", "guardians",
+    "dashboard", "admissions", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
     "announcements", "events", "preferences",
     "transport", "payroll", "reports",

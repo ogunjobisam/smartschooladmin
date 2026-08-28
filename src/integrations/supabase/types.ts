@@ -409,6 +409,84 @@ export type Database = {
           },
         ]
       }
+      applications: {
+        Row: {
+          applicant_first_name: string
+          applicant_last_name: string
+          converted_student_id: string | null
+          created_at: string
+          date_of_birth: string | null
+          decision_notes: string | null
+          desired_class_id: string | null
+          gender: string | null
+          guardian_address: string | null
+          guardian_email: string | null
+          guardian_name: string
+          guardian_phone: string
+          id: string
+          message: string | null
+          previous_school: string | null
+          reference: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          section: Database["public"]["Enums"]["school_section"] | null
+          source: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          applicant_first_name: string
+          applicant_last_name: string
+          converted_student_id?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          decision_notes?: string | null
+          desired_class_id?: string | null
+          gender?: string | null
+          guardian_address?: string | null
+          guardian_email?: string | null
+          guardian_name: string
+          guardian_phone: string
+          id?: string
+          message?: string | null
+          previous_school?: string | null
+          reference?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          section?: Database["public"]["Enums"]["school_section"] | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          applicant_first_name?: string
+          applicant_last_name?: string
+          converted_student_id?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          decision_notes?: string | null
+          desired_class_id?: string | null
+          gender?: string | null
+          guardian_address?: string | null
+          guardian_email?: string | null
+          guardian_name?: string
+          guardian_phone?: string
+          id?: string
+          message?: string | null
+          previous_school?: string | null
+          reference?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          section?: Database["public"]["Enums"]["school_section"] | null
+          source?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           created_at: string
@@ -1732,6 +1810,9 @@ export type Database = {
         Row: {
           accent_color: string | null
           address: string | null
+          admissions_intro: string | null
+          admissions_open: boolean
+          admissions_slug: string | null
           created_at: string
           email: string | null
           id: string
@@ -1746,6 +1827,9 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           address?: string | null
+          admissions_intro?: string | null
+          admissions_open?: boolean
+          admissions_slug?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -1760,6 +1844,9 @@ export type Database = {
         Update: {
           accent_color?: string | null
           address?: string | null
+          admissions_intro?: string | null
+          admissions_open?: boolean
+          admissions_slug?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -2425,6 +2512,15 @@ export type Database = {
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
+      application_status:
+        | "new"
+        | "reviewing"
+        | "interview"
+        | "offered"
+        | "accepted"
+        | "enrolled"
+        | "rejected"
+        | "withdrawn"
       event_audience: "all" | "staff" | "parents" | "students"
       school_section: "toddler" | "nursery" | "primary" | "secondary"
       student_status: "active" | "inactive" | "suspended" | "withdrawn"
@@ -2599,6 +2695,16 @@ export const Constants = {
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
+      application_status: [
+        "new",
+        "reviewing",
+        "interview",
+        "offered",
+        "accepted",
+        "enrolled",
+        "rejected",
+        "withdrawn",
+      ],
       event_audience: ["all", "staff", "parents", "students"],
       school_section: ["toddler", "nursery", "primary", "secondary"],
       student_status: ["active", "inactive", "suspended", "withdrawn"],

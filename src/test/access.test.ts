@@ -66,6 +66,15 @@ describe("canAccessPath", () => {
     expect(canAccessPath("not_a_role", "/settings")).toBe(false);
   });
 
+  it("keeps admissions in the school office", () => {
+    for (const role of ["school_admin", "principal", "bursar"]) {
+      expect(canAccessPath(role, "/admissions")).toBe(true);
+    }
+    for (const role of ["teacher", "parent", "student", "hr_admin", "finance_officer"]) {
+      expect(canAccessPath(role, "/admissions")).toBe(false);
+    }
+  });
+
   it("keeps transport with the people who bill for it, not with riders", () => {
     for (const role of ["school_admin", "principal", "bursar"]) {
       expect(canAccessPath(role, "/transport")).toBe(true);

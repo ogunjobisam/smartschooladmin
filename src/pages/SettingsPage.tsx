@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,7 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
-const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "notifications", "addons"];
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "admissions", "notifications", "addons"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -283,6 +284,7 @@ export default function SettingsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
+          <TabsTrigger value="admissions">Admissions</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="addons">Add-ons</TabsTrigger>
         </TabsList>
@@ -528,6 +530,10 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Subjects Tab ── */}
+        <TabsContent value="admissions" className="space-y-6 pt-4">
+          <AdmissionsSettingsTab schoolId={schoolId} canManage={canManage} />
+        </TabsContent>
+
         <TabsContent value="subjects" className="space-y-6 pt-4">
           <SubjectsTab schoolId={schoolId} canManage={canManage} />
         </TabsContent>

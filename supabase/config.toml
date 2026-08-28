@@ -5,3 +5,7 @@ verify_jwt = false
 
 [functions.delete-demo-data]
 verify_jwt = false
+
+# The public application form is used by people who are not signed in.
+[functions.admissions]
+verify_jwt = false

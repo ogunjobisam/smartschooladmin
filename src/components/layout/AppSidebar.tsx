@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
   ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
-  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus
+  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -22,6 +22,7 @@ import {
 /** Icons live here; titles, urls and role access come from the shared access map. */
 const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   dashboard: LayoutDashboard,
+  admissions: Inbox,
   students: GraduationCap,
   guardians: Users,
   staff: UserCog,
