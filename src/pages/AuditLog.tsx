@@ -86,7 +86,7 @@ export default function AuditLog() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No audit logs found.</TableCell>
               </TableRow>
             ) : (
-              data?.logs?.map((l: any) => (
+              data?.logs?.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
                     {new Date(l.created_at).toLocaleString()}

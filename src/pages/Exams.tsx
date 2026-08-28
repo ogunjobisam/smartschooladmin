@@ -75,7 +75,7 @@ export default function Exams() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {exams.map((exam: any) => (
+                {exams.map((exam) => (
                   <TableRow key={exam.id} className="cursor-pointer" onClick={() => navigate(`/exams/${exam.id}`)}>
                     <TableCell className="font-medium">{exam.name}</TableCell>
                     <TableCell className="text-muted-foreground">{exam.classes?.name || "All"}</TableCell>

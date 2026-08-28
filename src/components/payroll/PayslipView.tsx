@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Printer, Download } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 
-interface PayslipData {
+export interface PayslipData {
   staffName: string;
   staffId: string;
   department: string;

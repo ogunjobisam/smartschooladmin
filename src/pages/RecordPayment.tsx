@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import type { Enums } from "@/integrations/supabase/types";
 
 export default function RecordPayment() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export default function RecordPayment() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("");
+  const [method, setMethod] = useState<Enums<"payment_method"> | "">("");
   const [reference, setReference] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
@@ -81,7 +82,7 @@ export default function RecordPayment() {
           school_id: schoolId,
           student_id: selectedStudentId,
           amount: amountKobo,
-          payment_method: method as any,
+          payment_method: method as Enums<"payment_method">,
           reference_number: reference || null,
           payment_date: paymentDate,
           notes: notes || null,
@@ -108,7 +109,7 @@ export default function RecordPayment() {
         const newStatus = newPaid >= (selectedInvoice?.total_amount || 0) ? "paid" : "pending";
         await supabase
           .from("invoices")
-          .update({ amount_paid: newPaid, status: newStatus as any })
+          .update({ amount_paid: newPaid, status: newStatus })
           .eq("id", selectedInvoiceId);
       }
 
@@ -131,7 +132,7 @@ export default function RecordPayment() {
       }
       navigate("/payments");
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to record payment.", variant: "destructive" });
     },
   });
@@ -164,7 +165,7 @@ export default function RecordPayment() {
               ) : students?.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-2">No students found.</p>
               ) : (
-                students?.map((s: any) => {
+                students?.map((s) => {
                   const cn = s.enrolments?.[0]?.classes?.name || "—";
                   return (
                     <button
@@ -207,7 +208,7 @@ export default function RecordPayment() {
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Method</Label>
-                    <Select value={method} onValueChange={setMethod}>
+                    <Select value={method} onValueChange={(v) => setMethod(v as Enums<"payment_method">)}>
                       <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">Cash</SelectItem>
@@ -237,7 +238,7 @@ export default function RecordPayment() {
                     <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId}>
                       <SelectTrigger><SelectValue placeholder="Select invoice (optional)" /></SelectTrigger>
                       <SelectContent>
-                        {studentInvoices.map((inv: any) => (
+                        {studentInvoices.map((inv) => (
                           <SelectItem key={inv.id} value={inv.id}>
                             {inv.invoice_number} — Balance: {formatMoney((inv.total_amount || 0) - (inv.amount_paid || 0))}
                           </SelectItem>

@@ -20,6 +20,7 @@ import { exportToCsv } from "@/lib/csv-export";
 import { CsvImportDialog } from "@/components/import/CsvImportDialog";
 import { PromoteStudentsDialog } from "@/components/students/PromoteStudentsDialog";
 import { ArrowRight } from "lucide-react";
+import type { Enums } from "@/integrations/supabase/types";
 
 const PAGE_SIZE = 20;
 
@@ -28,7 +29,7 @@ export default function Students() {
   const { schoolId } = useAuth();
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Enums<"student_status"> | "all">("all");
   const [page, setPage] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -60,7 +61,7 @@ export default function Students() {
         query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,student_id_number.ilike.%${search}%`);
       }
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter as any);
+        query = query.eq("status", statusFilter);
       }
 
       const { data: students, count } = await query;
@@ -70,7 +71,7 @@ export default function Students() {
       if (classFilter !== "all" && classes) {
         const classId = classes.find(c => c.name.toLowerCase() === classFilter)?.id;
         if (classId) {
-          filtered = filtered.filter((s: any) => s.enrolments?.some((e: any) => e.class_id === classId));
+          filtered = filtered.filter((s) => s.enrolments?.some((e) => e.class_id === classId));
         }
       }
 
@@ -79,7 +80,9 @@ export default function Students() {
     enabled: !!schoolId,
   });
 
-  const getClassName = (student: any) => {
+  type StudentRow = NonNullable<typeof data>["students"][number];
+
+  const getClassName = (student: StudentRow) => {
     const enrolment = student.enrolments?.[0];
     return enrolment?.classes?.name || "—";
   };
@@ -92,7 +95,7 @@ export default function Students() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
           if (!data?.students?.length) return;
           exportToCsv("students", ["Student ID", "First Name", "Last Name", "Class", "Type", "Status"],
-            data.students.map((s: any) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
+            data.students.map((s) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
         }}><Download className="h-4 w-4" /> Export</Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPromote(true)}><ArrowRight className="h-4 w-4" /> Promote</Button>
@@ -116,7 +119,7 @@ export default function Students() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as Enums<"student_status"> | "all"); setPage(0); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
@@ -152,7 +155,7 @@ export default function Students() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No students found.</TableCell>
               </TableRow>
             ) : (
-              data?.students?.map((s: any) => (
+              data?.students?.map((s) => (
                 <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.student_id_number || "—"}</TableCell>
                   <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>

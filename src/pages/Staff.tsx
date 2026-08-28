@@ -43,8 +43,10 @@ export default function Staff() {
     enabled: !!schoolId,
   });
 
-  const getPosition = (s: any) => {
-    const pos = s.staff_positions?.find((p: any) => p.is_current);
+  type StaffRow = NonNullable<typeof staffList>[number];
+
+  const getPosition = (s: StaffRow) => {
+    const pos = s.staff_positions?.find((p) => p.is_current);
     return pos ? { title: pos.title, department: pos.department } : { title: "—", department: "—" };
   };
 
@@ -54,7 +56,7 @@ export default function Staff() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
           if (!staffList?.length) return;
           exportToCsv("staff", ["Staff ID", "First Name", "Last Name", "Email", "Position", "Department", "Status"],
-            staffList.map((s: any) => { const p = getPosition(s); return [s.staff_id_number || "", s.first_name, s.last_name, s.email || "", p.title, p.department, s.employment_status]; }));
+            staffList.map((s) => { const p = getPosition(s); return [s.staff_id_number || "", s.first_name, s.last_name, s.email || "", p.title, p.department, s.employment_status]; }));
         }}><Download className="h-4 w-4" /> Export</Button>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Staff</Button>
@@ -92,7 +94,7 @@ export default function Staff() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No staff found.</TableCell>
               </TableRow>
             ) : (
-              staffList?.map((s: any) => {
+              staffList?.map((s) => {
                 const pos = getPosition(s);
                 return (
                   <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/staff/${s.id}`)}>
@@ -100,7 +102,7 @@ export default function Staff() {
                     <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
                     <TableCell>{pos.title}</TableCell>
                     <TableCell className="text-muted-foreground">{pos.department}</TableCell>
-                    <TableCell><StatusBadge status={s.employment_status as any} /></TableCell>
+                    <TableCell><StatusBadge status={s.employment_status} /></TableCell>
                   </TableRow>
                 );
               })

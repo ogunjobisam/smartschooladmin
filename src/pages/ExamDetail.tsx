@@ -41,9 +41,9 @@ export default function ExamDetail() {
     const win = window.open("", "_blank");
     if (!win) return;
 
-    const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
+    const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
-    const pages = students.map((student: any) => {
+    const pages = students.map((student) => {
       const studentScores = Array.from(scores.values())
         .filter((s) => s.studentId === student.id && s.score !== "")
         .map((s) => ({
@@ -135,12 +135,12 @@ export default function ExamDetail() {
       // If exam has a class, get only class-assigned subjects
       if (exam?.class_id) {
         const { data: classSubjects } = await supabase
-          .from("class_subjects" as any)
+          .from("class_subjects")
           .select("subject_id")
           .eq("class_id", exam.class_id);
         
         if (classSubjects && classSubjects.length > 0) {
-          const subjectIds = (classSubjects as any[]).map((cs) => cs.subject_id);
+          const subjectIds = (classSubjects ?? []).map((cs) => cs.subject_id);
           const { data } = await supabase
             .from("subjects")
             .select("*")
@@ -170,9 +170,9 @@ export default function ExamDetail() {
       if (exam.academic_period_id) q = q.eq("academic_period_id", exam.academic_period_id);
       const { data } = await q;
       return (data || [])
-        .map((e: any) => e.students)
-        .filter((s: any) => s.status === "active")
-        .sort((a: any, b: any) => a.last_name.localeCompare(b.last_name));
+        .map((e) => e.students)
+        .filter((s) => s.status === "active")
+        .sort((a, b) => a.last_name.localeCompare(b.last_name));
     },
     enabled: !!exam?.class_id,
   });
@@ -190,7 +190,7 @@ export default function ExamDetail() {
   // Initialize scores map from existing data
   useEffect(() => {
     const map = new Map<string, ScoreEntry>();
-    existingScores.forEach((s: any) => {
+    existingScores.forEach((s) => {
       const key = `${s.student_id}-${s.subject_id}`;
       map.set(key, {
         studentId: s.student_id,
@@ -278,7 +278,7 @@ export default function ExamDetail() {
 
   // Show report card view
   if (reportCardStudent) {
-    const student = students.find((s: any) => s.id === reportCardStudent);
+    const student = students.find((s) => s.id === reportCardStudent);
     const studentScores = Array.from(scores.values()).filter(
       (s) => s.studentId === reportCardStudent && s.score !== ""
     );
@@ -363,7 +363,7 @@ export default function ExamDetail() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-card z-10 min-w-[180px]">Student</TableHead>
-                  {subjects.map((sub: any) => (
+                  {subjects.map((sub) => (
                     <TableHead key={sub.id} className="min-w-[90px] text-center">
                       {sub.short_code || sub.name}
                     </TableHead>
@@ -374,7 +374,7 @@ export default function ExamDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students.map((student: any) => {
+                {students.map((student) => {
                   const avg = studentAverages[student.id];
                   const averageScore = avg ? avg.total / avg.count : null;
                   const grade = averageScore != null ? computeGrade(averageScore, exam.max_score) : "—";
@@ -384,7 +384,7 @@ export default function ExamDetail() {
                       <TableCell className="sticky left-0 bg-card z-10 font-medium">
                         {student.last_name}, {student.first_name}
                       </TableCell>
-                      {subjects.map((sub: any) => (
+                      {subjects.map((sub) => (
                         <TableCell key={sub.id} className="p-1">
                           <Input
                             type="number"

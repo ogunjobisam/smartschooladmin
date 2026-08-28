@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
+import type { SalaryField } from "@/lib/payroll";
 
 const SALARY_FIELDS = [
   { value: "basic_salary", label: "Basic Salary" },
@@ -27,14 +28,14 @@ interface SalaryChangeDialogProps {
   staffId: string;
   staffName: string;
   schoolId: string;
-  currentValues: Record<string, any>;
+  currentValues: Partial<Record<SalaryField, number | null>>;
 }
 
 export function SalaryChangeDialog({ open, onOpenChange, staffId, staffName, schoolId, currentValues }: SalaryChangeDialogProps) {
   const { user, orgId } = useAuth();
   const queryClient = useQueryClient();
   const { formatMoney } = useCurrency();
-  const [field, setField] = useState("basic_salary");
+  const [field, setField] = useState<SalaryField>("basic_salary");
   const [newValue, setNewValue] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +49,7 @@ export function SalaryChangeDialog({ open, onOpenChange, staffId, staffName, sch
     // Create approval request
     const { data: approval, error: approvalError } = await supabase.from("approval_requests").insert({
       org_id: orgId,
-      type: "salary_change" as any,
+      type: "salary_change",
       description: `Salary change for ${staffName}: ${SALARY_FIELDS.find(f => f.value === field)?.label} from ${oldValue} to ${newValue}`,
       requested_by: user.id,
       amount: parseInt(newValue) || 0,
@@ -95,7 +96,7 @@ export function SalaryChangeDialog({ open, onOpenChange, staffId, staffName, sch
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Field to Change</Label>
-            <Select value={field} onValueChange={setField}>
+            <Select value={field} onValueChange={(v) => setField(v as SalaryField)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {SALARY_FIELDS.map((f) => (

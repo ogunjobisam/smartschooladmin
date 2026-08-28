@@ -160,7 +160,7 @@ export default function Approvals() {
                 <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No approval requests found.</TableCell>
               </TableRow>
             ) : (
-              approvals?.map((a: any) => (
+              approvals?.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium">{formatType(a.type)}</TableCell>
                   <TableCell className="max-w-xs text-sm">{a.description}</TableCell>

@@ -105,7 +105,7 @@ export default function Attendance() {
       ]);
 
       return {
-        enrolments: (enrolments || []).filter((e: any) => e.students?.status === "active"),
+        enrolments: (enrolments || []).filter((e) => e.students?.status === "active"),
         records: records || [],
       };
     },
@@ -125,9 +125,9 @@ export default function Attendance() {
     if (!studentData) return;
     const records = studentData.records;
     const students = roster.students;
-    const recordMap = new Map(records.map((r: any) => [r.student_id, r]));
+    const recordMap = new Map(records.map((r) => [r.student_id, r]));
 
-    const newRows: StudentRow[] = students.map((s: any) => {
+    const newRows: StudentRow[] = students.map((s) => {
       const existing = recordMap.get(s.id);
       return {
         studentId: s.id,
@@ -211,7 +211,7 @@ export default function Attendance() {
             <SelectValue placeholder="Select class" />
           </SelectTrigger>
           <SelectContent>
-            {classes.map((c: any) => (
+            {classes.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
           </SelectContent>
@@ -288,7 +288,7 @@ export default function Attendance() {
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-base">
             {selectedClassId
-              ? `${classes.find((c: any) => c.id === selectedClassId)?.name || "Class"} — ${format(date, "EEEE, dd MMMM yyyy")}`
+              ? `${classes.find((c) => c.id === selectedClassId)?.name || "Class"} — ${format(date, "EEEE, dd MMMM yyyy")}`
               : "Select a class to begin"}
           </CardTitle>
           {rows.length > 0 && (

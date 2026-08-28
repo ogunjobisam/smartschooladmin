@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Bell } from "lucide-react";
+import type { Enums } from "@/integrations/supabase/types";
 
 export default function NotificationHistory() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function NotificationHistory() {
         .limit(100);
 
       if (filter === "unread") query = query.eq("is_read", false);
-      if (filter !== "all" && filter !== "unread") query = query.eq("type", filter as any);
+      if (filter !== "all" && filter !== "unread") query = query.eq("type", filter as Enums<"notification_type">);
 
       const { data } = await query;
       return data || [];
@@ -39,7 +40,9 @@ export default function NotificationHistory() {
     enabled: !!user,
   });
 
-  const handleClick = async (n: any) => {
+  type NotificationRow = (typeof notifications)[number];
+
+  const handleClick = async (n: NotificationRow) => {
     if (!n.is_read) {
       await markNotificationRead(n.id);
       queryClient.invalidateQueries({ queryKey: ["notifications-history"] });
@@ -56,7 +59,7 @@ export default function NotificationHistory() {
     queryClient.invalidateQueries({ queryKey: ["notifications-history"] });
   };
 
-  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="space-y-6">
@@ -95,7 +98,7 @@ export default function NotificationHistory() {
             <EmptyState icon={Bell} title="No notifications" description="You're all caught up!" />
           ) : (
             <div className="divide-y">
-              {notifications.map((n: any) => (
+              {notifications.map((n) => (
                 <NotificationItem
                   key={n.id}
                   id={n.id}

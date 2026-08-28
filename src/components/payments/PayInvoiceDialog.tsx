@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, CreditCard, CheckCircle } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { generatePaymentReference } from "@/lib/payment-providers";
+import type { Enums } from "@/integrations/supabase/types";
 
 interface PayInvoiceDialogProps {
   open: boolean;
@@ -50,9 +51,9 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
       student_id: invoice.student_id,
       invoice_id: invoice.id,
       amount: payAmount,
-      gateway: gateway as any,
+      gateway: gateway as Enums<"payment_gateway">,
       gateway_reference: reference,
-      status: "initiated" as any,
+      status: "initiated",
       payer_name: user.user_metadata?.full_name || user.email,
       payer_email: user.email,
     });
@@ -70,7 +71,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
       // Update transaction to successful
       await supabase
         .from("payment_transactions")
-        .update({ status: "successful" as any, updated_at: new Date().toISOString() })
+        .update({ status: "successful", updated_at: new Date().toISOString() })
         .eq("gateway_reference", reference);
 
       // Create payment record
@@ -78,7 +79,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
         school_id: invoice.school_id,
         student_id: invoice.student_id,
         amount: payAmount,
-        payment_method: "online" as any,
+        payment_method: "online",
         reference_number: reference,
         recorded_by: user.id,
         notes: `Online payment via ${gateway} — ${invoice.invoice_number}`,
@@ -96,7 +97,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
         const newPaid = invoice.amount_paid + payAmount;
         await supabase.from("invoices").update({
           amount_paid: newPaid,
-          status: newPaid >= invoice.total_amount ? "paid" as any : "pending" as any,
+          status: newPaid >= invoice.total_amount ? "paid" : "pending",
         }).eq("id", invoice.id);
 
         // Generate receipt
@@ -152,7 +153,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
 
             <div className="space-y-2">
               <Label>Payment Amount</Label>
-              <RadioGroup value={paymentType} onValueChange={(v) => setPaymentType(v as any)}>
+              <RadioGroup value={paymentType} onValueChange={(v) => setPaymentType(v as "full" | "partial")}>
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="full" id="full" />
                   <Label htmlFor="full" className="font-normal">Full payment — {formatMoney(outstanding)}</Label>

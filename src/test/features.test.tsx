@@ -1,23 +1,29 @@
+import type React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// Mock supabase
+// Mock supabase. The shapes below stand in for query builder results, so they
+// are typed loosely on purpose — the point of these tests is that the
+// components render, not that the mock matches the real schema.
+type MockResult = { data: unknown; error: null };
+
+const emptyList = (): MockResult => ({ data: [], error: null });
+const emptyRow = (): MockResult => ({ data: null, error: null });
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: () => ({
       select: () => ({
         eq: () => ({
-          order: () => ({ data: [], error: null }),
-          maybeSingle: () => ({ data: null, error: null }),
-          limit: () => ({ data: [], error: null }),
-          in: () => ({ data: [], error: null }),
+          order: emptyList,
+          maybeSingle: emptyRow,
+          limit: emptyList,
+          in: emptyList,
         }),
-        in: () => ({
-          order: () => ({ data: [], error: null }),
-        }),
+        in: () => ({ order: emptyList }),
       }),
-      insert: () => ({ data: null, error: null, select: () => ({ single: () => ({ data: null, error: null }) }) }),
-      update: () => ({ eq: () => ({ data: null, error: null }) }),
+      insert: () => ({ ...emptyRow(), select: () => ({ single: emptyRow }) }),
+      update: () => ({ eq: emptyRow }),
     }),
     auth: {
       getSession: () => Promise.resolve({ data: { session: null } }),
@@ -40,7 +46,7 @@ vi.mock("@/contexts/AuthContext", () => ({
     setSchoolId: () => {},
     signOut: async () => {},
   }),
-  AuthProvider: ({ children }: any) => children,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("@/contexts/SchoolBrandingContext", () => ({
@@ -48,13 +54,13 @@ vi.mock("@/contexts/SchoolBrandingContext", () => ({
     branding: { name: "Test School", primaryColor: "#000", accentColor: "#333", tagline: "", logoUrl: "" },
     refetch: () => {},
   }),
-  SchoolBrandingProvider: ({ children }: any) => children,
+  SchoolBrandingProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: null, isLoading: false }),
+  useQuery: () => ({ data: null as unknown, isLoading: false }),
   useQueryClient: () => ({ invalidateQueries: () => {} }),
-  QueryClientProvider: ({ children }: any) => children,
+  QueryClientProvider: ({ children }: { children: React.ReactNode }) => children,
   QueryClient: class {},
 }));
 
@@ -65,9 +71,9 @@ vi.mock("sonner", () => ({
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
   useParams: () => ({ id: "test-id" }),
-  Link: ({ children, to }: any) => <a href={to}>{children}</a>,
-  NavLink: ({ children, to }: any) => <a href={to}>{children}</a>,
-  Navigate: () => null,
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Navigate: (): null => null,
 }));
 
 vi.mock("@/hooks/use-currency", () => ({
@@ -85,7 +91,12 @@ describe("PromoteStudentsDialog", () => {
 
   it("should render when open", async () => {
     const rq = await import("@tanstack/react-query");
-    vi.spyOn(rq, "useQuery").mockReturnValue({ data: [], isLoading: false } as any);
+    // useQuery's return type is large and irrelevant here; the component only
+    // reads data and isLoading.
+    vi.spyOn(rq, "useQuery").mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof rq.useQuery>);
     const { PromoteStudentsDialog } = await import("@/components/students/PromoteStudentsDialog");
     render(<PromoteStudentsDialog open={true} onOpenChange={() => {}} />);
     const elements = screen.getAllByText("Promote Students");

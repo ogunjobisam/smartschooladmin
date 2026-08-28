@@ -57,7 +57,8 @@ export default function Payments() {
         supabase.from("payments").select("amount").eq("school_id", schoolId).gte("payment_date", monthStart),
       ]);
 
-      const sum = (arr: any[]) => arr?.reduce((s, r) => s + (r.amount || 0), 0) || 0;
+      const sum = (arr: { amount: number | null }[] | undefined) =>
+    arr?.reduce((s, r) => s + (r.amount || 0), 0) || 0;
       return { today: sum(todayRes.data || []), week: sum(weekRes.data || []), month: sum(monthRes.data || []) };
     },
     enabled: !!schoolId,
@@ -71,7 +72,7 @@ export default function Payments() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
           if (!payments?.length) return;
           exportToCsv("payments", ["Reference", "Student", "Amount", "Method", "Date"],
-            payments.map((p: any) => [p.reference_number || "", p.students ? `${p.students.first_name} ${p.students.last_name}` : "", String(p.amount), formatMethod(p.payment_method), new Date(p.payment_date).toLocaleDateString()]));
+            payments.map((p) => [p.reference_number || "", p.students ? `${p.students.first_name} ${p.students.last_name}` : "", String(p.amount), formatMethod(p.payment_method), new Date(p.payment_date).toLocaleDateString()]));
         }}><Download className="h-4 w-4" /> Export CSV</Button>
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
           <Plus className="h-4 w-4" /> Record Payment
@@ -114,7 +115,7 @@ export default function Payments() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No payments found.</TableCell>
               </TableRow>
             ) : (
-              payments?.map((p: any) => {
+              payments?.map((p) => {
                 const student = p.students;
                 return (
                   <TableRow key={p.id}>

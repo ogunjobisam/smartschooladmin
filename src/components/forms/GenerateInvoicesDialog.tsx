@@ -45,7 +45,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
     enabled: !!schoolId && open,
   });
 
-  const selectedSchedule = schedules?.find((s: any) => s.id === scheduleId);
+  const selectedSchedule = schedules?.find((s) => s.id === scheduleId);
 
   const handleGenerate = async () => {
     if (!scheduleId || !schoolId) return;
@@ -124,7 +124,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                   <SelectValue placeholder="Select a fee schedule…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {schedules?.map((s: any) => (
+                  {schedules?.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} — {s.classes?.name || "All Classes"} ({formatMoney(s.total_amount)})
                     </SelectItem>
@@ -137,11 +137,11 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
               <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Class:</span>
-                  <span className="font-medium">{(selectedSchedule as any).classes?.name || "All Classes"}</span>
+                  <span className="font-medium">{selectedSchedule.classes?.name || "All Classes"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Period:</span>
-                  <span className="font-medium">{(selectedSchedule as any).academic_periods?.name || "—"}</span>
+                  <span className="font-medium">{selectedSchedule.academic_periods?.name || "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Amount per student:</span>

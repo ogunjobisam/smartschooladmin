@@ -320,7 +320,7 @@ export function CsvImportDialog({ open, onOpenChange, mode }: CsvImportDialogPro
       queryClient.invalidateQueries({ queryKey: [mode === "students" ? "students" : "staff"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     },
   });

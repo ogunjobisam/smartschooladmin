@@ -132,7 +132,7 @@ export function AddStaffDialog({ open, onOpenChange }: AddStaffDialogProps) {
       setForm({ send_invite: false, invite_role: "teacher" });
       setErrors({});
     },
-    onError: (err: any) => {
+    onError: (err) => {
       if (err instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
         err.errors.forEach(e => { if (e.path[0]) fieldErrors[e.path[0] as string] = e.message; });

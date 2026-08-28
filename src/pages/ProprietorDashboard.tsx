@@ -312,7 +312,7 @@ export default function ProprietorDashboard() {
             {recentApprovals.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">No pending approvals</p>
             ) : (
-              recentApprovals.map((a: any) => (
+              recentApprovals.map((a) => (
                 <div key={a.id} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium capitalize">{a.type.replace("_", " ")}</p>
@@ -364,7 +364,7 @@ export default function ProprietorDashboard() {
                 {payrollSummary.recentRuns.length > 1 && (
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground">Recent Runs</p>
-                    {payrollSummary.recentRuns.slice(1, 4).map((run: any, i: number) => (
+                    {payrollSummary.recentRuns.slice(1, 4).map((run, i) => (
                       <div key={i} className="flex items-center justify-between text-xs rounded bg-muted/30 px-2 py-1.5">
                         <span>{run.period_label}</span>
                         <div className="flex items-center gap-2">
@@ -399,7 +399,7 @@ export default function ProprietorDashboard() {
               <p className="py-6 text-center text-sm text-muted-foreground">No recent activity</p>
             ) : (
               <div className="space-y-2">
-                {recentActivity.map((a: any) => (
+                {recentActivity.map((a) => (
                   <div key={a.id} className="flex items-start gap-2.5 text-sm">
                     <div className="mt-1 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
                     <div className="flex-1 min-w-0">

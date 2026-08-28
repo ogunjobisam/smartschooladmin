@@ -234,9 +234,9 @@ export default function SettingsPage() {
     // of the app cannot represent: student enrolment, attendance and exams each
     // pick "the" current term and would silently disagree about which.
     const currentIds = (academicYears || [])
-      .flatMap((y: any) => y.academic_periods || [])
-      .filter((p: any) => p.is_current && p.id !== periodId)
-      .map((p: any) => p.id);
+      .flatMap((y) => y.academic_periods || [])
+      .filter((p) => p.is_current && p.id !== periodId)
+      .map((p) => p.id);
 
     if (currentIds.length > 0) {
       await supabase.from("academic_periods").update({ is_current: false }).in("id", currentIds);
@@ -583,7 +583,7 @@ export default function SettingsPage() {
                 <>
                   {academicYears && academicYears.length > 0 ? (
                     <div className="space-y-4">
-                      {academicYears.map((year: any) => (
+                      {academicYears.map((year) => (
                         <div key={year.id} className="rounded-lg border p-4 space-y-2">
                           <div className="flex items-center justify-between">
                             <div>
@@ -596,7 +596,7 @@ export default function SettingsPage() {
                           </div>
                           {year.academic_periods && year.academic_periods.length > 0 && (
                             <div className="mt-2 space-y-1">
-                              {year.academic_periods.map((p: any) => (
+                              {year.academic_periods.map((p) => (
                                 <div key={p.id} className="flex items-center justify-between rounded bg-muted/50 px-3 py-1.5 text-xs">
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium">{p.name}</span>
@@ -855,15 +855,15 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     queryFn: async () => {
       if (!selectedClassId) return [];
       const { data } = await supabase
-        .from("class_subjects" as any)
+        .from("class_subjects")
         .select("id, subject_id")
         .eq("class_id", selectedClassId);
-      return (data as any[]) || [];
+      return data || [];
     },
     enabled: !!selectedClassId,
   });
 
-  const classSubjectIds = new Set(classSubjects.map((cs: any) => cs.subject_id));
+  const classSubjectIds = new Set(classSubjects.map((cs) => cs.subject_id));
 
   const handleAdd = async () => {
     if (!schoolId || !newName.trim()) return;
@@ -886,13 +886,13 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
     if (!selectedClassId) return;
     if (classSubjectIds.has(subjectId)) {
       // Remove
-      const link = classSubjects.find((cs: any) => cs.subject_id === subjectId);
+      const link = classSubjects.find((cs) => cs.subject_id === subjectId);
       if (link) {
-        await supabase.from("class_subjects" as any).delete().eq("id", (link as any).id);
+        await supabase.from("class_subjects").delete().eq("id", link.id);
       }
     } else {
       // Add
-      await supabase.from("class_subjects" as any).insert({
+      await supabase.from("class_subjects").insert({
         class_id: selectedClassId,
         subject_id: subjectId,
       });
@@ -902,10 +902,10 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
 
   const handleAssignAll = async () => {
     if (!selectedClassId) return;
-    const toAdd = subjects.filter((s: any) => !classSubjectIds.has(s.id));
+    const toAdd = subjects.filter((s) => !classSubjectIds.has(s.id));
     if (toAdd.length === 0) return;
-    await supabase.from("class_subjects" as any).insert(
-      toAdd.map((s: any) => ({ class_id: selectedClassId, subject_id: s.id }))
+    await supabase.from("class_subjects").insert(
+      toAdd.map((s) => ({ class_id: selectedClassId, subject_id: s.id }))
     );
     queryClient.invalidateQueries({ queryKey: ["class-subjects", selectedClassId] });
     toast.success(`Assigned ${toAdd.length} subjects`);
@@ -934,7 +934,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {subjects.map((s: any) => (
+                    {subjects.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell className="text-muted-foreground">{s.short_code || "—"}</TableCell>
@@ -994,7 +994,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
                     <SelectValue placeholder="Select a class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map((c: any) => (
+                    {classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1009,7 +1009,7 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
 
             {selectedClassId ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {subjects.map((s: any) => {
+                {subjects.map((s) => {
                   const assigned = classSubjectIds.has(s.id);
                   return (
                     <button

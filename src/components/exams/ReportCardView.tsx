@@ -14,9 +14,17 @@ interface ScoreItem {
 }
 
 interface ReportCardViewProps {
-  student: any;
-  exam: any;
-  subjects: any[];
+  student: {
+    first_name: string;
+    last_name: string;
+    student_id_number?: string | null;
+  };
+  exam: {
+    name: string;
+    academic_periods?: { name: string } | null;
+    classes?: { name: string } | null;
+  };
+  subjects: { id: string; name: string }[];
   scores: ScoreItem[];
   maxScore: number;
 }
@@ -25,7 +33,7 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
   const printRef = useRef<HTMLDivElement>(null);
   const { branding } = useSchoolBranding();
 
-  const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
+  const subjectMap = new Map(subjects.map((s) => [s.id, s]));
   const totalScore = scores.reduce((sum, s) => sum + s.score, 0);
   const average = scores.length > 0 ? totalScore / scores.length : 0;
   const overallGrade = scores.length > 0 ? gradeForScore(average, maxScore) : "N/A";

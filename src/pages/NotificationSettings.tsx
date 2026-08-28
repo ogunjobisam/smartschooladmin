@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { Enums } from "@/integrations/supabase/types";
 
 const NOTIFICATION_TYPES = [
   { type: "invoice_generated", label: "Invoice Generated", description: "When a new invoice is created for your student" },
@@ -45,7 +46,7 @@ export default function NotificationSettings() {
         .from("notification_preferences")
         .select("*")
         .eq("user_id", user.id);
-      return (data as any[]) || [];
+      return data || [];
     },
     enabled: !!user,
   });
@@ -90,7 +91,7 @@ export default function NotificationSettings() {
 
     const rows = Array.from(prefs.values()).map((p) => ({
       user_id: user.id,
-      notification_type: p.notification_type as any,
+      notification_type: p.notification_type as Enums<"notification_type">,
       channel_in_app: p.channel_in_app,
       channel_email: p.channel_email,
       channel_sms: p.channel_sms,
@@ -99,7 +100,7 @@ export default function NotificationSettings() {
     // Upsert all preferences
     const { error } = await supabase
       .from("notification_preferences")
-      .upsert(rows, { onConflict: "user_id,notification_type" as any });
+      .upsert(rows, { onConflict: "user_id,notification_type" });
 
     setSaving(false);
     if (error) {

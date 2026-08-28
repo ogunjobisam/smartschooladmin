@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+import type { Enums } from "@/integrations/supabase/types";
 
 interface StudentData {
   id: string;
@@ -85,7 +86,7 @@ export function EditStudentDialog({ open, onOpenChange, student }: Props) {
           gender: form.gender || null,
           date_of_birth: form.date_of_birth || null,
           student_type: form.student_type || null,
-          status: form.status as any,
+          status: form.status as Enums<"student_status">,
           address: form.address.trim() || null,
         })
         .eq("id", student.id);

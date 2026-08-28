@@ -64,7 +64,7 @@ export default function Fees() {
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No fee schedules found.</TableCell>
               </TableRow>
             ) : (
-              schedules?.map((f: any) => (
+              schedules?.map((f) => (
                 <TableRow key={f.id} className="cursor-pointer">
                   <TableCell className="font-medium">{f.name}</TableCell>
                   <TableCell>{f.classes?.name || "All"}</TableCell>

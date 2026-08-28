@@ -55,7 +55,7 @@ export default function Payroll() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
           if (!runs?.length) return;
           exportToCsv("payroll", ["Period", "Staff Count", "Gross", "Deductions", "Net", "Status", "Date"],
-            runs.map((r: any) => [r.period_label, String(r.staff_count), String(r.total_gross), String(r.total_deductions), String(r.total_net), r.status, r.run_date]));
+            runs.map((r) => [r.period_label, String(r.staff_count), String(r.total_gross), String(r.total_deductions), String(r.total_net), r.status, r.run_date]));
         }}><Download className="h-4 w-4" /> Export CSV</Button>
         <CreatePayrollRunDialog />
       </PageHeader>
@@ -92,7 +92,7 @@ export default function Payroll() {
                 <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No payroll runs found.</TableCell>
               </TableRow>
             ) : (
-              runs?.map((r: any) => (
+              runs?.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/payroll/${r.id}`)}>
                   <TableCell className="font-medium">{r.period_label}</TableCell>
                   <TableCell className="text-right font-mono tabular-nums">{r.staff_count}</TableCell>

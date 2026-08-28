@@ -88,16 +88,16 @@ export default function UserManagement() {
       const { data } = await query;
       if (!data) return [];
 
-      const userIds = data.map((r: any) => r.user_id);
+      const userIds = data.map((r) => r.user_id);
       if (userIds.length === 0) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .in("user_id", userIds);
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
 
-      return data.map((r: any) => ({
+      return data.map((r) => ({
         ...r,
         profile: profileMap.get(r.user_id) || { full_name: "Unknown", email: "" },
       }));
@@ -313,7 +313,7 @@ export default function UserManagement() {
                   </TableCell>
                 </TableRow>
               ) : (
-                users?.map((u: any) => (
+                users?.map((u) => (
                   <TableRow key={u.user_id}>
                     <TableCell className="font-medium">{u.profile.full_name || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{u.profile.email || "—"}</TableCell>

@@ -44,7 +44,7 @@ export function InviteGuardianButton({ guardianId, guardianName, guardianEmail, 
       toast({ title: "Invite sent", description: `${guardianName} can now access the parent portal.` });
       setOpen(false);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast({ title: "Error", description: err.message || "Failed to send invite.", variant: "destructive" });
     },
   });

@@ -60,7 +60,7 @@ export default function Reports() {
       if (!schoolId) return [];
       const { data } = await supabase.from("payments").select("payment_method, amount").eq("school_id", schoolId);
       const grouped: Record<string, number> = {};
-      (data || []).forEach((p: any) => { grouped[p.payment_method] = (grouped[p.payment_method] || 0) + (p.amount || 0); });
+      (data || []).forEach((p) => { grouped[p.payment_method] = (grouped[p.payment_method] || 0) + (p.amount || 0); });
       return Object.entries(grouped).map(([method, total]) => ({ name: formatMethod(method), value: total })).sort((a, b) => b.value - a.value);
     },
     enabled: !!schoolId,
@@ -73,7 +73,7 @@ export default function Reports() {
       if (!schoolId) return [];
       const { data } = await supabase.from("payments").select("amount, payment_date").eq("school_id", schoolId);
       const grouped: Record<string, number> = {};
-      (data || []).forEach((p: any) => {
+      (data || []).forEach((p) => {
         const d = new Date(p.payment_date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         grouped[key] = (grouped[key] || 0) + (p.amount || 0);
@@ -101,7 +101,7 @@ export default function Reports() {
         .eq("school_id", schoolId);
 
       const grouped: Record<string, { billed: number; collected: number }> = {};
-      (invoices || []).forEach((inv: any) => {
+      (invoices || []).forEach((inv) => {
         const className = inv.students?.enrolments?.[0]?.classes?.name || "Unassigned";
         if (!grouped[className]) grouped[className] = { billed: 0, collected: 0 };
         grouped[className].billed += inv.total_amount || 0;
@@ -123,7 +123,7 @@ export default function Reports() {
         .from("invoices").select("total_amount, amount_paid, due_date")
         .eq("school_id", schoolId).eq("status", "overdue");
       let under30 = 0, under60 = 0, over60 = 0;
-      (data || []).forEach((inv: any) => {
+      (data || []).forEach((inv) => {
         const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
         const days = inv.due_date ? Math.max(0, Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86400000)) : 0;
         if (days <= 30) under30 += balance;
@@ -150,12 +150,18 @@ export default function Reports() {
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface TooltipEntry { name?: string; value?: number; color?: string }
+
+  const CustomTooltip = ({ active, payload, label }: {
+    active?: boolean;
+    payload?: TooltipEntry[];
+    label?: string;
+  }) => {
     if (!active || !payload?.length) return null;
     return (
       <div className="rounded-lg border bg-card px-3 py-2 shadow-lg">
         <p className="text-xs font-medium text-card-foreground">{label}</p>
-        {payload.map((p: any, i: number) => (
+        {payload.map((p, i) => (
           <p key={i} className="text-xs tabular-nums" style={{ color: p.color }}>{p.name}: {formatMoney(p.value)}</p>
         ))}
       </div>
@@ -389,7 +395,7 @@ export default function Reports() {
               ) : payrollSummary?.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No payroll data.</TableCell></TableRow>
               ) : (
-                payrollSummary?.map((r: any) => (
+                payrollSummary?.map((r) => (
                   <TableRow key={r.period_label}>
                     <TableCell className="font-medium">{r.period_label}</TableCell>
                     <TableCell className="text-right font-mono tabular-nums">{r.staff_count}</TableCell>

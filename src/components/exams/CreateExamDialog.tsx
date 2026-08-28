@@ -92,7 +92,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
               <Select value={classId} onValueChange={setClassId}>
                 <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
-                  {classes.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -101,7 +101,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
               <Select value={periodId} onValueChange={setPeriodId}>
                 <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
                 <SelectContent>
-                  {periods.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  {periods.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
