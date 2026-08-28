@@ -91,32 +91,64 @@ export default function Events() {
   const create = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No organisation");
+      if (!schoolId) throw new Error("No school selected");
       if (!title.trim()) throw new Error("Give the event a title");
       if (!startsAt) throw new Error("Choose when it starts");
       if (endsAt && endsAt < startsAt) throw new Error("The end cannot be before the start");
 
-      const { error } = await supabase.from("school_events").insert({
-        org_id: orgId,
-        school_id: schoolId,
-        title: title.trim(),
-        description: description.trim() || null,
-        location: location.trim() || null,
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-        all_day: allDay,
-        audience,
-        created_by: user?.id,
-      });
+      const start = new Date(startsAt);
+      const { data: created, error } = await supabase
+        .from("school_events")
+        .insert({
+          org_id: orgId,
+          school_id: schoolId,
+          title: title.trim(),
+          description: description.trim() || null,
+          location: location.trim() || null,
+          starts_at: start.toISOString(),
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+          all_day: allDay,
+          audience,
+          created_by: user?.id,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // Everyone in the audience gets an in-app alert; email and SMS copies are
+      // queued for the contacts that have an address or number on file.
+      const channels: ("in_app" | "email" | "sms")[] = ["in_app"];
+      if (notifyEmail) channels.push("email");
+      if (notifySms) channels.push("sms");
+
+      return sendEventNotifications({
+        orgId,
+        schoolId,
+        eventId: created.id,
+        title: title.trim(),
+        when: allDay
+          ? format(start, "EEEE d MMMM yyyy")
+          : format(start, "EEEE d MMMM yyyy, HH:mm"),
+        location: location.trim() || null,
+        description: description.trim() || null,
+        audience,
+        channels,
+      });
     },
-    onSuccess: () => {
-      toast.success("Event added");
+    onSuccess: (result) => {
+      const queued = result?.queued
+        ? `, ${result.queued} email/SMS message${result.queued === 1 ? "" : "s"} queued`
+        : "";
+      toast.success(`Event added — ${result?.sent ?? 0} people notified${queued}`);
       queryClient.invalidateQueries({ queryKey: ["school-events"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-events"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       setOpen(false);
       reset();
     },
     onError: (err) => toast.error(getErrorMessage(err, "Could not add the event")),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
