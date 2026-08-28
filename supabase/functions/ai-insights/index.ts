@@ -135,11 +135,13 @@ Deno.serve(async (req) => {
       .eq("status", "succeeded")
       .gte("created_at", monthStart.toISOString());
 
-    if ((usedThisMonth ?? 0) >= org.ai_monthly_limit) {
+    if ((usedThisMonth ?? 0) >= effectiveLimit) {
       return json(
         {
-          error: `Your organisation has used all ${org.ai_monthly_limit} AI analyses for this month.`,
-          code: "limit_reached",
+          error: org.ai_addon_enabled
+            ? `Your organisation has used all ${effectiveLimit} AI analyses for this month.`
+            : `Your organisation has used all ${effectiveLimit} free AI analyses for this month. Buy the AI Analysis add-on for a larger monthly allowance.`,
+          code: org.ai_addon_enabled ? "limit_reached" : "free_limit_reached",
         },
         429
       );
