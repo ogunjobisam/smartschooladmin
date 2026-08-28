@@ -1,6 +1,6 @@
 # User journey analysis
 
-What each of the ten roles can actually do, end to end, and where the journey
+What each of the eleven roles can actually do, end to end, and where the journey
 still stops short. Written by walking every route in the app against the
 row-level security policies behind it.
 
@@ -164,6 +164,8 @@ affected screen says so rather than showing a bare empty page.
 | See their children | Works |
 | See invoices and balances | Works |
 | See their children's results and attendance | New |
+| See their children's bus route, stop and pickup time | New |
+| See upcoming events and the school's notices | New |
 | Print an invoice | Works |
 | Pay online | **Removed** — see below |
 | Read the whole school's invoices, staff records and other families' contact details | **Fixed** — this was possible |
@@ -179,6 +181,29 @@ gateway confirms it.
 
 **Gap:** no way for a parent to update their own contact details, and no
 notification when a new invoice is issued.
+
+---
+
+## Student
+
+The eleventh role, added in this pass. A school decides whether students get
+logins at all: nothing happens until someone presses **Invite to portal** on the
+student's record.
+
+| Step | Status |
+| --- | --- |
+| Sign in after invite | New |
+| See their own results and performance | New |
+| See their own attendance | New |
+| See their own invoices and print one | New |
+| See their bus route, events and notices | New |
+| See any other student, or anything about the school's finances | Denied by RLS |
+
+`has_role` was also corrected so that super_admin no longer matches `student` —
+without that, a platform admin would have satisfied every student-scoped policy.
+
+**Gap:** a student cannot update their own details, and there is no in-portal
+timetable.
 
 ---
 
@@ -220,19 +245,21 @@ every parent.
 [blmsportal.com/blms](https://blmsportal.com/blms/) is a single-school site and
 portal for a Nigerian Montessori school. What it does that this product does not:
 
-| Idea | Why it matters | Effort |
+| Idea | Status | Where it landed |
 | --- | --- | --- |
-| **Admissions funnel** — "Apply now", "Start your application", entrance assessment scheduling, enquiry capture | This is the top of a school's funnel and the product has none of it. Applicants are not students yet, so they need their own table and pipeline before enrolment | Large, high value |
-| **Student portal and student role** | BLMS offers a "Parent/Student Portal". This product has no student role at all; students exist only as records | Medium |
-| **Public school website with managed notices** | BLMS runs its marketing site and portal as one product, with an admin screen for notices and admissions. A school with no website gets both from one purchase | Large |
-| **Age-banded sections** — Toddler, Nursery, Primary, Secondary | Onboarding defaults to JSS1–SS3, i.e. secondary only. Nigerian private schools commonly span toddler to secondary | Small, high value |
-| **Events calendar** | BLMS surfaces upcoming events to parents. There is no calendar here at all | Medium |
-| **Transport / bus service** | Advertised as a service across a named area. Routes, stops and per-term transport fees are a real billable line | Medium |
-| **Mobile app for parents** — results, attendance, fees, notices | The parent portal is responsive but not installable. A PWA would close most of the gap cheaply | Small to medium |
-| **Clubs, sports, ICT and library** | Co-curricular records feed report cards and parent engagement | Medium |
+| **Admissions funnel** — apply, capture the enquiry, move it through a pipeline | Built | Public form at `/apply/<slug>`, an `admissions` edge function as the only writer, `/admissions` for the office, and one-step conversion to a student |
+| **Student portal and student role** | Built | `student` app role, `students.user_id`, `/student`, invited from the student record |
+| **Public page with managed notices** | Built | Notices with a publish flag and a date window, shown on the public application page and in both portals. Not a full website — the public surface is the admissions page |
+| **Age-banded sections** — Toddler, Nursery, Primary, Secondary | Built | `school_section` on classes, picked during onboarding, backfilled from existing class names, and used to sort every class picker |
+| **Events calendar** | Built | `/events` with a per-audience setting, surfaced as Upcoming on the dashboard and both portals |
+| **Transport / bus service** | Built | Routes, ordered stops, per-term fee with a per-student override, and a rider card on the family's portal |
+| **Mobile app for parents** | Built | Installable: manifest, icons, an install bar, and a small service worker that never caches the API |
+| **Entrance assessment scheduling** | Partial | The funnel has an **Interview** stage with notes, but no scheduling or calendar invite |
+| **SMS to parents** | Parked for v2 | Deliberate: email sends through Resend once configured; SMS queues and is reported undelivered rather than dropped |
+| **Clubs, sports, ICT and library** | Not built | Co-curricular records feed report cards and parent engagement |
 
-The first two are the highest-value additions: admissions brings revenue in, and
-a student portal doubles the engaged audience without new data.
+The two highest-value ones are done: admissions brings revenue in, and the
+student portal doubles the engaged audience without new data.
 
 ---
 
@@ -247,6 +274,14 @@ a student portal doubles the engaged audience without new data.
    delivering — it is reported rather than dropped, but a Nigerian pilot will
    want a provider (Termii, Africa's Talking) wired into
    `process-message-queue`.
-5. **Admissions** — no applicant pipeline.
-6. **`any` in view code** — remaining occurrences are inline callbacks over
-   Supabase results. Lint reports them as warnings.
+4. **Entrance assessments are not scheduled.** The funnel records that an
+   interview stage was reached and what was said, but nothing books a date or
+   tells the family.
+5. **The public surface is one page.** A school with no website gets an
+   admissions page with notices, not a site. Anything beyond that — history,
+   staff profiles, a gallery — is still missing.
+6. **Transport fees are not invoiced automatically.** The per-term fee and the
+   per-student override are recorded, and invoice generation does not yet pick
+   them up as a line.
+7. **`any` in view code** — none left. `noImplicitAny` is on and `npm run
+   typecheck` fails on a reintroduction.

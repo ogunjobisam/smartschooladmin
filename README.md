@@ -12,16 +12,19 @@ structured workflows, role-based access, approvals and an audit trail instead.
 
 | Area | Capability |
 | --- | --- |
+| Admissions | Public application form per school, applicant pipeline, one-step conversion to a student |
 | Students & guardians | Enrolment, class assignment, guardian links, promotion between classes, CSV import |
 | Staff | Staff records, positions, bank details, document store |
 | Fees & billing | Fee categories and schedules, bulk invoice generation per class/term |
 | Payments | Record payments, allocate against invoices, receipts, arrears ageing and reminders |
 | Payroll | Payroll runs, payslips, bank batch export, salary-change approvals |
 | Academics | Attendance register, exams, score entry, report cards |
-| Communications | Announcements, notification templates, in-app notifications |
+| Communications | Announcements, notification templates, in-app notifications, events calendar, public notices |
+| Transport | Bus routes, ordered stops, per-term fees with per-student overrides |
 | Oversight | Approvals queue, audit log, cross-school reporting, proprietor dashboard |
 | Academic performance | Per-student trends, subject strengths, class rankings, at-risk flags |
-| Parent portal | Children, invoices, balances, payment history, their children's results |
+| Parent portal | Children, invoices, balances, payment history, results, bus route, events and notices |
+| Student portal | A student's own results, attendance, invoices, bus route, events and notices |
 | AI Analysis (paid add-on) | Written performance analysis, draft report card comments, finance and staffing insights |
 
 Multi-tenancy runs on an `organisation_group → school → campus` hierarchy. Every
@@ -30,7 +33,10 @@ table is isolated by organisation through PostgreSQL row-level security.
 ## Roles
 
 `super_admin`, `proprietor`, `group_admin`, `school_admin`, `principal`, `bursar`,
-`finance_officer`, `hr_admin`, `teacher`, `parent`.
+`finance_officer`, `hr_admin`, `teacher`, `parent`, `student`.
+
+Student logins are opt-in per school: a student gets one only when someone
+presses **Invite to portal** on their record.
 
 Navigation, page access and database policies are all driven from the role on the
 user's `user_roles` row. [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) is the guide
@@ -132,6 +138,17 @@ npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 npx supabase functions deploy ai-insights
 ```
 
+The public application form is served by an edge function that runs without a
+JWT, because the applicant is not signed in:
+
+```sh
+npx supabase functions deploy admissions
+```
+
+It is the only writer of the `applications` table — there is no `anon` policy on
+it — so every field a stranger submits is validated server-side. Set the school's
+link and open applications under **Settings → Admissions**.
+
 ## AI Analysis add-on
 
 The AI features are sold separately from the core product, so they are off by
@@ -185,7 +202,8 @@ src/
   contexts/     Auth and school-branding providers
   hooks/        Shared hooks
   integrations/ Supabase client and generated types
-  lib/          Formatting, CSV export, printing, notifications
+  lib/          Formatting, CSV export, printing, notifications, access map,
+                performance, admissions, notices, sections, transport helpers
   pages/        One component per route
 supabase/
   functions/    Deno edge functions
@@ -201,4 +219,7 @@ docs/
 This project syncs with [Lovable](https://lovable.dev/projects/af2f82cb-fd9f-4ac2-8e61-8aa67cb14264).
 Changes made in Lovable are committed here, and pushes to `main` sync back.
 
-Before opening a pull request, run `npm run lint`, `npx tsc --noEmit` and `npm test`.
+Before opening a pull request, run `npm run lint`, `npm run typecheck` and
+`npm test`. Use `npm run typecheck` rather than `npx tsc --noEmit`: the root
+`tsconfig.json` has `"files": []` and only project references, so a bare
+`tsc --noEmit` silently passes on broken code.

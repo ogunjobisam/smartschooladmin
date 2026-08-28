@@ -21,6 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
+import { UpcomingEvents } from "@/components/events/UpcomingEvents";
+import { NoticeBoard } from "@/components/notices/NoticeBoard";
+import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -259,6 +262,17 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      <NoticeBoard />
+
+      {studentIds.length > 0 && (
+        <TransportRiderCard
+          studentIds={studentIds}
+          nameById={Object.fromEntries((children || []).map((c) => [c.id, `${c.first_name} ${c.last_name}`]))}
+        />
+      )}
+
+      <UpcomingEvents />
 
       {/* Each child's academic performance — the same analysis staff see, for
           their own children only. */}

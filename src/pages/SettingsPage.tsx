@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
+import { NoticesCard } from "@/components/settings/NoticesCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,12 +21,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { SCHOOL_SECTIONS, sectionLabel, sortBySection, type SchoolSection } from "@/lib/sections";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
-const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "notifications", "addons"];
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "admissions", "notifications", "addons"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -74,7 +77,7 @@ export default function SettingsPage() {
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("*").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });
@@ -226,6 +229,15 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSetClassSection = async (classId: string, section: SchoolSection | null) => {
+    const { error } = await supabase.from("classes").update({ section }).eq("id", classId);
+    if (error) {
+      toast.error("Could not update the section: " + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["classes", schoolId] });
+  };
+
   const handleToggleCurrentPeriod = async (periodId: string) => {
     setTogglingCurrent(periodId);
 
@@ -273,6 +285,7 @@ export default function SettingsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
+          <TabsTrigger value="admissions">Admissions</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="addons">Add-ons</TabsTrigger>
         </TabsList>
@@ -445,6 +458,7 @@ export default function SettingsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-xs">Class Name</TableHead>
+                          <TableHead className="text-xs">Section</TableHead>
                           <TableHead className="text-xs">Order</TableHead>
                           <TableHead className="text-xs">Teachers</TableHead>
                           {canManage && <TableHead className="text-xs w-16" />}
@@ -454,6 +468,24 @@ export default function SettingsPage() {
                         {classes.map((c) => (
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">{c.name}</TableCell>
+                            <TableCell>
+                              {canManage ? (
+                                <Select
+                                  value={c.section ?? "none"}
+                                  onValueChange={(v) => handleSetClassSection(c.id, v === "none" ? null : (v as SchoolSection))}
+                                >
+                                  <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Unassigned</SelectItem>
+                                    {SCHOOL_SECTIONS.map((sec) => (
+                                      <SelectItem key={sec.value} value={sec.value}>{sec.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">{sectionLabel(c.section)}</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">{c.level_order}</TableCell>
                             <TableCell>
                               <ClassTeacherPicker classId={c.id} className={c.name} canManage={canManage} />
@@ -499,6 +531,11 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Subjects Tab ── */}
+        <TabsContent value="admissions" className="space-y-6 pt-4">
+          <AdmissionsSettingsTab schoolId={schoolId} canManage={canManage} />
+          <NoticesCard schoolId={schoolId} canManage={canManage} />
+        </TabsContent>
+
         <TabsContent value="subjects" className="space-y-6 pt-4">
           <SubjectsTab schoolId={schoolId} canManage={canManage} />
         </TabsContent>

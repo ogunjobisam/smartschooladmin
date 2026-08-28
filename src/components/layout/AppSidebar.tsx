@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
   ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
-  Megaphone, Bell, MessageSquareText, LineChart
+  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -12,7 +12,7 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { navItemsForRole, profileLinkForRole, type NavGroup, type NavItem } from "@/lib/access";
+import { navItemsForRole, portalPathForRole, profileLinkForRole, type NavGroup, type NavItem } from "@/lib/access";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -22,6 +22,7 @@ import {
 /** Icons live here; titles, urls and role access come from the shared access map. */
 const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   dashboard: LayoutDashboard,
+  admissions: Inbox,
   students: GraduationCap,
   guardians: Users,
   staff: UserCog,
@@ -32,9 +33,11 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   invoices: FileText,
   payments: CreditCard,
   arrears: AlertTriangle,
+  events: CalendarDays,
   announcements: Megaphone,
   templates: MessageSquareText,
   preferences: Bell,
+  transport: Bus,
   payroll: Calculator,
   approvals: CheckSquare,
   "group-overview": BarChart3,
@@ -54,10 +57,7 @@ const GROUP_LABELS: Record<NavGroup, string> = {
 
 const GROUP_ORDER: NavGroup[] = ["overview", "finance", "communications", "operations", "system"];
 
-// Map the parent dashboard to /parent
-const parentDashboardOverride: Record<string, string> = {
-  "/dashboard": "/parent",
-};
+// Parents and students land on their own portal rather than the school dashboard.
 
 
 export function AppSidebar() {
@@ -73,9 +73,9 @@ export function AppSidebar() {
   const displayName = user?.user_metadata?.full_name || user?.email || 'User';
   const initials = displayName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const isParent = userRole === "parent";
+  const portalPath = portalPathForRole(userRole);
 
-  const resolveUrl = (url: string) => isParent && parentDashboardOverride[url] ? parentDashboardOverride[url] : url;
+  const resolveUrl = (url: string) => (url === "/dashboard" && portalPath ? portalPath : url);
 
   const renderGroup = (label: string, items: NavItem[]) => {
     if (items.length === 0) return null;
@@ -114,7 +114,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <NavLink to="/dashboard" className="flex items-center gap-2.5">
+        <NavLink to={portalPath ?? "/dashboard"} className="flex items-center gap-2.5">
           {branding.logoUrl ? (
             <Avatar className="h-8 w-8 shrink-0 rounded-lg">
               <AvatarImage src={branding.logoUrl} alt={branding.name} />

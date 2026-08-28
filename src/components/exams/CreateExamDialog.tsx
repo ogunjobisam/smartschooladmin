@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { sortBySection } from "@/lib/sections";
 
 interface CreateExamDialogProps {
   open: boolean;
@@ -34,7 +35,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });

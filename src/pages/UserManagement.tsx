@@ -13,8 +13,9 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter
 } from "@/components/ui/dialog";
+import { InviteLinkDialog } from "@/components/auth/InviteLinkDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -22,7 +23,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Loader2, Shield, Trash2, Pencil, Copy } from "lucide-react";
+import { UserPlus, Loader2, Shield, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { getErrorMessage } from "@/lib/errors";
@@ -38,6 +39,7 @@ const ROLES = [
   { value: "hr_admin", label: "HR Admin" },
   { value: "teacher", label: "Teacher" },
   { value: "parent", label: "Parent" },
+  { value: "student", label: "Student" },
 ];
 
 const roleBadgeClass: Record<string, string> = {
@@ -51,6 +53,7 @@ const roleBadgeClass: Record<string, string> = {
   hr_admin: "bg-muted text-muted-foreground",
   teacher: "bg-muted text-muted-foreground",
   parent: "bg-muted text-muted-foreground",
+  student: "bg-muted text-muted-foreground",
 };
 
 export default function UserManagement() {
@@ -109,6 +112,7 @@ export default function UserManagement() {
   const ROLE_RANK: Record<string, number> = {
     super_admin: 0, proprietor: 1, group_admin: 2, school_admin: 3,
     principal: 4, bursar: 5, finance_officer: 6, hr_admin: 7, teacher: 8, parent: 9,
+    student: 10,
   };
   const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
   const callerRank = ROLE_RANK[userRole || ""] ?? 99;
@@ -404,48 +408,8 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* The invited account exists but has no password until this link is used. */}
-      <Dialog open={!!inviteLink} onOpenChange={(open) => { if (!open) setInviteLink(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Send {inviteLink?.email} their sign-in link</DialogTitle>
-            <DialogDescription>
-              We have queued this as an email. If your school has not set up an email
-              provider yet, copy the link and send it to them yourself — their account
-              cannot be used until they set a password.
-            </DialogDescription>
-          </DialogHeader>
+      <InviteLinkDialog invite={inviteLink} onClose={() => setInviteLink(null)} />
 
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input readOnly value={inviteLink?.link ?? ""} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
-              <Button
-                variant="outline"
-                className="shrink-0 gap-1.5"
-                onClick={async () => {
-                  if (!inviteLink) return;
-                  try {
-                    await navigator.clipboard.writeText(inviteLink.link);
-                    toast.success("Link copied");
-                  } catch {
-                    toast.error("Could not copy — select the link and copy it manually.");
-                  }
-                }}
-              >
-                <Copy className="h-3.5 w-3.5" /> Copy
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This link expires, so send it soon. You can always issue a new one from the
-              sign-in page's &ldquo;Forgot password&rdquo; link.
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setInviteLink(null)}>Done</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

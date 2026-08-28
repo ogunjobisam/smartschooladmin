@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClassPerformanceData } from "@/hooks/use-performance-data";
 import { classPosition, subjectBreakdown, summariseStudent } from "@/lib/performance";
+import { sortBySection } from "@/lib/sections";
 
 export default function Performance() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function Performance() {
     queryFn: async () => {
       const { data } = await supabase
         .from("classes").select("id, name").eq("school_id", schoolId!).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId,
   });

@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { sortBySection } from "@/lib/sections";
 
 const studentSchema = z.object({
   first_name: z.string().trim().min(1, "First name is required").max(100),
@@ -82,7 +83,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
         .select("id, name")
         .eq("school_id", schoolId!)
         .order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId && open,
   });

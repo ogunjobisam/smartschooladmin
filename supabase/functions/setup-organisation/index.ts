@@ -98,12 +98,29 @@ serve(async (req) => {
       });
     }
 
-    // 8. Create classes — use custom classes if provided, otherwise default Nigerian classes
-    const classNames = (customClasses && customClasses.length > 0)
+    // 8. Create classes. The client sends { name, section }; plain strings are
+    // still accepted so an older client keeps working.
+    type ClassInput = string | { name: string; section?: string | null };
+    const planned: ClassInput[] = (customClasses && customClasses.length > 0)
       ? customClasses
       : ["JSS1", "JSS2", "JSS3", "SS1", "SS2", "SS3"];
-    for (let i = 0; i < classNames.length; i++) {
-      await supabase.from("classes").insert({ school_id: school.id, name: classNames[i], level_order: i + 1 });
+
+    const classRows = planned
+      .map((entry, i) => {
+        const name = typeof entry === "string" ? entry : entry?.name;
+        if (!name) return null;
+        return {
+          school_id: school.id,
+          name,
+          section: typeof entry === "string" ? null : entry?.section ?? null,
+          level_order: i + 1,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+
+    if (classRows.length > 0) {
+      const { error: classErr } = await supabase.from("classes").insert(classRows);
+      if (classErr) throw classErr;
     }
 
     // 9. Create default fee categories

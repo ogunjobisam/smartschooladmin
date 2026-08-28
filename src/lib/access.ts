@@ -20,7 +20,8 @@ export type AppRole =
   | "finance_officer"
   | "hr_admin"
   | "teacher"
-  | "parent";
+  | "parent"
+  | "student";
 
 export type NavGroup = "overview" | "finance" | "communications" | "operations" | "system";
 
@@ -34,6 +35,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { key: "dashboard", title: "Dashboard", url: "/dashboard", group: "overview" },
+  { key: "admissions", title: "Admissions", url: "/admissions", group: "overview" },
   { key: "students", title: "Students", url: "/students", group: "overview" },
   { key: "guardians", title: "Guardians", url: "/guardians", group: "overview" },
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
@@ -46,10 +48,12 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "payments", title: "Payments", url: "/payments", group: "finance" },
   { key: "arrears", title: "Arrears", url: "/arrears", group: "finance" },
 
+  { key: "events", title: "Events", url: "/events", group: "communications" },
   { key: "announcements", title: "Announcements", url: "/announcements", group: "communications" },
   { key: "templates", title: "Templates", url: "/notification-templates", group: "communications" },
   { key: "preferences", title: "My Preferences", url: "/notification-settings", group: "communications" },
 
+  { key: "transport", title: "Transport", url: "/transport", group: "operations" },
   { key: "payroll", title: "Payroll", url: "/payroll", group: "operations" },
   { key: "approvals", title: "Approvals", url: "/approvals", group: "operations" },
   { key: "group-overview", title: "Group Overview", url: "/group-overview", group: "operations" },
@@ -64,7 +68,7 @@ export const NAV_ITEMS: NavItem[] = [
  * Routes every signed-in user can reach regardless of role: their own portal,
  * their own notifications, and onboarding.
  */
-const ALWAYS_ALLOWED = ["/onboarding", "/notifications", "/parent"];
+const ALWAYS_ALLOWED = ["/onboarding", "/notifications", "/parent", "/student"];
 
 /**
  * Detail and sub-routes inherit access from the list page they belong to.
@@ -76,46 +80,52 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
+    "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
-    "announcements", "templates", "preferences",
-    "approvals", "reports",
+    "announcements", "templates", "events", "preferences",
+    "transport", "approvals", "reports",
     "settings", "users",
   ],
   principal: [
-    "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
+    "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
-    "announcements", "templates", "preferences",
-    "approvals", "reports",
+    "announcements", "templates", "events", "preferences",
+    "transport", "approvals", "reports",
     "users",
   ],
   bursar: [
-    "dashboard", "students", "guardians",
+    "dashboard", "admissions", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
-    "announcements", "preferences",
-    "payroll", "reports",
+    "announcements", "events", "preferences",
+    "transport", "payroll", "reports",
     "users",
   ],
   finance_officer: [
     "dashboard", "students",
     "invoices", "payments", "arrears",
-    "preferences",
+    "events", "preferences",
     "reports",
     "users",
   ],
   hr_admin: [
     "dashboard", "staff",
-    "announcements", "preferences",
+    "announcements", "events", "preferences",
     "payroll", "reports",
     "users",
   ],
   teacher: [
     "dashboard", "students", "attendance", "exams", "performance",
-    "announcements", "preferences",
+    "announcements", "events", "preferences",
   ],
   parent: [
     "dashboard",
-    "preferences",
+    "events", "preferences",
+  ],
+  // A student sees their own portal and their own notification preferences.
+  // Everything else on the dashboard is the school's, not theirs.
+  student: [
+    "dashboard",
+    "events", "preferences",
   ],
 };
 
@@ -126,6 +136,13 @@ export function navItemsForRole(role: string | null): NavItem[] {
   const keys = NAV_KEY_BY_ROLE[(role || "teacher") as AppRole] ?? NAV_KEY_BY_ROLE.teacher;
   const allowed = new Set(keys);
   return NAV_ITEMS.filter((i) => allowed.has(i.key));
+}
+
+/** The self-service portal for a role, or null for staff. */
+export function portalPathForRole(role: string | null): string | null {
+  if (role === "parent") return "/parent";
+  if (role === "student") return "/student";
+  return null;
 }
 
 /** Where the "Profile & Settings" link should point for this role. */

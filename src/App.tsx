@@ -46,6 +46,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
+const StudentPortal = lazy(() => import("./pages/StudentPortal"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 const ProprietorDashboard = lazy(() => import("./pages/ProprietorDashboard"));
@@ -54,6 +55,10 @@ const Exams = lazy(() => import("./pages/Exams"));
 const Performance = lazy(() => import("./pages/Performance"));
 const ExamDetail = lazy(() => import("./pages/ExamDetail"));
 const Announcements = lazy(() => import("./pages/Announcements"));
+const Events = lazy(() => import("./pages/Events"));
+const Transport = lazy(() => import("./pages/Transport"));
+const Admissions = lazy(() => import("./pages/Admissions"));
+const Apply = lazy(() => import("./pages/Apply"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
 
@@ -101,12 +106,15 @@ function AppRoutes() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          {/* A prospective parent is not a user of the app — no auth, no layout. */}
+          <Route path="/apply/:slug" element={<Apply />} />
 
           {/* Signed in, but before an organisation exists */}
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
           {/* Protected app routes */}
           <Route path="/dashboard" element={withLayout(<Index />)} />
+          <Route path="/admissions" element={withLayout(<Admissions />)} />
           <Route path="/students" element={withLayout(<Students />)} />
           <Route path="/students/:id" element={withLayout(<StudentDetail />)} />
           <Route path="/guardians" element={withLayout(<Guardians />)} />
@@ -127,6 +135,7 @@ function AppRoutes() {
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />
           <Route path="/parent" element={withLayout(<ParentDashboard />)} />
+          <Route path="/student" element={withLayout(<StudentPortal />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />
@@ -134,6 +143,8 @@ function AppRoutes() {
           <Route path="/performance" element={withLayout(<Performance />)} />
           <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
           <Route path="/announcements" element={withLayout(<Announcements />)} />
+          <Route path="/events" element={withLayout(<Events />)} />
+          <Route path="/transport" element={withLayout(<Transport />)} />
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
           <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
 

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
+import { sortBySection } from "@/lib/sections";
 
 interface FeeItem {
   description: string;
@@ -35,7 +36,7 @@ export function AddFeeScheduleDialog({ children }: { children: React.ReactNode }
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("id, name").eq("school_id", schoolId).order("level_order");
-      return data || [];
+      return sortBySection(data || []);
     },
     enabled: !!schoolId && open,
   });
