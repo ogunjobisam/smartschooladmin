@@ -146,4 +146,57 @@ BEGIN
   END LOOP;
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- The app and RLS must never disagree about which organisation you are in
+-- ---------------------------------------------------------------------------
+-- get_my_role feeds AuthContext; get_user_org_id and get_user_school_id are
+-- what 212 policy references evaluate. They used to be three separate answers,
+-- two of them a LIMIT 1 with no ORDER BY. For anyone holding two role rows
+-- that returns whichever row Postgres reaches first, which changes after an
+-- ordinary UPDATE — so the app would filter by one organisation while RLS
+-- evaluated another, and every read came back empty while every write matched
+-- no rows and reported success.
+INSERT INTO organisation_groups (id, name, country, currency)
+  VALUES ('cccccccc-0000-0000-0000-00000000000c', 'Second Org', 'NG', 'NGN');
+INSERT INTO schools (id, org_id, name)
+  VALUES ('cccccccc-0000-0000-0000-00000000000d', 'cccccccc-0000-0000-0000-00000000000c', 'Second School');
+INSERT INTO user_roles (user_id, role, org_id, school_id)
+  VALUES ('daaaaaaa-0000-0000-0000-00000000000a', 'proprietor',
+          'cccccccc-0000-0000-0000-00000000000c', 'cccccccc-0000-0000-0000-00000000000d');
+
+DO $$
+DECLARE app_org uuid; rls_org uuid; app_school uuid; rls_school uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'daaaaaaa-0000-0000-0000-00000000000a', true);
+  FOR i IN 1..6 LOOP
+    -- Rewriting a role row moves it in the heap, which is exactly what used to
+    -- flip the answer underneath the app.
+    UPDATE user_roles SET role = role
+      WHERE user_id = 'daaaaaaa-0000-0000-0000-00000000000a'
+        AND (i % 2 = 0 OR org_id IS NOT NULL);
+
+    SELECT org_id, school_id INTO app_org, app_school FROM public.get_my_role();
+    rls_org := public.get_user_org_id('daaaaaaa-0000-0000-0000-00000000000a');
+    rls_school := public.get_user_school_id('daaaaaaa-0000-0000-0000-00000000000a');
+
+    PERFORM public.assert(app_org IS NOT DISTINCT FROM rls_org,
+      'AuthContext and RLS resolved different organisations for the same user');
+    PERFORM public.assert(app_school IS NOT DISTINCT FROM rls_school,
+      'AuthContext and RLS resolved different schools for the same user');
+    PERFORM public.assert(app_org IS NOT NULL,
+      'org resolution returned a row with no organisation');
+  END LOOP;
+END $$;
+
+-- The most recently granted role wins, so someone who has just created a
+-- school lands in it rather than in an older, empty one.
+DO $$
+DECLARE resolved uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'daaaaaaa-0000-0000-0000-00000000000a', true);
+  SELECT school_id INTO resolved FROM public.get_my_role();
+  PERFORM public.assert(resolved = 'cccccccc-0000-0000-0000-00000000000d',
+    'the most recently granted role did not win, so a new school is unreachable');
+END $$;
+
 SELECT 'rls behaviour tests passed' AS result;

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles, Send, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+import { assertWrote } from "@/lib/writes";
 
 const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "admissions", "notifications", "addons"];
 
@@ -64,15 +65,27 @@ export default function SettingsPage() {
   const [schoolAddress, setSchoolAddress] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Sync school data to form when loaded
-  const schoolDataLoaded = useRef(false);
-  if (school && !schoolDataLoaded.current) {
+  // Fill the form from whichever school is selected.
+  //
+  // This used to be a bare `if` in the render body guarded by a ref that was
+  // never reset, which had two consequences. The form filled once and then
+  // never again, so switching school left the previous school's details in the
+  // boxes — and saving would have renamed the new school to the old one's name.
+  // And if the first load returned nothing, the ref stayed unset but the boxes
+  // stayed empty, so an existing school looked like one that had never been
+  // named and invited you to type it in again.
+  //
+  // Keyed on the school id, so every switch refills and a reload repairs
+  // itself.
+  const filledFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!school || filledFor.current === school.id) return;
     setSchoolName(school.name || "");
     setSchoolEmail(school.email || "");
     setSchoolPhone(school.phone || "");
     setSchoolAddress(school.address || "");
-    schoolDataLoaded.current = true;
-  }
+    filledFor.current = school.id;
+  }, [school]);
 
   // ── Classes ──
   const { data: classes, isLoading: classesLoading } = useQuery({
@@ -137,13 +150,22 @@ export default function SettingsPage() {
   const handleSaveBranding = async () => {
     if (!schoolId) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("schools")
-      .update({ primary_color: primaryColor, accent_color: accentColor, tagline: tagline || null })
-      .eq("id", schoolId);
-    setSaving(false);
-    if (error) toast.error("Failed to save branding");
-    else { toast.success("Branding updated"); refetch(); }
+    try {
+      await assertWrote(
+        supabase
+          .from("schools")
+          .update({ primary_color: primaryColor, accent_color: accentColor, tagline: tagline || null })
+          .eq("id", schoolId)
+          .select("id"),
+        "save the branding",
+      );
+      toast.success("Branding updated");
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to save branding"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,21 +177,38 @@ export default function SettingsPage() {
     const { error: uploadError } = await supabase.storage.from("school-assets").upload(path, file, { upsert: true });
     if (uploadError) { toast.error("Upload failed: " + uploadError.message); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from("school-assets").getPublicUrl(path);
-    const { error: updateError } = await supabase.from("schools").update({ logo_url: urlData.publicUrl }).eq("id", schoolId);
-    setUploading(false);
-    if (updateError) toast.error("Failed to update logo URL");
-    else { toast.success("Logo uploaded"); refetch(); }
+    try {
+      await assertWrote(
+        supabase.from("schools").update({ logo_url: urlData.publicUrl }).eq("id", schoolId).select("id"),
+        "attach the new logo to your school",
+      );
+      toast.success("Logo uploaded");
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to update logo URL"));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveProfile = async () => {
     if (!schoolId) return;
     setSavingProfile(true);
-    const { error } = await supabase.from("schools").update({
-      name: schoolName, email: schoolEmail || null, phone: schoolPhone || null, address: schoolAddress || null,
-    }).eq("id", schoolId);
-    setSavingProfile(false);
-    if (error) toast.error("Failed to save profile");
-    else { toast.success("School profile updated"); refetch(); queryClient.invalidateQueries({ queryKey: ["school-profile"] }); }
+    try {
+      await assertWrote(
+        supabase.from("schools").update({
+          name: schoolName, email: schoolEmail || null, phone: schoolPhone || null, address: schoolAddress || null,
+        }).eq("id", schoolId).select("id"),
+        "save the school profile",
+      );
+      toast.success("School profile updated");
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["school-profile"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to save profile"));
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleAddClass = async () => {
@@ -184,9 +223,16 @@ export default function SettingsPage() {
   };
 
   const handleDeleteClass = async (id: string) => {
-    const { error } = await supabase.from("classes").delete().eq("id", id);
-    if (error) toast.error("Failed to delete class — it may have students enrolled");
-    else { toast.success("Class deleted"); queryClient.invalidateQueries({ queryKey: ["classes"] }); }
+    try {
+      await assertWrote(
+        supabase.from("classes").delete().eq("id", id).select("id"),
+        "delete this class",
+      );
+      toast.success("Class deleted");
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to delete class — it may have students enrolled"));
+    }
   };
 
   const handleAddFeeCategory = async () => {
@@ -201,9 +247,16 @@ export default function SettingsPage() {
   };
 
   const handleDeleteFeeCategory = async (id: string) => {
-    const { error } = await supabase.from("fee_categories").delete().eq("id", id);
-    if (error) toast.error("Cannot delete — category may be in use");
-    else { toast.success("Fee category deleted"); queryClient.invalidateQueries({ queryKey: ["fee-categories"] }); }
+    try {
+      await assertWrote(
+        supabase.from("fee_categories").delete().eq("id", id).select("id"),
+        "delete this fee category",
+      );
+      toast.success("Fee category deleted");
+      queryClient.invalidateQueries({ queryKey: ["fee-categories"] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Cannot delete — category may be in use"));
+    }
   };
 
   const handleAddAcademicYear = async () => {
@@ -233,12 +286,15 @@ export default function SettingsPage() {
   };
 
   const handleSetClassSection = async (classId: string, section: SchoolSection | null) => {
-    const { error } = await supabase.from("classes").update({ section }).eq("id", classId);
-    if (error) {
-      toast.error("Could not update the section: " + error.message);
-      return;
+    try {
+      await assertWrote(
+        supabase.from("classes").update({ section }).eq("id", classId).select("id"),
+        "update the section",
+      );
+      queryClient.invalidateQueries({ queryKey: ["classes", schoolId] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not update the section"));
     }
-    queryClient.invalidateQueries({ queryKey: ["classes", schoolId] });
   };
 
   const handleToggleCurrentPeriod = async (periodId: string) => {
