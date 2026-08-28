@@ -132,7 +132,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
           address: parsed.address || null,
           school_id: schoolId,
         })
-        .select("id")
+        .select("id, student_id_number")
         .single();
       if (studentError) throw studentError;
 
@@ -231,8 +231,16 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Student ID</Label>
-              <Input value={form.student_id_number || ""} onChange={(e) => set("student_id_number", e.target.value)} className="font-mono" />
+              <Label>Student ID <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                value={form.student_id_number || ""}
+                onChange={(e) => set("student_id_number", e.target.value)}
+                className="font-mono"
+                placeholder="Auto-generated"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank and we generate one, e.g. SSL/{new Date().getFullYear()}/0001.
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
