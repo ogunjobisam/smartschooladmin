@@ -148,8 +148,11 @@ deductions beyond a flat pension and tax rate.
 | Read announcements | Works |
 | Open /payroll or /settings by URL | **Fixed** — every route except /users was previously unguarded |
 
-**Gap:** a teacher sees every student in the school, not only their own classes.
-Narrowing this needs a teacher-to-class assignment the schema does not yet have.
+Teachers are now assigned to classes under **Settings → Classes**, and see only
+the students, registers and results of those classes. Note this is
+correct-by-default rather than permissive-by-default: a teacher with nothing
+assigned sees nothing, so after deploying, admins must assign classes. Every
+affected screen says so rather than showing a bare empty page.
 
 ---
 
@@ -239,13 +242,11 @@ a student portal doubles the engaged audience without new data.
    server-side gateway integration before any parent-facing payment is enabled.
 2. **Payment providers are placeholders** — `src/lib/payment-providers.ts` builds
    checkout URLs but never calls Paystack or Flutterwave.
-3. **Notifications never leave the app** — email and SMS are queued into
-   `outbound_message_queue` and nothing drains it. Invites are worse: the invite
-   function calls `admin.generateLink`, then discards the link it returns without
-   sending or displaying it, so an invited user has an account and a role but no
-   way to set a password. Either send through SMTP or return the link for the
-   inviter to pass on.
-4. **No teacher-to-class assignment** — teachers see every student in the school.
+3. **SMS has no provider.** Email now sends through Resend once configured, and
+   invites always show a copyable set-password link. SMS still queues without
+   delivering — it is reported rather than dropped, but a Nigerian pilot will
+   want a provider (Termii, Africa's Talking) wired into
+   `process-message-queue`.
 5. **Admissions** — no applicant pipeline.
-6. **`any` in view code** — 199 remaining occurrences, mostly inline callbacks
-   over Supabase results. Lint reports them as warnings.
+6. **`any` in view code** — remaining occurrences are inline callbacks over
+   Supabase results. Lint reports them as warnings.

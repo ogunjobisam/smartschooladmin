@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles, Send } from "lucide-react";
+import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen, Sparkles, Send, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -19,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -444,6 +446,7 @@ export default function SettingsPage() {
                         <TableRow>
                           <TableHead className="text-xs">Class Name</TableHead>
                           <TableHead className="text-xs">Order</TableHead>
+                          <TableHead className="text-xs">Teachers</TableHead>
                           {canManage && <TableHead className="text-xs w-16" />}
                         </TableRow>
                       </TableHeader>
@@ -452,6 +455,9 @@ export default function SettingsPage() {
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">{c.name}</TableCell>
                             <TableCell className="text-muted-foreground">{c.level_order}</TableCell>
+                            <TableCell>
+                              <ClassTeacherPicker classId={c.id} className={c.name} canManage={canManage} />
+                            </TableCell>
                             {canManage && (
                               <TableCell>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteClass(c.id)}>
@@ -1226,5 +1232,118 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Assigns teachers to one class.
+ *
+ * Teachers only see the students, registers and scores of classes they are
+ * assigned to, so a teacher with nothing assigned here sees nothing at all —
+ * this is where that is put right.
+ */
+function ClassTeacherPicker({ classId, className, canManage }: { classId: string; className: string; canManage: boolean }) {
+  const { schoolId } = useAuth();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const { data: assigned = [] } = useQuery({
+    queryKey: ["class-teachers", classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_teachers")
+        .select("id, staff_id, staff(id, first_name, last_name)")
+        .eq("class_id", classId);
+      return data || [];
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["assignable-teachers", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("staff")
+        .select("id, first_name, last_name")
+        .eq("school_id", schoolId!)
+        .eq("employment_status", "active")
+        .order("last_name");
+      return data || [];
+    },
+    enabled: !!schoolId && open,
+  });
+
+  const assignedIds = new Set(assigned.map((a) => a.staff_id));
+
+  const toggle = async (staffId: string) => {
+    setBusy(true);
+    const existing = assigned.find((a) => a.staff_id === staffId);
+    const { error } = existing
+      ? await supabase.from("class_teachers").delete().eq("id", existing.id)
+      : await supabase.from("class_teachers").insert({ class_id: classId, staff_id: staffId });
+    setBusy(false);
+
+    if (error) {
+      toast.error("Could not update teachers: " + error.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["class-teachers", classId] });
+  };
+
+  const names = assigned
+    .map((a) => {
+      const staff = a.staff;
+      return staff ? `${staff.first_name} ${staff.last_name}` : null;
+    })
+    .filter(Boolean) as string[];
+
+  if (!canManage) {
+    return <span className="text-sm text-muted-foreground">{names.join(", ") || "—"}</span>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs font-normal">
+          <Users className="h-3 w-3" />
+          {names.length === 0 ? <span className="text-muted-foreground">Assign</span> : names.join(", ")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Teachers for {className}</DialogTitle>
+          <DialogDescription>
+            A teacher sees only the students, registers and results of the classes they
+            are assigned to.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-72 space-y-1 overflow-y-auto">
+          {teachers.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No active staff in this school yet.
+            </p>
+          ) : (
+            teachers.map((t) => (
+              <label
+                key={t.id}
+                className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted"
+              >
+                <Checkbox
+                  checked={assignedIds.has(t.id)}
+                  disabled={busy}
+                  onCheckedChange={() => toggle(t.id)}
+                />
+                <span className="text-sm">{t.last_name}, {t.first_name}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button onClick={() => setOpen(false)}>Done</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -41,7 +41,7 @@ const statusOrder: AttendanceStatus[] = ["present", "absent", "late", "excused"]
 
 export default function Attendance() {
   const navigate = useNavigate();
-  const { schoolId, orgId, user } = useAuth();
+  const { schoolId, orgId, user, userRole } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
@@ -302,7 +302,22 @@ export default function Attendance() {
           )}
         </CardHeader>
         <CardContent>
-          {!selectedClassId ? (
+          {classes.length === 0 && !classesLoading ? (
+            // A teacher only sees classes they are assigned to, so an empty list
+            // means nobody has assigned them one — not that the school has none.
+            <EmptyState
+              icon={Users}
+              title={userRole === "teacher" ? "No classes assigned to you" : "No classes yet"}
+              description={
+                userRole === "teacher"
+                  ? "You can only take the register for classes you are assigned to. Ask your school admin to assign you under Settings → Classes."
+                  : "Create classes before attendance can be marked."
+              }
+              {...(userRole === "teacher"
+                ? {}
+                : { actionLabel: "Open class settings", onAction: () => navigate("/settings?tab=classes") })}
+            />
+          ) : !selectedClassId ? (
             <EmptyState icon={Users} title="No class selected" description="Choose a class from the dropdown above to mark attendance." />
           ) : studentsLoading ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
