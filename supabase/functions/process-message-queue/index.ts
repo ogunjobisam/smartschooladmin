@@ -197,6 +197,8 @@ Deno.serve(async (req) => {
       .select("id, org_id, school_id, channel, recipient, subject, body, reply_to, attempts")
       .eq("status", "queued")
       .lt("attempts", MAX_ATTEMPTS)
+      // Scheduled rows (event reminders) wait until their send time.
+      .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
       .order("created_at")
       .limit(BATCH_SIZE);
 
@@ -238,7 +240,7 @@ Deno.serve(async (req) => {
       if (result.status === "sent") {
         await admin
           .from("outbound_message_queue")
-          .update({ status: "sent", attempts: row.attempts + 1, processed_at: now, error_message: null })
+          .update({ status: "sent", attempts: row.attempts + 1, processed_at: now, last_attempt_at: now, error_message: null })
           .eq("id", row.id);
         sent++;
         continue;
@@ -265,6 +267,7 @@ Deno.serve(async (req) => {
           attempts,
           error_message: result.error.slice(0, 500),
           processed_at: givingUp ? now : null,
+          last_attempt_at: now,
         })
         .eq("id", row.id);
 

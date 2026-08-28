@@ -51,6 +51,7 @@ export default function NotificationHistory() {
     else if (n.entity_type === "payroll_run" && n.entity_id) navigate(`/payroll/${n.entity_id}`);
     else if (n.entity_type === "approval") navigate("/approvals");
     else if (n.entity_type === "payment") navigate("/payments");
+    else if (n.entity_type === "event") navigate("/events");
   };
 
   const handleMarkAllRead = async () => {
@@ -80,6 +81,7 @@ export default function NotificationHistory() {
               <SelectItem value="payroll_pending">Payroll</SelectItem>
               <SelectItem value="approval_result">Approvals</SelectItem>
               <SelectItem value="school_announcement">Announcements</SelectItem>
+              <SelectItem value="school_event">Events</SelectItem>
             </SelectContent>
           </Select>
           {unreadCount > 0 && (
