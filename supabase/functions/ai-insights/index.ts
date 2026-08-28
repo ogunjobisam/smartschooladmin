@@ -236,7 +236,8 @@ Deno.serve(async (req) => {
       analysis_type: analysisType,
       usage: {
         used_this_month: (usedThisMonth ?? 0) + 1,
-        monthly_limit: org.ai_monthly_limit,
+        monthly_limit: effectiveLimit,
+        has_addon: org.ai_addon_enabled,
       },
     });
   } catch (err) {

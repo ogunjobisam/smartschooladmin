@@ -7,9 +7,17 @@ export interface AiEntitlement {
   used: number;
   monthlyLimit: number;
   remaining: number;
+  /** True when the org bought the paid add-on (rather than the free monthly allowance). */
+  hasAddon: boolean;
 }
 
-const DISABLED: AiEntitlement = { enabled: false, used: 0, monthlyLimit: 0, remaining: 0 };
+const DISABLED: AiEntitlement = {
+  enabled: false,
+  used: 0,
+  monthlyLimit: 0,
+  remaining: 0,
+  hasAddon: false,
+};
 
 /**
  * Whether this organisation has the paid AI add-on, and how much of its monthly
