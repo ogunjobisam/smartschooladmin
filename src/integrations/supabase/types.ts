@@ -273,6 +273,102 @@ export type Database = {
           },
         ]
       }
+      appointments: {
+        Row: {
+          academic_year_id: string | null
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          org_id: string
+          portfolio: string | null
+          position_title: string
+          published_at: string | null
+          published_by: string | null
+          school_id: string
+          staff_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["recognition_status"]
+          student_id: string | null
+          subject_type: Database["public"]["Enums"]["recognition_subject"]
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          org_id: string
+          portfolio?: string | null
+          position_title: string
+          published_at?: string | null
+          published_by?: string | null
+          school_id: string
+          staff_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["recognition_status"]
+          student_id?: string | null
+          subject_type?: Database["public"]["Enums"]["recognition_subject"]
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          org_id?: string
+          portfolio?: string | null
+          position_title?: string
+          published_at?: string | null
+          published_by?: string | null
+          school_id?: string
+          staff_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["recognition_status"]
+          student_id?: string | null
+          subject_type?: Database["public"]["Enums"]["recognition_subject"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       approval_requests: {
         Row: {
           amount: number | null
@@ -1942,6 +2038,122 @@ export type Database = {
           },
         ]
       }
+      recognitions: {
+        Row: {
+          academic_period_id: string | null
+          award_date: string
+          category: string
+          class_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          org_id: string
+          published_at: string | null
+          published_by: string | null
+          school_id: string
+          staff_id: string | null
+          status: Database["public"]["Enums"]["recognition_status"]
+          student_id: string | null
+          subject_id: string | null
+          subject_type: Database["public"]["Enums"]["recognition_subject"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          academic_period_id?: string | null
+          award_date?: string
+          category?: string
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          org_id: string
+          published_at?: string | null
+          published_by?: string | null
+          school_id: string
+          staff_id?: string | null
+          status?: Database["public"]["Enums"]["recognition_status"]
+          student_id?: string | null
+          subject_id?: string | null
+          subject_type: Database["public"]["Enums"]["recognition_subject"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          academic_period_id?: string | null
+          award_date?: string
+          category?: string
+          class_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          org_id?: string
+          published_at?: string | null
+          published_by?: string | null
+          school_id?: string
+          staff_id?: string | null
+          status?: Database["public"]["Enums"]["recognition_status"]
+          student_id?: string | null
+          subject_id?: string | null
+          subject_type?: Database["public"]["Enums"]["recognition_subject"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recognitions_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognitions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -3062,6 +3274,8 @@ export type Database = {
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
+      recognition_status: "draft" | "submitted" | "published" | "archived"
+      recognition_subject: "student" | "staff"
       school_section: "toddler" | "nursery" | "primary" | "secondary"
       staff_employment_status: "active" | "inactive" | "terminated" | "on_leave"
       student_status:
@@ -3255,6 +3469,8 @@ export const Constants = {
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
+      recognition_status: ["draft", "submitted", "published", "archived"],
+      recognition_subject: ["student", "staff"],
       school_section: ["toddler", "nursery", "primary", "secondary"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
       student_status: [
