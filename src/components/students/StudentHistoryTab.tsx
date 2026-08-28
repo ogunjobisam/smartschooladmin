@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +14,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { displayClassName } from "@/lib/sections";
 
 interface Props {
   studentId: string;

@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -27,7 +28,6 @@ import { PerformanceSummary } from "@/components/performance/PerformanceSummary"
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { StudentTransportCard } from "@/components/students/StudentTransportCard";
-import { displayClassName } from "@/lib/sections";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();

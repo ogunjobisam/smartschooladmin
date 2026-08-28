@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Printer, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -14,7 +15,6 @@ import { printInvoice } from "@/lib/print-documents";
 import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
-import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 

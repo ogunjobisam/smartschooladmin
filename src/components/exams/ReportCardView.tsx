@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { gradeForScore, remarkForGrade } from "@/lib/performance";
-import { displayClassName } from "@/lib/sections";
 
 interface ScoreItem {
   subjectId: string;

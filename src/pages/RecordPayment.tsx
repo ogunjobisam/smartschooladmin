@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Search, CreditCard, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import type { Enums } from "@/integrations/supabase/types";
-import { displayClassName } from "@/lib/sections";
 
 export default function RecordPayment() {
   const navigate = useNavigate();

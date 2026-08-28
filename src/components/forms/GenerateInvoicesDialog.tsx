@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { Checkbox } from "@/components/ui/checkbox";
-import { displayClassName } from "@/lib/sections";
 
 interface Props {
   open: boolean;

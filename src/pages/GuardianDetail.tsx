@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Users } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -13,7 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrency } from "@/hooks/use-currency";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
-import { displayClassName } from "@/lib/sections";
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 

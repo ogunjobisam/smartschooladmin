@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info } from "lucide-react";
@@ -19,7 +20,6 @@ import { printInvoice } from "@/lib/print-documents";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
-import { displayClassName } from "@/lib/sections";
 
 /**
  * What a student sees when they sign in.

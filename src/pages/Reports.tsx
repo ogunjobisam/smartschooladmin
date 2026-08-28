@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +23,6 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { exportToCsv } from "@/lib/csv-export";
-import { displayClassName } from "@/lib/sections";
 
 const CHART_COLORS = [
   "hsl(215, 90%, 55%)", "hsl(152, 60%, 40%)", "hsl(38, 92%, 50%)",
