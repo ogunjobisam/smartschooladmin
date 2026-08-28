@@ -268,7 +268,16 @@ function EntityFormat({ entity, schoolId, schoolName, orgId, canManage, saved, c
           </p>
         </div>
         {canManage && (
-          <Button variant="outline" size="sm" onClick={() => runBackfill()} disabled={backfilling || counts.blank === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setBackfilling(true);
+              await runBackfill();
+              setBackfilling(false);
+            }}
+            disabled={backfilling || counts.blank === 0}
+          >
             {backfilling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
             {counts.blank === 0 ? "No missing IDs" : `Generate ${counts.blank} missing ID${counts.blank === 1 ? "" : "s"}`}
           </Button>
