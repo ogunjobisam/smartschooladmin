@@ -76,18 +76,13 @@ export function brokeredPreviewStorage() {
       }
       return localStorage.getItem(key);
     },
-    // The `(): undefined` annotations on these callbacks are load-bearing.
-    // This project has noImplicitAny on, and without an explicit return type
-    // somewhere in each arrow, tsc raises TS7011. Regenerating this file has
-    // stripped them three times now and turned `main` red each time — so if
-    // you are regenerating it, keep a return annotation on both.
     setItem: (key: string, value: string) => {
       localStorage.setItem(key, value);
-      return request('lovable-preview-auth:set', key, value).then((): undefined => undefined);
+      return request('lovable-preview-auth:set', key, value).then(() => undefined);
     },
     removeItem: (key: string) => {
       localStorage.removeItem(key);
-      return request('lovable-preview-auth:remove', key).then((): undefined => undefined);
+      return request('lovable-preview-auth:remove', key).then(() => undefined);
     },
   };
 }
