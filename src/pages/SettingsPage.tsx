@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
 import { NoticesCard } from "@/components/settings/NoticesCard";
+import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -391,6 +392,9 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* ── ID Numbering ── */}
+          <IdFormatCard schoolId={schoolId} schoolName={school?.name || schoolName} canManage={canManage} />
 
           {/* ── Add School ── */}
           {(userRole === "super_admin" || userRole === "proprietor") && (
