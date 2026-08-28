@@ -22,6 +22,7 @@ import { PerformanceSummary } from "@/components/performance/PerformanceSummary"
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
+import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -260,6 +261,13 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {studentIds.length > 0 && (
+        <TransportRiderCard
+          studentIds={studentIds}
+          nameById={Object.fromEntries((children || []).map((c) => [c.id, `${c.first_name} ${c.last_name}`]))}
+        />
+      )}
 
       <UpcomingEvents />
 

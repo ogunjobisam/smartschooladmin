@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { SCHOOL_SECTIONS, classesForSections, type PlannedClass, type SchoolSection } from "@/lib/sections";
-import { Checkbox } from "@/components/ui/checkbox";
 import { getErrorMessage } from "@/lib/errors";
 
 const steps = ["Organisation", "School", "Classes", "Academic Year"];

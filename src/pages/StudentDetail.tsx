@@ -26,6 +26,7 @@ import { InviteStudentButton } from "@/components/students/InviteStudentButton";
 import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
+import { StudentTransportCard } from "@/components/students/StudentTransportCard";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -271,6 +272,7 @@ export default function StudentDetail() {
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="grades">Grades</TabsTrigger>
+          <TabsTrigger value="transport">Transport</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
@@ -455,6 +457,10 @@ export default function StudentDetail() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="transport" className="mt-4">
+          <StudentTransportCard studentId={id!} schoolId={schoolId} />
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">

@@ -17,6 +17,7 @@ import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { printInvoice } from "@/lib/print-documents";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
+import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 
 /**
  * What a student sees when they sign in.
@@ -80,13 +81,13 @@ export default function StudentPortal() {
       studentName: `${student?.first_name ?? ""} ${student?.last_name ?? ""}`.trim(),
       studentId: student?.student_id_number || "",
       className: student?.enrolments?.[0]?.classes?.name || "—",
-      term: invoice.academic_periods?.name || "—",
+      periodName: invoice.academic_periods?.name || "—",
       schoolName: student?.schools?.name || "",
       schoolAddress: student?.schools?.address,
       schoolEmail: student?.schools?.email,
       schoolPhone: student?.schools?.phone,
       logoUrl: student?.schools?.logo_url,
-      items: (lineItems || []).map((item) => ({
+      lineItems: (lineItems || []).map((item) => ({
         description: item.description,
         category: item.fee_categories?.name || "—",
         amount: item.amount,
@@ -160,6 +161,8 @@ export default function StudentPortal() {
           subtitle={`${formatMoney(totalPaid)} paid`}
         />
       </div>
+
+      {studentId && <TransportRiderCard studentIds={[studentId]} />}
 
       <UpcomingEvents />
 

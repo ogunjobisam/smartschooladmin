@@ -66,6 +66,15 @@ describe("canAccessPath", () => {
     expect(canAccessPath("not_a_role", "/settings")).toBe(false);
   });
 
+  it("keeps transport with the people who bill for it, not with riders", () => {
+    for (const role of ["school_admin", "principal", "bursar"]) {
+      expect(canAccessPath(role, "/transport")).toBe(true);
+    }
+    for (const role of ["teacher", "parent", "student", "finance_officer", "hr_admin"]) {
+      expect(canAccessPath(role, "/transport")).toBe(false);
+    }
+  });
+
   it("does not treat /notification-settings as part of /notifications", () => {
     // Distinct routes: one is the user's own preferences, the other their inbox.
     expect(canAccessPath("parent", "/notification-settings")).toBe(true);

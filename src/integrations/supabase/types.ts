@@ -2168,6 +2168,141 @@ export type Database = {
           },
         ]
       }
+      transport_routes: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          description: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          fee_per_term: number
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+          vehicle_registration: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          fee_per_term?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+          vehicle_registration?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          description?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          fee_per_term?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+          vehicle_registration?: string | null
+        }
+        Relationships: []
+      }
+      transport_stops: {
+        Row: {
+          created_at: string
+          dropoff_time: string | null
+          id: string
+          name: string
+          pickup_time: string | null
+          route_id: string
+          stop_order: number
+        }
+        Insert: {
+          created_at?: string
+          dropoff_time?: string | null
+          id?: string
+          name: string
+          pickup_time?: string | null
+          route_id: string
+          stop_order?: number
+        }
+        Update: {
+          created_at?: string
+          dropoff_time?: string | null
+          id?: string
+          name?: string
+          pickup_time?: string | null
+          route_id?: string
+          stop_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_stops_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_transport: {
+        Row: {
+          academic_period_id: string | null
+          created_at: string
+          fee_override: number | null
+          id: string
+          route_id: string
+          stop_id: string | null
+          student_id: string
+        }
+        Insert: {
+          academic_period_id?: string | null
+          created_at?: string
+          fee_override?: number | null
+          id?: string
+          route_id: string
+          stop_id?: string | null
+          student_id: string
+        }
+        Update: {
+          academic_period_id?: string | null
+          created_at?: string
+          fee_override?: number | null
+          id?: string
+          route_id?: string
+          stop_id?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_transport_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "transport_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transport_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "transport_stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_transport_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2464,8 +2599,8 @@ export const Constants = {
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
       payroll_status: ["draft", "pending", "approved", "paid", "rejected"],
       staff_employment_status: ["active", "inactive", "terminated", "on_leave"],
-      event_audience: "all" | "staff" | "parents" | "students"
-      school_section: "toddler" | "nursery" | "primary" | "secondary"
+      event_audience: ["all", "staff", "parents", "students"],
+      school_section: ["toddler", "nursery", "primary", "secondary"],
       student_status: ["active", "inactive", "suspended", "withdrawn"],
       transaction_status: [
         "initiated",

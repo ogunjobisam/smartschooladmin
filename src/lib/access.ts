@@ -52,6 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "templates", title: "Templates", url: "/notification-templates", group: "communications" },
   { key: "preferences", title: "My Preferences", url: "/notification-settings", group: "communications" },
 
+  { key: "transport", title: "Transport", url: "/transport", group: "operations" },
   { key: "payroll", title: "Payroll", url: "/payroll", group: "operations" },
   { key: "approvals", title: "Approvals", url: "/approvals", group: "operations" },
   { key: "group-overview", title: "Group Overview", url: "/group-overview", group: "operations" },
@@ -81,21 +82,21 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "events", "preferences",
-    "approvals", "reports",
+    "transport", "approvals", "reports",
     "settings", "users",
   ],
   principal: [
     "dashboard", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
     "announcements", "templates", "events", "preferences",
-    "approvals", "reports",
+    "transport", "approvals", "reports",
     "users",
   ],
   bursar: [
     "dashboard", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
     "announcements", "events", "preferences",
-    "payroll", "reports",
+    "transport", "payroll", "reports",
     "users",
   ],
   finance_officer: [
