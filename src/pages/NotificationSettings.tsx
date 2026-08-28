@@ -129,7 +129,7 @@ const PREF_KEY: Record<Channel, keyof Preference> = {
 const trimTime = (v: string) => v.slice(0, 5);
 
 export default function NotificationSettings() {
-  const { user, userRole, userRoles, orgId, schoolId } = useAuth();
+  const { user, userRole, userRoles, orgId } = useAuth();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [prefs, setPrefs] = useState<Map<string, Preference>>(new Map());
@@ -301,7 +301,6 @@ export default function NotificationSettings() {
 
       const { error: auditError } = await supabase.from("audit_logs").insert({
         org_id: orgId,
-        school_id: schoolId,
         user_id: user.id,
         action: "preferences_updated",
         entity_type: "notification_preferences",
