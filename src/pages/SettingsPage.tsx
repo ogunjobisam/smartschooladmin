@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Settings, Upload, Loader2, Plus, Trash2, Building2, GraduationCap, Receipt, Calendar, AlertTriangle, BookOpen } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -19,6 +20,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+
+const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic"];
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
@@ -237,11 +240,18 @@ export default function SettingsPage() {
     queryClient.invalidateQueries({ queryKey: ["academic-years"] });
   };
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const tab = requestedTab && SETTINGS_TABS.includes(requestedTab) ? requestedTab : "general";
+  const setTab = (value: string) => setSearchParams({ tab: value }, { replace: true });
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Configure your school and platform settings." />
 
-      <Tabs defaultValue="general">
+      {/* Controlled by ?tab= so other pages can deep-link straight to the
+          setting they are telling the user to change. */}
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>

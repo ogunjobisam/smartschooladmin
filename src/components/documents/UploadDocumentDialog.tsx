@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Upload } from "lucide-react";
+import { DOCUMENTS_BUCKET, storagePathFor } from "@/lib/documents";
 
 interface UploadDocumentDialogProps {
   open: boolean;
@@ -35,12 +36,10 @@ export function UploadDocumentDialog({ open, onOpenChange, entityType, entityId,
     if (!file || !user) return;
     setUploading(true);
 
-    const ext = file.name.split(".").pop();
-    const safeName = `${Date.now()}.${ext}`;
-    const storagePath = `${schoolId}/documents/${entityType}/${entityId}/${safeName}`;
+    const storagePath = storagePathFor(schoolId, entityType, entityId, file.name);
 
     const { error: uploadError } = await supabase.storage
-      .from("school-assets")
+      .from(DOCUMENTS_BUCKET)
       .upload(storagePath, file, { upsert: true });
 
     if (uploadError) {
@@ -49,15 +48,15 @@ export function UploadDocumentDialog({ open, onOpenChange, entityType, entityId,
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("school-assets").getPublicUrl(storagePath);
-
+    // Stores the storage path, not a public URL: the bucket is private and each
+    // download is opened through a short-lived signed URL instead.
     const { error } = await supabase.from("document_files").insert({
       org_id: orgId,
       school_id: schoolId,
       entity_type: entityType,
       entity_id: entityId,
       file_name: file.name,
-      file_url: urlData.publicUrl,
+      file_url: storagePath,
       file_size: file.size,
       category,
       notes: notes.trim() || null,

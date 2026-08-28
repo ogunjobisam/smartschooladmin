@@ -276,7 +276,15 @@ export default function ExamDetail() {
   }, [scores]);
 
   if (examLoading) return <div className="space-y-4 p-6">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
-  if (!exam) return <EmptyState icon={BookOpen} title="Exam not found" description="This exam doesn't exist or you don't have access." />;
+  if (!exam) return (
+    <EmptyState
+      icon={BookOpen}
+      title="Exam not found"
+      description="This exam doesn't exist, or you don't have access to it."
+      actionLabel="Back to exams"
+      onAction={() => navigate("/exams")}
+    />
+  );
 
   // Show report card view
   if (reportCardStudent) {
@@ -331,7 +339,13 @@ export default function ExamDetail() {
       {subjects.length === 0 ? (
         <Card>
           <CardContent className="py-10">
-            <EmptyState icon={BookOpen} title="No subjects assigned to this class" description="Go to Settings → Subjects and assign subjects to this class before entering scores." />
+            <EmptyState
+              icon={BookOpen}
+              title="No subjects assigned to this class"
+              description="Assign subjects to this class before entering scores."
+              actionLabel="Open subject settings"
+              onAction={() => navigate("/settings?tab=subjects")}
+            />
           </CardContent>
         </Card>
       ) : !exam.class_id ? (
@@ -343,7 +357,13 @@ export default function ExamDetail() {
       ) : students.length === 0 ? (
         <Card>
           <CardContent className="py-10">
-            <EmptyState icon={BookOpen} title="No students enrolled" description="No students are enrolled in this class for the selected period." />
+            <EmptyState
+              icon={BookOpen}
+              title="No students enrolled"
+              description="No students are enrolled in this class for the selected period. Enrol students, or check the current term in Settings."
+              actionLabel="Go to Students"
+              onAction={() => navigate("/students")}
+            />
           </CardContent>
         </Card>
       ) : (

@@ -14,15 +14,13 @@ import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
 import {
-  GraduationCap, CreditCard, FileText, Receipt, Printer, Eye, Wallet
+  GraduationCap, CreditCard, FileText, Receipt, Printer, Info
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 
 export default function ParentDashboard() {
   const { user } = useAuth();
   const { formatMoney, currency } = useCurrency();
-  const [payInvoice, setPayInvoice] = useState<any>(null);
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
@@ -233,16 +231,9 @@ export default function ParentDashboard() {
                       <TableCell className={`text-right font-mono text-sm tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}>{formatMoney(balance)}</TableCell>
                       <TableCell><StatusBadge status={inv.status} /></TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {balance > 0 && (
-                            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setPayInvoice(inv)}>
-                              <Wallet className="h-3 w-3" /> Pay
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintInvoice(inv)}>
-                            <Printer className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => handlePrintInvoice(inv)}>
+                          <Printer className="h-3 w-3" /> Invoice
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -252,6 +243,30 @@ export default function ParentDashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Paying fees.
+
+          There is deliberately no "Pay now" button here. The payment flow in
+          this app records the payment straight from the browser, which is
+          correct for a bursar entering a payment they have already received but
+          would let a parent mark their own invoice paid. Online payment for
+          parents needs a server-side flow that only records a payment once the
+          gateway confirms it. */}
+      {totalBilled - totalPaid > 0 && (
+        <Card>
+          <CardContent className="flex items-start gap-3 py-4">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+            <div className="space-y-1 text-sm">
+              <p className="font-medium">How to pay</p>
+              <p className="text-muted-foreground">
+                Print or download an invoice above and pay through your school's usual
+                channel. Payments are reflected here once the school records them.
+                Online payment is not yet enabled for this school.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Payments */}
       <Card>
@@ -292,20 +307,6 @@ export default function ParentDashboard() {
         </CardContent>
       </Card>
 
-      {payInvoice && (
-        <PayInvoiceDialog
-          open={!!payInvoice}
-          onOpenChange={(open) => { if (!open) setPayInvoice(null); }}
-          invoice={{
-            id: payInvoice.id,
-            invoice_number: payInvoice.invoice_number,
-            total_amount: payInvoice.total_amount,
-            amount_paid: payInvoice.amount_paid,
-            student_id: payInvoice.student_id,
-            school_id: payInvoice.school_id,
-          }}
-        />
-      )}
     </div>
   );
 }

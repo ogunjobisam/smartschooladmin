@@ -219,7 +219,13 @@ export default function Announcements() {
           {isLoading ? (
             <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : announcements.length === 0 ? (
-            <EmptyState icon={Megaphone} title="No announcements yet" description="Send your first announcement to parents or staff." />
+            <EmptyState
+              icon={Megaphone}
+              title="No announcements yet"
+              description="Send your first announcement to parents or staff."
+              actionLabel="New announcement"
+              onAction={() => setOpen(true)}
+            />
           ) : (
             <Table>
               <TableHeader>

@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -38,7 +39,8 @@ const statusConfig: Record<AttendanceStatus, { label: string; icon: typeof Check
 const statusCycle: AttendanceStatus[] = ["present", "absent", "late", "excused"];
 
 export default function Attendance() {
-  const { schoolId, user } = useAuth();
+  const navigate = useNavigate();
+  const { schoolId, orgId, user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [date, setDate] = useState<Date>(new Date());
@@ -60,17 +62,21 @@ export default function Attendance() {
   });
 
   // Fetch current academic period
+  // Scoped to the org's own academic years. This previously queried every
+  // academic_period with no filter and took whichever row came back first.
   const { data: currentPeriod } = useQuery({
-    queryKey: ["current-period", schoolId],
+    queryKey: ["current-period", orgId],
     queryFn: async () => {
       const { data } = await supabase
         .from("academic_periods")
-        .select("id")
+        .select("id, academic_years!inner(org_id)")
         .eq("is_current", true)
+        .eq("academic_years.org_id", orgId!)
         .limit(1)
         .maybeSingle();
       return data;
     },
+    enabled: !!orgId,
   });
 
   // Fetch enrolled students for selected class + existing attendance
@@ -147,28 +153,27 @@ export default function Attendance() {
   };
 
   const handleSave = async () => {
-    if (!schoolId || !selectedClassId || !user) return;
+    if (!schoolId || !selectedClassId || !user || rows.length === 0) return;
     setSaving(true);
 
-    // Upsert all attendance records
     const records = rows.map((r) => ({
       school_id: schoolId,
       class_id: selectedClassId,
       student_id: r.studentId,
       date: dateStr,
-      status: r.status as any,
+      status: r.status,
       marked_by: user.id,
       updated_at: new Date().toISOString(),
     }));
 
-    // Delete existing for this class+date, then insert fresh
-    await supabase
+    // Upsert rather than delete-then-insert. The old order wiped the day's
+    // register first, so a failing insert (a policy denial, a dropped
+    // connection) left the class with no attendance at all.
+    // The conflict target matches the table's UNIQUE(student_id, date): a
+    // student has one attendance record per day, whichever class marks it.
+    const { error } = await supabase
       .from("attendance_records")
-      .delete()
-      .eq("class_id", selectedClassId)
-      .eq("date", dateStr);
-
-    const { error } = await supabase.from("attendance_records").insert(records);
+      .upsert(records, { onConflict: "student_id,date" });
 
     setSaving(false);
     if (error) {
@@ -264,11 +269,14 @@ export default function Attendance() {
               ? `${classes.find((c: any) => c.id === selectedClassId)?.name || "Class"} — ${format(date, "EEEE, dd MMMM yyyy")}`
               : "Select a class to begin"}
           </CardTitle>
-          {dirty && rows.length > 0 && (
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-              Save Attendance
-            </Button>
+          {rows.length > 0 && (
+            <div className="flex items-center gap-2">
+              {dirty && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                Save Attendance
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -277,7 +285,13 @@ export default function Attendance() {
           ) : studentsLoading ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : rows.length === 0 ? (
-            <EmptyState icon={Users} title="No students enrolled" description="This class has no enrolled students for the current academic period." />
+            <EmptyState
+              icon={Users}
+              title="No students enrolled"
+              description="This class has no enrolled students for the current academic period. Add students to it, or check that the right term is marked as current in Settings."
+              actionLabel="Go to Students"
+              onAction={() => navigate("/students")}
+            />
           ) : (
             <Table>
               <TableHeader>

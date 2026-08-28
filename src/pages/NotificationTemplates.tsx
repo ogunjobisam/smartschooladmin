@@ -153,7 +153,13 @@ export default function NotificationTemplates() {
           {isLoading ? (
             <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : templates.length === 0 ? (
-            <EmptyState icon={FileText} title="No templates" description="Create templates to customize your notification messages." />
+            <EmptyState
+              icon={FileText}
+              title="No templates"
+              description="Templates let you customise the wording of fee reminders, receipts and announcements."
+              actionLabel="Add template"
+              onAction={() => setOpen(true)}
+            />
           ) : (
             <Table>
               <TableHeader>

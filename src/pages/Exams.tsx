@@ -53,7 +53,13 @@ export default function Exams() {
             <div className="space-y-2 p-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : exams.length === 0 ? (
             <div className="p-6">
-              <EmptyState icon={BookOpen} title="No exams yet" description="Create your first exam to start entering student scores." />
+              <EmptyState
+                icon={BookOpen}
+                title="No exams yet"
+                description="Create your first exam to start entering student scores."
+                actionLabel="Create exam"
+                onAction={() => setCreateOpen(true)}
+              />
             </div>
           ) : (
             <Table>
@@ -82,7 +88,12 @@ export default function Exams() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" className="h-8 text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/exams/${exam.id}`); }}
+                      >
                         <Pencil className="mr-1 h-3 w-3" /> Scores
                       </Button>
                     </TableCell>
