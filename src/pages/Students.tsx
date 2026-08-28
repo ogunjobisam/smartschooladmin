@@ -135,6 +135,9 @@ export default function Students() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectItem value="withdrawn">Withdrawn</SelectItem>
+            <SelectItem value="graduated">Graduated</SelectItem>
+            <SelectItem value="expelled">Expelled</SelectItem>
           </SelectContent>
         </Select>
       </div>

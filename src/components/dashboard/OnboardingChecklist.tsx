@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle2, Circle, GraduationCap, Users, Receipt, FileText, Layers } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { canAccessPath, canManageStudents } from "@/lib/access";
 
 interface ChecklistItem {
   key: string;
@@ -12,12 +13,18 @@ interface ChecklistItem {
   description: string;
   icon: typeof GraduationCap;
   link: string;
+  /** Extra gate beyond route access, e.g. write permission. */
+  allowed?: boolean;
   linkLabel: string;
   done: boolean;
 }
 
 export function OnboardingChecklist() {
-  const { schoolId, orgId } = useAuth();
+  const { schoolId, orgId, userRole } = useAuth();
+
+  // Only show a setup step to someone whose role can actually complete it.
+  const canSee = (path: string, extra = true) => extra && canAccessPath(userRole, path);
+  const relevantSteps = ["/settings", "/students", "/staff", "/fees", "/invoices"].some((p) => canSee(p));
 
   const { data: checks, isLoading } = useQuery({
     queryKey: ["onboarding-checklist", schoolId, orgId],
@@ -40,12 +47,12 @@ export function OnboardingChecklist() {
         hasInvoices: (invoicesRes.count || 0) > 0,
       };
     },
-    enabled: !!schoolId && !!orgId,
+    enabled: !!schoolId && !!orgId && relevantSteps,
   });
 
   if (isLoading || !checks) return null;
 
-  const items: ChecklistItem[] = [
+  const allItems: ChecklistItem[] = [
     {
       key: "classes",
       label: "Set up classes",
@@ -63,6 +70,7 @@ export function OnboardingChecklist() {
       link: "/students",
       linkLabel: "Go to Students",
       done: checks.hasStudents,
+      allowed: canManageStudents(userRole),
     },
     {
       key: "staff",
@@ -92,6 +100,9 @@ export function OnboardingChecklist() {
       done: checks.hasInvoices,
     },
   ];
+
+  const items = allItems.filter((i) => canSee(i.link, i.allowed ?? true));
+  if (items.length === 0) return null;
 
   const doneCount = items.filter(i => i.done).length;
   const progress = Math.round((doneCount / items.length) * 100);
