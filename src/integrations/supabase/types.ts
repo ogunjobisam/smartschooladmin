@@ -1120,6 +1120,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          email_frequency: string
+          id: string
+          in_app_frequency: string
+          quiet_end: string
+          quiet_hours_enabled: boolean
+          quiet_start: string
+          sms_frequency: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_frequency?: string
+          id?: string
+          in_app_frequency?: string
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          sms_frequency?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_frequency?: string
+          id?: string
+          in_app_frequency?: string
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          sms_frequency?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           body: string
@@ -1859,45 +1901,63 @@ export type Database = {
           body: string
           channels: string[]
           created_at: string
+          display_mode: string
+          ends_at: string | null
           id: string
+          is_active: boolean
+          is_pinned: boolean
           org_id: string
           school_id: string | null
           sent_at: string | null
           sent_by: string | null
+          starts_at: string | null
           status: string
           target_class_id: string | null
           title: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           audience?: string
           body?: string
           channels?: string[]
           created_at?: string
+          display_mode?: string
+          ends_at?: string | null
           id?: string
+          is_active?: boolean
+          is_pinned?: boolean
           org_id: string
           school_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          starts_at?: string | null
           status?: string
           target_class_id?: string | null
           title: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           audience?: string
           body?: string
           channels?: string[]
           created_at?: string
+          display_mode?: string
+          ends_at?: string | null
           id?: string
+          is_active?: boolean
+          is_pinned?: boolean
           org_id?: string
           school_id?: string | null
           sent_at?: string | null
           sent_by?: string | null
+          starts_at?: string | null
           status?: string
           target_class_id?: string | null
           title?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -2284,6 +2344,32 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_counters: {
+        Row: {
+          last_number: number
+          school_id: string
+          year: number
+        }
+        Insert: {
+          last_number?: number
+          school_id: string
+          year: number
+        }
+        Update: {
+          last_number?: number
+          school_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_counters_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2752,6 +2838,7 @@ export type Database = {
         Args: { _school_id: string }
         Returns: string
       }
+      next_student_id_number: { Args: { _school_id: string }; Returns: string }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
@@ -2776,6 +2863,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      school_id_prefix: { Args: { _school_id: string }; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
