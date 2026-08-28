@@ -328,6 +328,61 @@ organisation behind it, if nothing else uses it) from the Supabase dashboard.
 
 ---
 
+## Two things to know about migrations from the preview platform
+
+### The set now contains duplicates, and that is currently harmless
+
+Pushing through the preview platform's migration tool re-recorded five
+migrations under fresh timestamped filenames. They are byte-identical to the
+originals apart from a trailing newline:
+
+| Re-recorded as | Already in the repo as |
+| --- | --- |
+| `20260828202209_982875be…` | `20260828235900_scope_events_to_school.sql` |
+| `20260828202424_1124837c…` | `20260829090000_message_school_context.sql` |
+| `20260828202542_7c08ed43…` | `20260829100000_close_role_boundary_holes.sql` |
+| `20260828202606_cc5244a6…` | `20260829110000_per_school_application_references.sql` |
+| `20260828202628_1364fab7…` | `20260829120000_one_definition_of_current_org.sql` |
+
+A duplicated migration set is what broke replay once before, because
+`CREATE POLICY` has no `IF NOT EXISTS`. These are safe only because every one
+of them drops before it creates, so applying the same file twice is a no-op —
+and `scripts/check-migrations.sh` replays all 45 from empty on every push, so
+if that ever stops being true CI says so rather than a fresh project failing.
+
+They are being kept rather than deleted: both sets are recorded as applied on
+the live project, and removing files that a database has already run is what
+makes the next `supabase db push` complain about a migration-history mismatch.
+The cost is duplication in the history, which is ugly but inert.
+
+### A migration that arrives out of order can undo a later one
+
+The platform's fix-up for the `security_invoker` warning was written with a
+timestamp *earlier* than the migration that creates the view it was fixing. On
+the live database that was fine — it ran afterwards in wall-clock order. On a
+fresh replay it ran first, and then the original `CREATE OR REPLACE VIEW` put
+the insecure definition back.
+
+That matters because `CREATE OR REPLACE VIEW` **replaces `reloptions`
+wholesale rather than merging them**: a later replace with no `WITH` clause
+silently drops `security_invoker` with no error and no warning.
+
+The view is now created with `security_invoker` in the first place, and
+`20260829130000_harden_multiple_roles_view.sql` re-asserts it (plus revokes
+`anon` and `authenticated`, which have no reason to read an operator's
+diagnostic) so every database converges however it got there.
+
+**The guard that was missing.** `scripts/check-migrations.sh` checked tables
+and never looked at views, so it had nothing to say about a view reading its
+base tables past every policy on them. It now requires every view in `public`
+to be `security_invoker`. The first version of that check joined against
+current grants and passed against a view that was provably leaking — the
+replay database is not a Supabase project and carries none of its default
+privileges, so at that point nothing is granted to `authenticated` yet. It now
+ignores grants entirely.
+
+---
+
 ## Prompt A — the audit (already run)
 
 Kept so it can be re-run after fixes. Paste into Lovable as one message.
