@@ -160,6 +160,8 @@ export function EditStudentDialog({ open, onOpenChange, student }: Props) {
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  <SelectItem value="graduated">Graduated</SelectItem>
+                  <SelectItem value="expelled">Expelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
