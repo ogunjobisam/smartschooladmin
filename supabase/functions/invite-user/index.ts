@@ -123,6 +123,39 @@ async function rolesOf(admin: AdminClient, userId: string) {
   ) as { id: string; role: string; org_id: string | null; school_id: string | null }[];
 }
 
+/**
+ * Record a role change in audit_logs.
+ *
+ * Every grant and revoke is written with the admin who did it and when, so a
+ * school can answer "who made this person a bursar?" after the fact. Logging
+ * must never break the operation itself, so failures are swallowed and logged.
+ */
+async function logRoleEvent(
+  admin: AdminClient,
+  args: {
+    orgId: string | null;
+    actorId: string;
+    action: "role_added" | "role_removed" | "role_changed" | "user_removed";
+    targetUserId: string;
+    detail: string;
+    oldValues?: Record<string, unknown> | null;
+    newValues?: Record<string, unknown> | null;
+  }
+) {
+  if (!args.orgId) return;
+  const { error } = await admin.from("audit_logs").insert({
+    org_id: args.orgId,
+    user_id: args.actorId,
+    action: args.action,
+    entity_type: "user_role",
+    entity_id: args.targetUserId,
+    detail: args.detail,
+    old_values: args.oldValues ?? null,
+    new_values: args.newValues ?? null,
+  });
+  if (error) console.error("Could not write role audit log:", error.message);
+}
+
 function canAssignRole(callerRole: string, targetRole: string): boolean {
   const callerRank = ROLE_RANK[callerRole];
   const targetRank = ROLE_RANK[targetRole];
@@ -236,6 +269,15 @@ Deno.serve(async (req) => {
         school_id: target_school_id,
       });
       if (error) return jsonResponse({ error: error.message }, 400);
+      await logRoleEvent(adminClient, {
+        orgId: callerRole.org_id,
+        actorId: caller.id,
+        action: "role_added",
+        targetUserId: user_id,
+        detail: `Added the ${extraRole} role`,
+        oldValues: { roles: guard.existing.map((r) => r.role) },
+        newValues: { roles: [...guard.existing.map((r) => r.role), extraRole] },
+      });
       return jsonResponse({ success: true });
     }
 
@@ -269,6 +311,17 @@ Deno.serve(async (req) => {
         const survivors = guard.existing.slice(1).map((r) => r.id);
         await adminClient.from("user_roles").delete().in("id", survivors);
       }
+      await logRoleEvent(adminClient, {
+        orgId: callerRole.org_id,
+        actorId: caller.id,
+        action: "role_changed",
+        targetUserId: user_id,
+        detail: old_role
+          ? `Changed the ${old_role} role to ${new_role}`
+          : `Replaced all roles with ${new_role}`,
+        oldValues: { roles: guard.existing.map((r) => r.role) },
+        newValues: { roles: old_role ? [...kept.map((r) => r.role), new_role] : [new_role] },
+      });
       return jsonResponse({ success: true });
     }
 
@@ -283,6 +336,21 @@ Deno.serve(async (req) => {
       if (roleToRemove) query = query.eq("role", roleToRemove);
       const { error } = await query;
       if (error) return jsonResponse({ error: error.message }, 400);
+      await logRoleEvent(adminClient, {
+        orgId: callerRole.org_id,
+        actorId: caller.id,
+        action: roleToRemove ? "role_removed" : "user_removed",
+        targetUserId: user_id,
+        detail: roleToRemove
+          ? `Removed the ${roleToRemove} role`
+          : "Removed all roles from the organisation",
+        oldValues: { roles: guard.existing.map((r) => r.role) },
+        newValues: {
+          roles: roleToRemove
+            ? guard.existing.filter((r) => r.role !== roleToRemove).map((r) => r.role)
+            : [],
+        },
+      });
       return jsonResponse({ success: true });
     }
 
@@ -358,6 +426,14 @@ Deno.serve(async (req) => {
         school_id: guardianSchoolId,
       });
       if (roleError) return jsonResponse({ error: roleError.message }, 400);
+      await logRoleEvent(adminClient, {
+        orgId: org_id,
+        actorId: caller.id,
+        action: "role_added",
+        targetUserId: userId,
+        detail: "Granted the parent role via a guardian portal invite",
+        newValues: { roles: ["parent"] },
+      });
 
       // Link guardian to auth user
       const { error: linkError } = await adminClient
@@ -435,6 +511,14 @@ Deno.serve(async (req) => {
         school_id: student.school_id,
       });
       if (roleError) return jsonResponse({ error: roleError.message }, 400);
+      await logRoleEvent(adminClient, {
+        orgId: org_id,
+        actorId: caller.id,
+        action: "role_added",
+        targetUserId: userId,
+        detail: "Granted the student role via a student portal invite",
+        newValues: { roles: ["student"] },
+      });
 
       const { error: linkError } = await adminClient
         .from("students")
@@ -527,6 +611,16 @@ Deno.serve(async (req) => {
       school_id: school_id || null,
     });
     if (roleError) return jsonResponse({ error: roleError.message }, 400);
+    await logRoleEvent(adminClient, {
+      orgId: org_id,
+      actorId: caller.id,
+      action: "role_added",
+      targetUserId: userId,
+      detail: isNew
+        ? `Invited a new user with the ${role} role`
+        : `Added the ${role} role to an existing user`,
+      newValues: { roles: [role] },
+    });
 
     // Auto-create staff record for staff roles
     if (STAFF_ROLES.includes(role) && school_id) {

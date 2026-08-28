@@ -23,14 +23,26 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Loader2, Shield, Trash2, Plus, X } from "lucide-react";
+import { UserPlus, Loader2, Shield, Trash2, Plus, X, Search, Filter, History, AlertTriangle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { getErrorMessage } from "@/lib/errors";
 import {
   ROLES, ROLE_RANK, ADMIN_ROLES, roleBadgeClass, roleLabel,
-  roleAllowedAlongside, primaryRole,
+  roleAllowedAlongside, primaryRole, rolesCompatible,
 } from "@/lib/roles";
+
+/** True when a person holds two roles that are not allowed together. */
+function hasRoleConflict(roles: string[]): boolean {
+  for (let i = 0; i < roles.length; i++) {
+    for (let j = i + 1; j < roles.length; j++) {
+      if (!rolesCompatible(roles[i], roles[j])) return true;
+    }
+  }
+  return false;
+}
 
 interface UserRow {
   userId: string;
@@ -51,6 +63,11 @@ export default function UserManagement() {
   const [assignSchoolId, setAssignSchoolId] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<{ email: string; link: string } | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [matchAll, setMatchAll] = useState(true);
+  const [conflictsOnly, setConflictsOnly] = useState(false);
 
   const [addRoleUser, setAddRoleUser] = useState<UserRow | null>(null);
   const [extraRole, setExtraRole] = useState("");
@@ -110,6 +127,60 @@ export default function UserManagement() {
       }));
     },
     enabled: !!orgId,
+  });
+
+  /**
+   * Narrowing happens in the browser: an organisation's staff list is small,
+   * and role combinations and exclusivity conflicts can only be judged once a
+   * person's whole role set is assembled.
+   */
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (users ?? []).filter((u) => {
+      if (term && !`${u.fullName} ${u.email}`.toLowerCase().includes(term)) return false;
+      const held = u.roles.map((r) => r.role);
+      if (roleFilter.length > 0) {
+        const ok = matchAll
+          ? roleFilter.every((r) => held.includes(r))
+          : roleFilter.some((r) => held.includes(r));
+        if (!ok) return false;
+      }
+      if (conflictsOnly && !hasRoleConflict(held)) return false;
+      return true;
+    });
+  }, [users, search, roleFilter, matchAll, conflictsOnly]);
+
+  const conflictCount = useMemo(
+    () => (users ?? []).filter((u) => hasRoleConflict(u.roles.map((r) => r.role))).length,
+    [users]
+  );
+
+  // Only these roles can read audit_logs, so don't query it for the others.
+  const canViewAudit = ["super_admin", "proprietor", "principal", "school_admin"].includes(userRole || "");
+
+  const { data: auditLog } = useQuery({
+    queryKey: ["role-audit", orgId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("audit_logs")
+        .select("id, action, entity_id, detail, created_at, user_id")
+        .eq("org_id", orgId!)
+        .eq("entity_type", "user_role")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const rows = data ?? [];
+      const ids = [...new Set([...rows.map((r) => r.user_id), ...rows.map((r) => r.entity_id)].filter(Boolean))] as string[];
+      const { data: profiles } = ids.length
+        ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids)
+        : { data: [] };
+      const names = new Map((profiles || []).map((p) => [p.user_id, p.full_name || p.email || "Unknown"]));
+      return rows.map((r) => ({
+        ...r,
+        actorName: r.user_id ? names.get(r.user_id) ?? "Unknown" : "System",
+        targetName: r.entity_id ? names.get(r.entity_id) ?? "Removed user" : "—",
+      }));
+    },
+    enabled: !!orgId && canViewAudit,
   });
 
   const callerRank = ROLE_RANK[userRole || ""] ?? 99;
@@ -179,6 +250,7 @@ export default function UserManagement() {
       setAssignSchoolId("");
       setInviteOpen(false);
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
+      queryClient.invalidateQueries({ queryKey: ["role-audit"] });
     } catch (err) {
       toast.error(getErrorMessage(err, "Failed to invite user"));
     } finally {
@@ -199,6 +271,7 @@ export default function UserManagement() {
       setAddRoleUser(null);
       setExtraRole("");
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
+      queryClient.invalidateQueries({ queryKey: ["role-audit"] });
     } catch (err) {
       toast.error(getErrorMessage(err, "Failed to add role"));
     } finally {
@@ -216,6 +289,7 @@ export default function UserManagement() {
       if (data?.error) throw new Error(data.error);
       toast.success(`${roleLabel(roleToRemove)} role removed`);
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
+      queryClient.invalidateQueries({ queryKey: ["role-audit"] });
     } catch (err) {
       toast.error(getErrorMessage(err, "Failed to remove role"));
     }
@@ -230,6 +304,7 @@ export default function UserManagement() {
       if (data?.error) throw new Error(data.error);
       toast.success("User removed from organisation");
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
+      queryClient.invalidateQueries({ queryKey: ["role-audit"] });
     } catch (err) {
       toast.error(getErrorMessage(err, "Failed to remove user"));
     }
@@ -316,6 +391,86 @@ export default function UserManagement() {
       </PageHeader>
 
       <Card>
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email"
+              className="pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Filter className="h-4 w-4" />
+                Roles{roleFilter.length > 0 ? ` (${roleFilter.length})` : ""}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64" align="end">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs">
+                  <Button
+                    variant={matchAll ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => setMatchAll(true)}
+                  >
+                    Has all
+                  </Button>
+                  <Button
+                    variant={!matchAll ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => setMatchAll(false)}
+                  >
+                    Has any
+                  </Button>
+                </div>
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {ROLES.map((r) => (
+                    <label key={r.value} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={roleFilter.includes(r.value)}
+                        onCheckedChange={(checked) =>
+                          setRoleFilter((prev) =>
+                            checked ? [...prev, r.value] : prev.filter((v) => v !== r.value)
+                          )
+                        }
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            variant={conflictsOnly ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setConflictsOnly((v) => !v)}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Conflicts{conflictCount > 0 ? ` (${conflictCount})` : ""}
+          </Button>
+
+          {(search || roleFilter.length > 0 || conflictsOnly) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSearch(""); setRoleFilter([]); setConflictsOnly(false); }}
+            >
+              Clear
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0 overflow-x-auto">
           <Table className="min-w-[700px]">
             <TableHeader>
@@ -337,16 +492,19 @@ export default function UserManagement() {
                     ))}
                   </TableRow>
                 ))
-              ) : users?.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     <Shield className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                    No users found. Invite your first user!
+                    {(users?.length ?? 0) === 0
+                      ? "No users found. Invite your first user!"
+                      : "No users match these filters."}
                   </TableCell>
                 </TableRow>
               ) : (
-                users?.map((u) => {
+                filteredUsers.map((u) => {
                   const manageable = canManage(u);
+                  const conflict = hasRoleConflict(u.roles.map((r) => r.role));
                   const main = primaryRole(u.roles.map((r) => r.role));
                   return (
                     <TableRow key={u.userId}>
@@ -354,6 +512,11 @@ export default function UserManagement() {
                       <TableCell className="text-sm text-muted-foreground">{u.email || "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap items-center gap-1">
+                          {conflict && (
+                            <Badge variant="outline" className="gap-1 border-destructive/40 text-[11px] text-destructive">
+                              <AlertTriangle className="h-3 w-3" /> Conflict
+                            </Badge>
+                          )}
                           {u.roles.map((r) => (
                             <Badge
                               key={r.role}
@@ -434,6 +597,55 @@ export default function UserManagement() {
           </Table>
         </CardContent>
       </Card>
+
+      {!isLoading && (users?.length ?? 0) > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Showing {filteredUsers.length} of {users?.length} people
+        </p>
+      )}
+
+      {/* Who changed whose roles, and when */}
+      {canViewAudit && (
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 border-b p-4">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Role activity</h2>
+              <span className="text-xs text-muted-foreground">Last 50 changes</span>
+            </div>
+            {(auditLog?.length ?? 0) === 0 ? (
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                No role changes recorded yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="min-w-[600px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">When</TableHead>
+                      <TableHead className="text-xs">Who</TableHead>
+                      <TableHead className="text-xs">Affected user</TableHead>
+                      <TableHead className="text-xs">Change</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLog?.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">{entry.actorName}</TableCell>
+                        <TableCell className="text-sm">{entry.targetName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{entry.detail}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add an extra role to an existing user */}
       <Dialog open={!!addRoleUser} onOpenChange={(open) => { if (!open) setAddRoleUser(null); }}>
