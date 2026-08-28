@@ -237,6 +237,7 @@ export default function Announcements() {
     setEditStart(toLocalInput(a.starts_at));
     setEditEnd(toLocalInput(a.ends_at));
     setEditActive(a.is_active);
+    setEditPinned(a.is_pinned);
   };
 
   const handleUpdate = async () => {
