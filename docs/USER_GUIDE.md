@@ -9,22 +9,27 @@ term. Written for the people doing the work rather than the people who built it.
 
 1. [Before you start](#before-you-start)
 2. [Setting up your school](#setting-up-your-school)
-3. [Students and guardians](#students-and-guardians)
-4. [Staff](#staff)
-5. [Fees and invoicing](#fees-and-invoicing)
-6. [Payments and receipts](#payments-and-receipts)
-7. [Arrears](#arrears)
-8. [Attendance](#attendance)
-9. [Exams and report cards](#exams-and-report-cards)
-10. [Academic performance](#academic-performance)
-11. [Payroll](#payroll)
-12. [Approvals](#approvals)
-13. [Announcements and notifications](#announcements-and-notifications)
-14. [The parent portal](#the-parent-portal)
-15. [Reports](#reports)
-16. [AI Analysis (add-on)](#ai-analysis-add-on)
-17. [Who can do what](#who-can-do-what)
-18. [When something looks wrong](#when-something-looks-wrong)
+3. [Admissions](#admissions)
+4. [Students and guardians](#students-and-guardians)
+5. [Staff](#staff)
+6. [Fees and invoicing](#fees-and-invoicing)
+7. [Payments and receipts](#payments-and-receipts)
+8. [Arrears](#arrears)
+9. [Attendance](#attendance)
+10. [Exams and report cards](#exams-and-report-cards)
+11. [Academic performance](#academic-performance)
+12. [Payroll](#payroll)
+13. [Approvals](#approvals)
+14. [Announcements and notifications](#announcements-and-notifications)
+15. [Events, notices and your public page](#events-notices-and-your-public-page)
+16. [Transport](#transport)
+17. [The parent portal](#the-parent-portal)
+18. [The student portal](#the-student-portal)
+19. [Reports](#reports)
+20. [AI Analysis (add-on)](#ai-analysis-add-on)
+21. [Installing the app on a phone](#installing-the-app-on-a-phone)
+22. [Who can do what](#who-can-do-what)
+23. [When something looks wrong](#when-something-looks-wrong)
 
 ---
 
@@ -83,6 +88,64 @@ After inviting, a dialog shows a **set-password link**. The invite is also queue
 as an email, but until your school has an email provider configured that queue
 does not send. **Copy the link and send it to them** — their account cannot be
 used until they set a password.
+
+---
+
+## Admissions
+
+Applications arrive on their own instead of by WhatsApp, and every one of them
+sits in a list with a status you can move.
+
+### Turning it on
+
+**Settings → Admissions.**
+
+1. Check the **application link**. It is `yourdomain/apply/your-school` and you
+   can change the last part to anything not already taken.
+2. Turn **Accepting applications** on. With it off the page still loads, but it
+   tells families to contact the school instead of taking their details.
+3. Write a line or two under **What the page says** — the session you are
+   admitting for, the sections you have places in.
+4. **Copy** the link and put it wherever families look: WhatsApp status, your
+   Facebook page, the school gate, a flyer.
+
+### What a family sees
+
+One page. The child's name, date of birth, the section they are applying for
+(the form suggests one from the date of birth, and they can change it), the
+present school, and how to reach the parent. Nothing to sign up for, no account
+to create.
+
+When they submit they get a **reference** like `APP-2026-00042`. That is what
+they quote when they ring, and it is the first column in your list.
+
+### Working the list
+
+**Admissions** shows six counts across the top — New, Reviewing, Interview,
+Offered, Accepted, Enrolled. Click any of them to filter.
+
+Click a row to open the application. You get everything they submitted, a box
+for your own notes (interview date, what was agreed, why the decision went the
+way it did) and buttons to move the status.
+
+An application nobody has touched for a week gets a red clock beside it. That is
+the whole point of the list: applications stop being invisible.
+
+### Turning an accepted applicant into a student
+
+When a family has accepted a place, open the application and press **Enrol as a
+student**. Pick the class, optionally give an admission number, and decide
+whether to create a guardian record for the parent (untick this if they already
+have one — a second child in the same family).
+
+That creates the student, the enrolment for the current term and the guardian
+link in one step, then takes you to the new student's record. It is the only way
+an application reaches **Enrolled**: the status buttons deliberately do not offer
+it, so the funnel can never claim a child is on the roll when no student record
+exists.
+
+You need a current academic term set before this will work. **Settings →
+Academic Years.**
 
 ---
 
@@ -340,6 +403,73 @@ notified about.
 
 ---
 
+## Events, notices and your public page
+
+Three things that look similar and are not:
+
+| | Who sees it | What it is for |
+| --- | --- | --- |
+| **Announcements** | Chosen roles, signed in | A message sent once |
+| **Events** | Chosen audience, signed in | Something with a date, on a calendar |
+| **Notices** | Everyone, including strangers | A standing statement while it is true |
+
+### Events
+
+**Events** holds anything with a date: resumption, mid-term break, inter-house
+sports, the carol service, a PTA meeting. Give it a title, a date and an
+audience — everyone, staff only, parents only or students only — and it appears
+under **Upcoming** on the dashboard and in the parent and student portals until
+it has passed.
+
+### Notices
+
+**Settings → Admissions → Notices.** A notice is a headline and an optional
+paragraph, with an optional window: *show from* and *show until*. Use them for
+the things a family needs to know before they ask — "Second term resumes 6
+January", "Admissions open for 2026/2027", "School closes at 12 noon on Friday".
+
+Each notice has a switch. Off is a draft, which is how you write next term's
+dates in advance without publishing them. Published notices show on your public
+application page and to parents and students in their portals, so your website
+and your portal never say different things.
+
+The list tells you which state each notice is in: **Showing now**, **Draft**,
+**Starts later** or **Finished**.
+
+---
+
+## Transport
+
+If your school runs buses, **Transport** turns that into something you can bill
+for rather than something you remember.
+
+### Routes and stops
+
+Add a route with its name, the fee per term, the driver and their phone, the
+vehicle registration and, optionally, the capacity. Then open the route and add
+its **stops** in order, each with a pickup time. The stop list reads as the
+journey the bus actually makes.
+
+Each route shows how many students ride it. If you set a capacity and go over
+it, the route is flagged.
+
+### Putting a student on a bus
+
+Open the student, go to the **Transport** tab, pick the route and the stop. The
+route's termly fee applies unless you set a **fee override** for this child —
+which you will, for siblings, staff children and anyone riding part of the week.
+
+The assignment belongs to the current term, so last term's arrangements stay on
+last term's record.
+
+### What the family sees
+
+The parent portal and the student portal show a **School bus** card with the
+route, the stop, the pickup time and the driver's name and number. Families who
+do not ride see nothing at all.
+
+---
+
 ## The parent portal
 
 A guardian with an invited account signs in and sees only their own children:
@@ -349,6 +479,8 @@ A guardian with an invited account signs in and sees only their own children:
 - Invoices with balances, printable
 - Payment history
 - How to pay
+- Their child's bus route, stop and pickup time, if they ride
+- Upcoming events and the school's current notices
 
 Parents cannot see other families, other students, staff records, or anything
 about the school's finances.
@@ -356,6 +488,27 @@ about the school's finances.
 If a parent sees *Account Not Linked*, their login exists but has not been
 attached to a guardian record. Open the guardian in **Guardians** and invite them
 from there.
+
+---
+
+---
+
+## The student portal
+
+Older students can have their own login, separate from their parents'.
+
+**To give a student one:** open the student and press **Invite to portal**. You
+will be asked for an email address — schools rarely hold one on the student
+record, so it is asked for rather than assumed. They get a link to set a
+password.
+
+**What they see:** their own results and performance, their attendance, their
+invoices and balance (printable), their bus route, upcoming events and the
+school's notices. Nothing about any other student, and nothing about the
+school's finances.
+
+Whether students get logins at all is your decision. A school that only wants
+parents to have access simply never sends a student invite.
 
 ---
 
@@ -401,23 +554,42 @@ decision.
 
 ---
 
+## Installing the app on a phone
+
+The system runs in a browser, but it can be installed so it opens from the home
+screen like any other app — no address bar, and it still opens on a weak signal.
+
+**Android / Chrome:** a bar appears at the top of the screen offering to install
+it. If you dismissed it, use the browser menu → *Install app* or *Add to Home
+screen*.
+
+**iPhone / Safari:** Share → *Add to Home Screen*.
+
+Being installed does not make the system work offline — it still needs a
+connection to load your school's data. What it does is start faster, survive a
+flaky connection on a page you already have open, and stay one tap away.
+
+---
+
 ## Who can do what
 
-| | Students | Staff | Fees | Payroll | Reports | Settings | Users |
-| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **Proprietor** | ● | ● | ● | ● | ● | ● | ● |
-| **Group Admin** | ● | ● | ● | ● | ● | ● | ● |
-| **School Admin** | ● | ● | ● | | ● | ● | ● |
-| **Principal** | ● | ● | view | | ● | | ● |
-| **Bursar** | ● | | ● | ● | ● | | ● |
-| **Finance Officer** | view | | ● | | ● | | ● |
-| **HR Admin** | | ● | | ● | ● | | ● |
-| **Teacher** | own classes | | | | | | |
-| **Parent** | own children | | own invoices | | | | |
+| | Admissions | Students | Staff | Fees | Payroll | Transport | Reports | Settings | Users |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| **Proprietor** | ● | ● | ● | ● | ● | ● | ● | ● | ● |
+| **Group Admin** | ● | ● | ● | ● | ● | ● | ● | ● | ● |
+| **School Admin** | ● | ● | ● | ● | | ● | ● | ● | ● |
+| **Principal** | ● | ● | ● | view | | ● | ● | | ● |
+| **Bursar** | ● | ● | | ● | ● | ● | ● | | ● |
+| **Finance Officer** | | view | | ● | | | ● | | ● |
+| **HR Admin** | | | ● | | ● | | ● | | ● |
+| **Teacher** | | own classes | | | | | | | |
+| **Parent** | | own children | | own invoices | | own children | | | |
+| **Student** | | themselves | | own invoices | | themselves | | | |
 
 Teachers see only the classes they are assigned to under **Settings → Classes**.
 Salary and bank details are visible only to proprietors, bursars, finance
-officers and HR admins.
+officers and HR admins. Applications are school-office work: teachers, parents
+and students cannot read other families' applications at all.
 
 ---
 
@@ -465,6 +637,34 @@ term you are in.
 
 Their login is not attached to a guardian record. Invite them from the guardian's
 page in **Guardians** rather than from **Users**.
+
+### A student signs in and is told their login is not attached to a record
+
+Same cause, different table. Open the student and press **Invite to portal** —
+inviting from **Users** creates a login with no student behind it.
+
+### The application link says "This admissions page is not available"
+
+The slug in the link does not match any school. Check **Settings → Admissions**
+for the current link; if you changed it, the old one stops working immediately.
+
+### A family says they applied but nothing is in Admissions
+
+Check that **Accepting applications** is on. While it is off the public page
+turns families away rather than taking their details, so an application made
+during that time was never recorded.
+
+### "Enrol as a student" will not finish
+
+Two usual causes: no current academic term (**Settings → Academic Years**), or no
+class picked. The application stays in **Accepted** and can be enrolled again —
+it is only marked **Enrolled** once the student record actually exists.
+
+### A notice is not showing on the public page
+
+Check its state in **Settings → Admissions → Notices**. **Draft** means the
+switch is off; **Starts later** and **Finished** mean the date window has not
+opened or has closed.
 
 ---
 
