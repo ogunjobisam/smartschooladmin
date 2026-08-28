@@ -205,7 +205,7 @@ export default function Announcements() {
       detail: `Created ${MODES.find((m) => m.value === mode)!.label.toLowerCase()} announcement "${title.trim()}" for ${audienceLabel(audience)}`,
       newValues: {
         title: title.trim(), body: body.trim(), audience, display_mode: mode,
-        starts_at: startIso, ends_at: endIso, channels, is_active: true,
+        starts_at: startIso, ends_at: endIso, channels, is_active: true, is_pinned: isPinned,
       },
     });
 
