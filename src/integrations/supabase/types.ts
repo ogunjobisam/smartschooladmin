@@ -1229,7 +1229,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          demo_expires_at: string | null
           id: string
+          is_demo: boolean
           logo_url: string | null
           name: string
           updated_at: string
@@ -1241,7 +1243,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          demo_expires_at?: string | null
           id?: string
+          is_demo?: boolean
           logo_url?: string | null
           name: string
           updated_at?: string
@@ -1253,7 +1257,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          demo_expires_at?: string | null
           id?: string
+          is_demo?: boolean
           logo_url?: string | null
           name?: string
           updated_at?: string
@@ -2686,7 +2692,13 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      create_demo_org: {
+        Args: { _hours?: number; _label?: string }
+        Returns: Json
+      }
+      delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
@@ -2740,6 +2752,11 @@ export type Database = {
         Args: { _school_id: string }
         Returns: string
       }
+      photo_path_owns_account: {
+        Args: { _name: string; _user_id: string }
+        Returns: boolean
+      }
+      photo_path_subject_id: { Args: { _name: string }; Returns: string }
       primary_user_role: {
         Args: { _user_id: string }
         Returns: {

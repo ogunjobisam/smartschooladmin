@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { canAccessPath } from "@/lib/access";
+import { DemoBanner } from "@/components/demo/DemoBanner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId, userRole } = useAuth();
@@ -35,6 +36,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
+
+          <DemoBanner />
 
           <InstallPrompt />
 
