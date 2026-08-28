@@ -2,7 +2,10 @@ import { displayClassName } from "@/lib/sections";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, BookOpen, Search, X, Download, Bookmark, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Plus, Pencil, BookOpen, Search, X, Download, Bookmark, Trash2, ArrowUp, ArrowDown,
+  ChevronLeft, ChevronRight, Loader2,
+} from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +23,8 @@ import { exportToCsv } from "@/lib/csv-export";
 import { toast } from "sonner";
 
 const ALL = "all";
+const STATUS_OPTIONS = ["draft", "published", "closed"];
+const PAGE_SIZES = [25, 50, 100];
 
 type SortKey = "name" | "class" | "period" | "status" | "updated" | "date";
 type SortDir = "asc" | "desc";
@@ -32,14 +37,40 @@ interface ExamPreset {
   statusFilter: string;
   sortKey: SortKey;
   sortDir: SortDir;
+  pageSize?: number;
+}
+
+interface ExamRow {
+  id: string;
+  name: string;
+  status: string;
+  exam_date: string | null;
+  max_score: number;
+  weight: number | null;
+  updated_at: string | null;
+  class_id: string | null;
+  academic_period_id: string | null;
+  classes: { name: string } | null;
+  academic_periods: { name: string } | null;
 }
 
 const PRESET_KEY = "exam-filter-presets";
 
-function loadPresets(schoolId: string | null): ExamPreset[] {
-  if (!schoolId) return [];
+/**
+ * Saved views are per school AND per role: a bursar and a teacher looking at the
+ * same school care about different slices of the exam list.
+ */
+function presetKey(schoolId: string | null, role: string | null): string | null {
+  if (!schoolId) return null;
+  return `${PRESET_KEY}:${schoolId}:${role ?? "unknown"}`;
+}
+
+function loadPresets(schoolId: string | null, role: string | null): ExamPreset[] {
+  const key = presetKey(schoolId, role);
+  if (!key) return [];
   try {
-    const raw = localStorage.getItem(`${PRESET_KEY}:${schoolId}`);
+    // Fall back to the pre-role key so views saved earlier are not lost.
+    const raw = localStorage.getItem(key) ?? localStorage.getItem(`${PRESET_KEY}:${schoolId}`);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? (parsed as ExamPreset[]) : [];
   } catch {
@@ -47,40 +78,147 @@ function loadPresets(schoolId: string | null): ExamPreset[] {
   }
 }
 
+/** Keeps the select string out of the type checker's query parser. */
+const sel = (s: string): string => s;
+
+const EXAM_SELECT =
+  "id, name, status, exam_date, max_score, weight, updated_at, class_id, academic_period_id, classes(name), academic_periods(name)";
+
+const CSV_HEADERS = [
+  "Exam Name", "Class", "Term", "Exam Date", "Max Score", "Weight", "Status", "Last Updated",
+];
+
+function csvRow(e: ExamRow): string[] {
+  return [
+    e.name,
+    displayClassName(e.classes?.name) || "All classes",
+    e.academic_periods?.name || "",
+    e.exam_date ? format(new Date(e.exam_date), "yyyy-MM-dd") : "",
+    String(e.max_score ?? ""),
+    String(e.weight ?? ""),
+    e.status || "",
+    e.updated_at ? format(new Date(e.updated_at), "yyyy-MM-dd HH:mm") : "",
+  ];
+}
+
 export default function Exams() {
-  const { schoolId } = useAuth();
+  const { schoolId, userRole } = useAuth();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [classFilter, setClassFilter] = useState(ALL);
   const [periodFilter, setPeriodFilter] = useState(ALL);
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [sortKey, setSortKey] = useState<SortKey>("updated");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [presets, setPresets] = useState<ExamPreset[]>([]);
   const [activePreset, setActivePreset] = useState<string>("");
+  const [exporting, setExporting] = useState(false);
 
-  // Saved views live in the browser: they are a personal convenience, not shared config.
+  // Typing shouldn't fire a request per keystroke now that filtering is server-side.
   useEffect(() => {
-    setPresets(loadPresets(schoolId));
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPresets(loadPresets(schoolId, userRole));
     setActivePreset("");
-  }, [schoolId]);
+  }, [schoolId, userRole]);
+
+  // Any filter or sort change returns to the first page.
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, classFilter, periodFilter, statusFilter, sortKey, sortDir, pageSize]);
 
   const persistPresets = (next: ExamPreset[]) => {
     setPresets(next);
-    if (schoolId) localStorage.setItem(`${PRESET_KEY}:${schoolId}`, JSON.stringify(next));
+    const key = presetKey(schoolId, userRole);
+    if (key) localStorage.setItem(key, JSON.stringify(next));
   };
 
-  const { data: exams = [], isLoading } = useQuery({
-    queryKey: ["exams", schoolId],
+  /** Applies the current filters to a fresh exams query. */
+  const buildQuery = (from: number | null, to: number | null, withCount: boolean) => {
+    let q = supabase
+      .from("exams")
+      .select(sel(EXAM_SELECT), withCount ? { count: "exact" } : undefined)
+      .eq("school_id", schoolId!);
+
+    if (debouncedSearch) q = q.ilike("name", `%${debouncedSearch}%`);
+    if (classFilter !== ALL) q = q.eq("class_id", classFilter);
+    if (periodFilter !== ALL) q = q.eq("academic_period_id", periodFilter);
+    if (statusFilter !== ALL) q = q.eq("status", statusFilter);
+
+    const asc = sortDir === "asc";
+    if (sortKey === "class") q = q.order("name", { referencedTable: "classes", ascending: asc, nullsFirst: false });
+    else if (sortKey === "period") q = q.order("name", { referencedTable: "academic_periods", ascending: asc, nullsFirst: false });
+    else if (sortKey === "date") q = q.order("exam_date", { ascending: asc, nullsFirst: false });
+    else if (sortKey === "status") q = q.order("status", { ascending: asc });
+    else if (sortKey === "name") q = q.order("name", { ascending: asc });
+    else q = q.order("updated_at", { ascending: asc, nullsFirst: false });
+
+    if (from !== null && to !== null) q = q.range(from, to);
+    return q.returns<ExamRow[]>();
+  };
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: [
+      "exams", schoolId, debouncedSearch, classFilter, periodFilter, statusFilter,
+      sortKey, sortDir, page, pageSize,
+    ],
     queryFn: async () => {
-      if (!schoolId) return [];
-      const { data } = await supabase
+      if (!schoolId) return { rows: [] as ExamRow[], count: 0 };
+      const from = page * pageSize;
+      const { data: rows, count, error } = await buildQuery(from, from + pageSize - 1, true);
+      if (error) throw error;
+      return { rows: rows ?? [], count: count ?? 0 };
+    },
+    enabled: !!schoolId,
+    placeholderData: (prev) => prev,
+  });
+
+  const rows = data?.rows ?? [];
+  const total = data?.count ?? 0;
+
+  // Do any exams exist at all? Distinguishes "no exams yet" from "no matches".
+  const { data: anyExams = 0 } = useQuery({
+    queryKey: ["exams-any", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return 0;
+      const { count } = await supabase
         .from("exams")
-        .select("*, classes(name), academic_periods(name)")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
-      return data || [];
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId);
+      return count ?? 0;
+    },
+    enabled: !!schoolId,
+  });
+
+  // Filter options come from the school's own classes and terms.
+  const { data: classOptions = [] } = useQuery({
+    queryKey: ["exam-filter-classes", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("classes")
+        .select("id, name, level_order")
+        .eq("school_id", schoolId!)
+        .order("level_order", { nullsFirst: false });
+      return (data ?? []).map((c) => ({ id: c.id, name: displayClassName(c.name) || "Unnamed class" }));
+    },
+    enabled: !!schoolId,
+  });
+
+  const { data: periodOptions = [] } = useQuery({
+    queryKey: ["exam-filter-periods", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, name, start_date")
+        .order("start_date", { ascending: false });
+      return (data ?? []).map((p) => ({ id: p.id, name: p.name }));
     },
     enabled: !!schoolId,
   });
@@ -90,61 +228,6 @@ export default function Exams() {
     published: "status-paid",
     closed: "status-void",
   };
-
-  // Filter options come from the exams themselves, so a school never sees a
-  // filter that would return nothing.
-  const classOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const e of exams) {
-      if (e.class_id) map.set(e.class_id, displayClassName(e.classes?.name) || "Unnamed class");
-    }
-    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [exams]);
-
-  const periodOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const e of exams) {
-      if (e.academic_period_id) map.set(e.academic_period_id, e.academic_periods?.name || "Unnamed period");
-    }
-    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [exams]);
-
-  const statusOptions = useMemo(
-    () => Array.from(new Set(exams.map((e) => e.status).filter(Boolean))).sort(),
-    [exams]
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const rows = exams.filter((e) => {
-      if (q && !e.name.toLowerCase().includes(q)) return false;
-      if (classFilter !== ALL && e.class_id !== classFilter) return false;
-      if (periodFilter !== ALL && e.academic_period_id !== periodFilter) return false;
-      if (statusFilter !== ALL && e.status !== statusFilter) return false;
-      return true;
-    });
-
-    const value = (e: (typeof rows)[number]): string => {
-      switch (sortKey) {
-        case "class": return displayClassName(e.classes?.name) || "";
-        case "period": return e.academic_periods?.name || "";
-        case "status": return e.status || "";
-        case "date": return e.exam_date || "";
-        case "updated": return e.updated_at || e.created_at || "";
-        default: return e.name || "";
-      }
-    };
-
-    const factor = sortDir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      const av = value(a);
-      const bv = value(b);
-      // Blanks always sort last, whichever direction is chosen.
-      if (!av && bv) return 1;
-      if (av && !bv) return -1;
-      return av.localeCompare(bv) * factor;
-    });
-  }, [exams, search, classFilter, periodFilter, statusFilter, sortKey, sortDir]);
 
   const filtersActive =
     !!search.trim() || classFilter !== ALL || periodFilter !== ALL || statusFilter !== ALL;
@@ -179,35 +262,48 @@ export default function Exams() {
     </TableHead>
   );
 
-  const handleExport = () => {
-    if (filtered.length === 0) {
+  /** Exports just this page. */
+  const handleExportPage = () => {
+    if (rows.length === 0) {
       toast.error("Nothing to export — no exams match these filters.");
       return;
     }
-    exportToCsv(
-      `exams-${format(new Date(), "yyyy-MM-dd")}`,
-      ["Exam Name", "Class", "Term", "Exam Date", "Max Score", "Weight", "Status", "Last Updated"],
-      filtered.map((e) => [
-        e.name,
-        displayClassName(e.classes?.name) || "All classes",
-        e.academic_periods?.name || "",
-        e.exam_date ? format(new Date(e.exam_date), "yyyy-MM-dd") : "",
-        String(e.max_score ?? ""),
-        String(e.weight ?? ""),
-        e.status || "",
-        e.updated_at ? format(new Date(e.updated_at), "yyyy-MM-dd HH:mm") : "",
-      ])
-    );
-    toast.success(`Exported ${filtered.length} exam${filtered.length === 1 ? "" : "s"}.`);
+    exportToCsv(`exams-page-${page + 1}-${format(new Date(), "yyyy-MM-dd")}`, CSV_HEADERS, rows.map(csvRow));
+    toast.success(`Exported ${rows.length} exam${rows.length === 1 ? "" : "s"} from this page.`);
+  };
+
+  /** Exports every exam matching the current term/class/status/search filters. */
+  const handleExportAll = async () => {
+    if (total === 0) {
+      toast.error("Nothing to export — no exams match these filters.");
+      return;
+    }
+    setExporting(true);
+    const all: ExamRow[] = [];
+    const chunk = 1000;
+    try {
+      for (let from = 0; from < total; from += chunk) {
+        const { data: batch, error } = await buildQuery(from, from + chunk - 1, false);
+        if (error) throw error;
+        all.push(...(batch ?? []));
+        if (!batch || batch.length === 0) break;
+      }
+      exportToCsv(`exams-all-${format(new Date(), "yyyy-MM-dd")}`, CSV_HEADERS, all.map(csvRow));
+      toast.success(`Exported ${all.length} exam${all.length === 1 ? "" : "s"} across all pages.`);
+    } catch (err) {
+      toast.error("Export failed: " + (err instanceof Error ? err.message : "unknown error"));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const savePreset = () => {
     const name = window.prompt("Name this view (e.g. 'Term 2 drafts')")?.trim();
     if (!name) return;
-    const preset: ExamPreset = { name, search, classFilter, periodFilter, statusFilter, sortKey, sortDir };
+    const preset: ExamPreset = { name, search, classFilter, periodFilter, statusFilter, sortKey, sortDir, pageSize };
     persistPresets([...presets.filter((p) => p.name !== name), preset]);
     setActivePreset(name);
-    toast.success(`Saved view "${name}".`);
+    toast.success(`Saved view "${name}" for your role.`);
   };
 
   const applyPreset = (name: string) => {
@@ -219,6 +315,7 @@ export default function Exams() {
     setStatusFilter(preset.statusFilter);
     setSortKey(preset.sortKey);
     setSortDir(preset.sortDir);
+    if (preset.pageSize) setPageSize(preset.pageSize);
     setActivePreset(name);
   };
 
@@ -229,12 +326,20 @@ export default function Exams() {
     toast.success("View removed.");
   };
 
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const rangeStart = total === 0 ? 0 : page * pageSize + 1;
+  const rangeEnd = Math.min(total, (page + 1) * pageSize);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Exams & Grades" description="Create exams, enter scores, and generate report cards.">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={exams.length === 0}>
-            <Download className="mr-2 h-3.5 w-3.5" /> Export CSV
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPage} disabled={rows.length === 0}>
+            <Download className="mr-2 h-3.5 w-3.5" /> Export page
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportAll} disabled={total === 0 || exporting}>
+            {exporting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
+            Export all matches
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 h-3.5 w-3.5" /> New Exam
@@ -242,7 +347,7 @@ export default function Exams() {
         </div>
       </PageHeader>
 
-      {exams.length > 0 && (
+      {anyExams > 0 && (
         <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1 min-w-0">
@@ -286,7 +391,7 @@ export default function Exams() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All statuses</SelectItem>
-                {statusOptions.map((s) => (
+                {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                 ))}
               </SelectContent>
@@ -300,7 +405,9 @@ export default function Exams() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Saved views:</span>
+            <span className="text-xs text-muted-foreground">
+              Saved views {userRole ? `(${userRole.replace(/_/g, " ")})` : ""}:
+            </span>
             {presets.length > 0 ? (
               <Select value={activePreset} onValueChange={applyPreset}>
                 <SelectTrigger className="h-8 w-[200px] text-xs" aria-label="Apply a saved view">
@@ -323,8 +430,9 @@ export default function Exams() {
                 <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove "{activePreset}"
               </Button>
             )}
-            <span className="ml-auto text-xs text-muted-foreground">
-              Showing {filtered.length} of {exams.length}
+            <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+              {isFetching && <Loader2 className="h-3 w-3 animate-spin" />}
+              Showing {rangeStart}–{rangeEnd} of {total}
             </span>
           </div>
         </div>
@@ -334,7 +442,7 @@ export default function Exams() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="space-y-2 p-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-          ) : exams.length === 0 ? (
+          ) : anyExams === 0 ? (
             <div className="p-6">
               <EmptyState
                 icon={BookOpen}
@@ -360,7 +468,7 @@ export default function Exams() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.length === 0 ? (
+                  {rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                         No exams match these filters.
@@ -368,7 +476,7 @@ export default function Exams() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((exam) => (
+                    rows.map((exam) => (
                       <TableRow key={exam.id} className="cursor-pointer" onClick={() => navigate(`/exams/${exam.id}`)}>
                         <TableCell className="font-medium">{exam.name}</TableCell>
                         <TableCell className="text-muted-foreground">{displayClassName(exam.classes?.name) || "All"}</TableCell>
@@ -402,6 +510,43 @@ export default function Exams() {
           )}
         </CardContent>
       </Card>
+
+      {anyExams > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Rows per page</span>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="h-8 w-[80px] text-xs" aria-label="Rows per page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZES.map((s) => (
+                  <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0 || isFetching}
+            >
+              <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">Page {page + 1} of {pageCount}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => (p + 1 < pageCount ? p + 1 : p))}
+              disabled={page + 1 >= pageCount || isFetching}
+            >
+              Next <ChevronRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <CreateExamDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
