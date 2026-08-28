@@ -147,6 +147,7 @@ function AppRoutes() {
           <Route path="/announcements" element={withLayout(<Announcements />)} />
           <Route path="/events" element={withLayout(<Events />)} />
           <Route path="/transport" element={withLayout(<Transport />)} />
+          <Route path="/achievements" element={withLayout(<Achievements />)} />
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
           <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
           <Route path="/message-delivery" element={withLayout(<MessageDelivery />)} />
