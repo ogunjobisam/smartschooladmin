@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
+import { NoticesCard } from "@/components/settings/NoticesCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -532,6 +533,7 @@ export default function SettingsPage() {
         {/* ── Subjects Tab ── */}
         <TabsContent value="admissions" className="space-y-6 pt-4">
           <AdmissionsSettingsTab schoolId={schoolId} canManage={canManage} />
+          <NoticesCard schoolId={schoolId} canManage={canManage} />
         </TabsContent>
 
         <TabsContent value="subjects" className="space-y-6 pt-4">

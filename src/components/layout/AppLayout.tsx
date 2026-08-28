@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId } = useAuth();
@@ -31,6 +32,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
+
+          <InstallPrompt />
 
           {(pendingCount ?? 0) > 0 && (
             <div className="flex items-center gap-2 border-b bg-warning/10 px-4 py-2 text-sm text-warning-foreground">

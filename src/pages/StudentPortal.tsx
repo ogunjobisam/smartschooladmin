@@ -17,6 +17,7 @@ import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { printInvoice } from "@/lib/print-documents";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
+import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 
 /**
@@ -161,6 +162,8 @@ export default function StudentPortal() {
           subtitle={`${formatMoney(totalPaid)} paid`}
         />
       </div>
+
+      <NoticeBoard />
 
       {studentId && <TransportRiderCard studentIds={[studentId]} />}
 

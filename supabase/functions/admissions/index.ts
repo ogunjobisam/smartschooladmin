@@ -97,6 +97,18 @@ Deno.serve(async (req) => {
 
     const sections = SECTIONS.filter((s) => (classes || []).some((c) => c.section === s));
 
+    // Published notices inside their date window. Filtered here rather than in
+    // the browser so an unpublished draft never reaches a stranger's machine.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const { data: notices } = await admin
+      .from("school_notices")
+      .select("id, title, body, starts_on, ends_on")
+      .eq("school_id", school.id)
+      .eq("is_published", true)
+      .or(`starts_on.is.null,starts_on.lte.${todayIso}`)
+      .or(`ends_on.is.null,ends_on.gte.${todayIso}`)
+      .order("display_order");
+
     return jsonResponse({
       school: {
         name: school.name,
@@ -112,6 +124,7 @@ Deno.serve(async (req) => {
         // form would offer nothing to apply into.
         sections: sections.length > 0 ? sections : SECTIONS,
       },
+      notices: notices || [],
     });
   }
 

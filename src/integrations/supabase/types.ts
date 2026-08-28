@@ -1806,6 +1806,45 @@ export type Database = {
         }
         Relationships: []
       }
+      school_notices: {
+        Row: {
+          body: string | null
+          created_at: string
+          display_order: number
+          ends_on: string | null
+          id: string
+          is_published: boolean
+          school_id: string
+          starts_on: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          display_order?: number
+          ends_on?: string | null
+          id?: string
+          is_published?: boolean
+          school_id: string
+          starts_on?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          display_order?: number
+          ends_on?: string | null
+          id?: string
+          is_published?: boolean
+          school_id?: string
+          starts_on?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       schools: {
         Row: {
           accent_color: string | null

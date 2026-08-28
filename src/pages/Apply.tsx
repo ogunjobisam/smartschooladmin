@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, GraduationCap, Loader2, MapPin, Phone } from "lucide-react";
+import { CheckCircle2, GraduationCap, Loader2, MapPin, Megaphone, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
 import { suggestSection } from "@/lib/admissions";
 import { SCHOOL_SECTIONS, sectionLabel, type SchoolSection } from "@/lib/sections";
+
+interface PublicNotice {
+  id: string;
+  title: string;
+  body: string | null;
+}
 
 interface PublicSchool {
   name: string;
@@ -61,7 +67,7 @@ export default function Apply() {
     setError(null);
   };
 
-  const { data: school, isLoading, isError } = useQuery({
+  const { data: page, isLoading, isError } = useQuery({
     queryKey: ["public-school", slug],
     queryFn: async () => {
       const { data, error: fnError } = await supabase.functions.invoke("admissions", {
@@ -69,7 +75,7 @@ export default function Apply() {
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
-      return data.school as PublicSchool;
+      return { school: data.school as PublicSchool, notices: (data.notices || []) as PublicNotice[] };
     },
     enabled: !!slug,
     retry: false,
@@ -89,6 +95,9 @@ export default function Apply() {
     onSuccess: (data) => setReference(data.reference),
     onError: (err) => setError(getErrorMessage(err, "We could not send your application. Please try again.")),
   });
+
+  const school = page?.school;
+  const notices = page?.notices ?? [];
 
   // Offer the band their age suggests, but let the parent overrule it.
   const suggested = suggestSection(form.date_of_birth || null);
@@ -134,7 +143,23 @@ export default function Apply() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">
+      <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+        {notices.length > 0 && (
+          <section className="space-y-2">
+            {notices.map((notice) => (
+              <div key={notice.id} className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+                <p className="flex items-start gap-2 text-sm font-medium">
+                  <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  {notice.title}
+                </p>
+                {notice.body && (
+                  <p className="mt-1 whitespace-pre-wrap pl-6 text-sm text-muted-foreground">{notice.body}</p>
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
         {reference ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
