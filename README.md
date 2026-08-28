@@ -95,6 +95,12 @@ be added here**; it belongs only in edge function secrets.
 Schema, policies and functions live in `supabase/migrations/` and are applied in
 filename order. Edge functions live in `supabase/functions/`.
 
+> **Replaying these migrations against a fresh project currently fails.** The
+> `20260828*` files overlap: two sets create the same 40 policies, and
+> `CREATE POLICY` has no `IF NOT EXISTS`. The live project is fine. See
+> [`docs/PRE_LAUNCH_CHECKS.md`](docs/PRE_LAUNCH_CHECKS.md) before deploying
+> anywhere new.
+
 ```sh
 npx supabase link --project-ref <your-project-ref>
 npx supabase db push                      # apply migrations
