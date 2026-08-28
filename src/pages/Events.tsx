@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
+import { sendEventNotifications } from "@/lib/notification-dispatcher";
 import type { Enums } from "@/integrations/supabase/types";
 
 type Audience = Enums<"event_audience">;
@@ -53,6 +54,8 @@ export default function Events() {
   const [endsAt, setEndsAt] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [audience, setAudience] = useState<Audience>("all");
+  const [notifyEmail, setNotifyEmail] = useState(true);
+  const [notifySms, setNotifySms] = useState(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["school-events", orgId, schoolId],
@@ -86,37 +89,70 @@ export default function Events() {
   const reset = () => {
     setTitle(""); setDescription(""); setLocation("");
     setStartsAt(""); setEndsAt(""); setAllDay(false); setAudience("all");
+    setNotifyEmail(true); setNotifySms(false);
   };
 
   const create = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No organisation");
+      if (!schoolId) throw new Error("No school selected");
       if (!title.trim()) throw new Error("Give the event a title");
       if (!startsAt) throw new Error("Choose when it starts");
       if (endsAt && endsAt < startsAt) throw new Error("The end cannot be before the start");
 
-      const { error } = await supabase.from("school_events").insert({
-        org_id: orgId,
-        school_id: schoolId,
-        title: title.trim(),
-        description: description.trim() || null,
-        location: location.trim() || null,
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-        all_day: allDay,
-        audience,
-        created_by: user?.id,
-      });
+      const start = new Date(startsAt);
+      const { data: created, error } = await supabase
+        .from("school_events")
+        .insert({
+          org_id: orgId,
+          school_id: schoolId,
+          title: title.trim(),
+          description: description.trim() || null,
+          location: location.trim() || null,
+          starts_at: start.toISOString(),
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+          all_day: allDay,
+          audience,
+          created_by: user?.id,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // Everyone in the audience gets an in-app alert; email and SMS copies are
+      // queued for the contacts that have an address or number on file.
+      const channels: ("in_app" | "email" | "sms")[] = ["in_app"];
+      if (notifyEmail) channels.push("email");
+      if (notifySms) channels.push("sms");
+
+      return sendEventNotifications({
+        orgId,
+        schoolId,
+        eventId: created.id,
+        title: title.trim(),
+        when: allDay
+          ? format(start, "EEEE d MMMM yyyy")
+          : format(start, "EEEE d MMMM yyyy, HH:mm"),
+        location: location.trim() || null,
+        description: description.trim() || null,
+        audience,
+        channels,
+      });
     },
-    onSuccess: () => {
-      toast.success("Event added");
+    onSuccess: (result) => {
+      const queued = result?.queued
+        ? `, ${result.queued} email/SMS message${result.queued === 1 ? "" : "s"} queued`
+        : "";
+      toast.success(`Event added — ${result?.sent ?? 0} people notified${queued}`);
       queryClient.invalidateQueries({ queryKey: ["school-events"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-events"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       setOpen(false);
       reset();
     },
     onError: (err) => toast.error(getErrorMessage(err, "Could not add the event")),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -267,6 +303,23 @@ export default function Events() {
                       {AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2 rounded-md border p-3">
+                  <p className="text-sm font-medium">Let people know</p>
+                  <p className="text-xs text-muted-foreground">
+                    Everyone in the audience gets an alert in the app and sees the event on their
+                    dashboard. Tick these to also send it to the contacts with an email or phone
+                    number on file.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={notifyEmail} onCheckedChange={(v) => setNotifyEmail(v === true)} />
+                    Email those with an address
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={notifySms} onCheckedChange={(v) => setNotifySms(v === true)} />
+                    Text those with a phone number
+                  </label>
                 </div>
 
                 <div className="space-y-1.5">

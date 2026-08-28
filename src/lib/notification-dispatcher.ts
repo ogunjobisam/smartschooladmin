@@ -276,3 +276,119 @@ export async function sendAnnouncementNotifications(params: {
 
   return { sent: userIds.length, queuedEmails };
 }
+
+/**
+ * Tell the audience about a newly created calendar event.
+ *
+ * In-app alerts go to everyone in the audience who has a login. Email and SMS
+ * copies are queued only for the contacts that actually have an address or a
+ * number on file — a parent with neither still gets the in-app entry and sees
+ * the event on their dashboard.
+ */
+export async function sendEventNotifications(params: {
+  orgId: string;
+  schoolId: string;
+  eventId: string;
+  title: string;
+  when: string;
+  location?: string | null;
+  description?: string | null;
+  audience: string;
+  channels: ("in_app" | "email" | "sms")[];
+}) {
+  const userIds: string[] = [];
+  const emails: string[] = [];
+  const phones: string[] = [];
+
+  const wantsStaff = params.audience === "staff" || params.audience === "all";
+  const wantsParents = params.audience === "parents" || params.audience === "all";
+  const wantsStudents = params.audience === "students" || params.audience === "all";
+
+  if (wantsStaff) {
+    const { data } = await supabase
+      .from("staff")
+      .select("user_id, email, phone")
+      .eq("school_id", params.schoolId)
+      .eq("employment_status", "active");
+    for (const s of data || []) {
+      if (s.user_id) userIds.push(s.user_id);
+      if (s.email) emails.push(s.email);
+      if (s.phone) phones.push(s.phone);
+    }
+  }
+
+  if (wantsParents) {
+    const { data } = await supabase
+      .from("guardians")
+      .select("user_id, email, phone")
+      .eq("org_id", params.orgId);
+    for (const g of data || []) {
+      if (g.user_id) userIds.push(g.user_id);
+      if (g.email) emails.push(g.email);
+      if (g.phone) phones.push(g.phone);
+    }
+  }
+
+  if (wantsStudents) {
+    const { data } = await supabase
+      .from("students")
+      .select("user_id")
+      .eq("school_id", params.schoolId)
+      .eq("status", "active")
+      .not("user_id", "is", null);
+    for (const s of data || []) if (s.user_id) userIds.push(s.user_id);
+  }
+
+  const body = [
+    params.when,
+    params.location ? `Venue: ${params.location}` : null,
+    params.description || null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const recipients = [...new Set(userIds)];
+  if (recipients.length > 0) {
+    await createBulkNotifications(
+      recipients.map((uid) => ({
+        orgId: params.orgId,
+        schoolId: params.schoolId,
+        userId: uid,
+        // The notification enum has no dedicated event value, so events ride
+        // on the announcement type and are told apart by entity_type.
+        type: "school_announcement" as NotificationType,
+        title: `New event: ${params.title}`,
+        message: body,
+        entityType: "event",
+        entityId: params.eventId,
+      }))
+    );
+  }
+
+  const queue: { channel: string; recipient: string }[] = [];
+  if (params.channels.includes("email")) {
+    for (const recipient of [...new Set(emails)]) queue.push({ channel: "email", recipient });
+  }
+  if (params.channels.includes("sms")) {
+    for (const recipient of [...new Set(phones)]) queue.push({ channel: "sms", recipient });
+  }
+
+  let queued = 0;
+  if (queue.length > 0) {
+    const { error } = await supabase.from("outbound_message_queue").insert(
+      queue.map((item) => ({
+        org_id: params.orgId,
+        school_id: params.schoolId,
+        channel: item.channel,
+        recipient: item.recipient,
+        subject: `New event: ${params.title}`,
+        body: `${params.title}\n${body}`,
+        status: "queued",
+      }))
+    );
+    if (error) console.error("Failed to queue event messages:", error);
+    else queued = queue.length;
+  }
+
+  return { sent: recipients.length, queued };
+}
