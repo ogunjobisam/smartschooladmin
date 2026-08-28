@@ -394,7 +394,7 @@ export default function SettingsPage() {
           </Card>
 
           {/* ── ID Numbering ── */}
-          <IdFormatCard schoolId={schoolId} schoolName={school?.name || schoolName} canManage={canManage} />
+          <IdFormatCard schoolId={schoolId} schoolName={school?.name || schoolName} orgId={orgId} canManage={canManage} />
 
           {/* ── Add School ── */}
           {(userRole === "super_admin" || userRole === "proprietor") && (
