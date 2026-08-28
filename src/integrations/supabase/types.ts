@@ -2569,6 +2569,7 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
         Returns: {
@@ -2588,6 +2589,7 @@ export type Database = {
       }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_school_manager: { Args: { _user_id: string }; Returns: boolean }
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
       my_ai_entitlement: {
@@ -2609,6 +2611,7 @@ export type Database = {
       my_staff_id: { Args: never; Returns: string }
       my_student_id: { Args: never; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
+      student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
     }
