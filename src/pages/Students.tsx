@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { GraduationCap, Plus, Search, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -85,7 +86,7 @@ export default function Students() {
 
   const getClassName = (student: StudentRow) => {
     const enrolment = student.enrolments?.[0];
-    return enrolment?.classes?.name || "—";
+    return displayClassName(enrolment?.classes?.name) || "—";
   };
 
   const totalPages = Math.ceil((data?.count || 0) / PAGE_SIZE);

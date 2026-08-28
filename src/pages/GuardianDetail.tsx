@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Users } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -132,7 +133,7 @@ export default function GuardianDetail() {
                       <TableRow key={sg.id} className="cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                         <TableCell className="font-medium">{s.first_name} {s.last_name}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{s.student_id_number || "—"}</TableCell>
-                        <TableCell>{s.enrolments?.[0]?.classes?.name || "—"}</TableCell>
+                        <TableCell>{displayClassName(s.enrolments?.[0]?.classes?.name) || "—"}</TableCell>
                         <TableCell className="capitalize text-muted-foreground">{sg.relationship || "—"}</TableCell>
                         <TableCell><StatusBadge status={s.status} /></TableCell>
                       </TableRow>

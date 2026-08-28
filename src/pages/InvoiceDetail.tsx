@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Printer, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -91,7 +92,7 @@ export default function InvoiceDetail() {
 
   const student = invoice.students;
   const studentName = student ? `${student.first_name} ${student.last_name}` : "—";
-  const className = student?.enrolments?.[0]?.classes?.name || "—";
+  const className = displayClassName(student?.enrolments?.[0]?.classes?.name) || "—";
   const totalPaid = paymentHistory?.reduce((s, p) => s + (p.amount || 0), 0) || 0;
   const balance = (invoice.total_amount || 0) - totalPaid;
 

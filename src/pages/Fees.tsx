@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { Receipt, Plus } from "lucide-react";
 import { AddFeeScheduleDialog } from "@/components/forms/AddFeeScheduleDialog";
@@ -67,7 +68,7 @@ export default function Fees() {
               schedules?.map((f) => (
                 <TableRow key={f.id} className="cursor-pointer">
                   <TableCell className="font-medium">{f.name}</TableCell>
-                  <TableCell>{f.classes?.name || "All"}</TableCell>
+                  <TableCell>{displayClassName(f.classes?.name) || "All"}</TableCell>
                   <TableCell className="text-muted-foreground">{f.academic_periods?.name || "—"}</TableCell>
                   <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(f.total_amount)}</TableCell>
                   <TableCell><StatusBadge status={f.is_active ? "active" : "inactive"} /></TableCell>

@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,7 +96,7 @@ export function StudentHistoryTab({ studentId, schoolId }: Props) {
             ) : (
               enrolments.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.classes?.name || "—"}</TableCell>
+                  <TableCell className="font-medium">{displayClassName(e.classes?.name) || "—"}</TableCell>
                   <TableCell>{e.academic_periods?.name || "—"}</TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{new Date(e.enrolled_at).toLocaleDateString()}</TableCell>
                 </TableRow>

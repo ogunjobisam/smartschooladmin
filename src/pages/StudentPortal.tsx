@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info } from "lucide-react";
@@ -81,7 +82,7 @@ export default function StudentPortal() {
       status: invoice.status,
       studentName: `${student?.first_name ?? ""} ${student?.last_name ?? ""}`.trim(),
       studentId: student?.student_id_number || "",
-      className: student?.enrolments?.[0]?.classes?.name || "—",
+      className: displayClassName(student?.enrolments?.[0]?.classes?.name) || "—",
       periodName: invoice.academic_periods?.name || "—",
       schoolName: student?.schools?.name || "",
       schoolAddress: student?.schools?.address,
@@ -130,7 +131,7 @@ export default function StudentPortal() {
     );
   }
 
-  const className = student.enrolments?.[0]?.classes?.name || "—";
+  const className = displayClassName(student.enrolments?.[0]?.classes?.name) || "—";
 
   return (
     <div className="space-y-6">

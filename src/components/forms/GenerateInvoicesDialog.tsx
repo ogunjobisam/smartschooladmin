@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,7 +176,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 <SelectContent>
                   {schedules?.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.classes?.name || "All Classes"} ({formatMoney(s.total_amount)})
+                      {s.name} — {displayClassName(s.classes?.name) || "All Classes"} ({formatMoney(s.total_amount)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -186,7 +187,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
               <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Class:</span>
-                  <span className="font-medium">{selectedSchedule.classes?.name || "All Classes"}</span>
+                  <span className="font-medium">{displayClassName(selectedSchedule.classes?.name) || "All Classes"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Period:</span>

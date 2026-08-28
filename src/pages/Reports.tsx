@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,7 +103,7 @@ export default function Reports() {
 
       const grouped: Record<string, { billed: number; collected: number }> = {};
       (invoices || []).forEach((inv) => {
-        const className = inv.students?.enrolments?.[0]?.classes?.name || "Unassigned";
+        const className = displayClassName(inv.students?.enrolments?.[0]?.classes?.name) || "Unassigned";
         if (!grouped[className]) grouped[className] = { billed: 0, collected: 0 };
         grouped[className].billed += inv.total_amount || 0;
         grouped[className].collected += inv.amount_paid || 0;

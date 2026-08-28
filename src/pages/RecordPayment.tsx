@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { ArrowLeft, Search, CreditCard, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -166,7 +167,7 @@ export default function RecordPayment() {
                 <p className="text-xs text-muted-foreground py-2">No students found.</p>
               ) : (
                 students?.map((s) => {
-                  const cn = s.enrolments?.[0]?.classes?.name || "—";
+                  const cn = displayClassName(s.enrolments?.[0]?.classes?.name) || "—";
                   return (
                     <button
                       key={s.id}

@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -78,7 +79,7 @@ export default function Exams() {
                 {exams.map((exam) => (
                   <TableRow key={exam.id} className="cursor-pointer" onClick={() => navigate(`/exams/${exam.id}`)}>
                     <TableCell className="font-medium">{exam.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{exam.classes?.name || "All"}</TableCell>
+                    <TableCell className="text-muted-foreground">{displayClassName(exam.classes?.name) || "All"}</TableCell>
                     <TableCell className="text-muted-foreground">{exam.academic_periods?.name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{exam.exam_date ? format(new Date(exam.exam_date), "dd MMM yyyy") : "—"}</TableCell>
                     <TableCell>{exam.max_score}</TableCell>
