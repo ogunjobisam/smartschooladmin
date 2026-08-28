@@ -7,6 +7,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoUpload } from "@/components/common/PhotoUpload";
+import { schoolPhotoPath } from "@/lib/photos";
+import { isSchoolManager } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -113,9 +116,20 @@ export default function StaffDetail() {
       <div className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">{initials}</AvatarFallback>
-            </Avatar>
+            <PhotoUpload
+              value={staff.photo_url}
+              fallback={initials}
+              size="sm"
+              label="Staff photo"
+              editable={isSchoolManager(userRole)}
+              pathFor={(file) => schoolPhotoPath(staff.school_id, "staff", staff.id, file)}
+              onSaved={async (path) => {
+                const { error } = await supabase.from("staff").update({ photo_url: path }).eq("id", staff.id);
+                if (error) throw new Error(error.message);
+                await queryClient.invalidateQueries({ queryKey: ["staff-detail", id] });
+                await queryClient.invalidateQueries({ queryKey: ["staff"] });
+              }}
+            />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-card-foreground">{staff.first_name} {staff.last_name}</h2>

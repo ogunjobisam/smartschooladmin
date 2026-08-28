@@ -8,6 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoUpload } from "@/components/common/PhotoUpload";
+import { schoolPhotoPath } from "@/lib/photos";
+import { canManageStudents } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -31,7 +34,7 @@ import { StudentTransportCard } from "@/components/students/StudentTransportCard
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
-  const { schoolId, orgId } = useAuth();
+  const { schoolId, orgId, userRole } = useAuth();
   const {
     scores: performanceScores,
     attendance: performanceAttendance,
@@ -217,9 +220,20 @@ export default function StudentDetail() {
       <div className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">{initials}</AvatarFallback>
-            </Avatar>
+            <PhotoUpload
+              value={student.photo_url}
+              fallback={initials}
+              size="sm"
+              label="Student photo"
+              editable={canManageStudents(userRole)}
+              pathFor={(file) => schoolPhotoPath(student.school_id, "students", student.id, file)}
+              onSaved={async (path) => {
+                const { error } = await supabase.from("students").update({ photo_url: path }).eq("id", student.id);
+                if (error) throw new Error(error.message);
+                await queryClient.invalidateQueries({ queryKey: ["student", id] });
+                await queryClient.invalidateQueries({ queryKey: ["students"] });
+              }}
+            />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-card-foreground">{student.first_name} {student.last_name}</h2>
