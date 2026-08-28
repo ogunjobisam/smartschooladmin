@@ -122,8 +122,35 @@ export default function Arrears() {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-3">
-          <h3 className="text-sm font-semibold text-card-foreground">Overdue Invoices</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3">
+          <div>
+            <h3 className="text-sm font-semibold text-card-foreground">Overdue Invoices</h3>
+            <p className="text-xs text-muted-foreground">
+              Print letters for guardians who have no email or portal login — the student takes the letter home.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            disabled={!data?.overdueInvoices?.length}
+            onClick={() =>
+              openLetters(
+                (data?.overdueInvoices || []).map((inv) => ({
+                  studentId: inv.student_id,
+                  studentName: inv.studentName,
+                  className: inv.className,
+                  invoiceNumber: inv.invoice_number,
+                  balance: inv.balance,
+                  dueDate: inv.due_date,
+                  daysOverdue: inv.daysOverdue,
+                })),
+                `all ${data?.overdueInvoices?.length || 0} overdue invoices`,
+              )
+            }
+          >
+            <Printer className="h-3.5 w-3.5" /> Print letters for all
+          </Button>
         </div>
         <Table>
           <TableHeader>
