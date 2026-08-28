@@ -320,7 +320,7 @@ export default function ProprietorDashboard() {
                   </div>
                   <div className="text-right">
                     <StatusBadge status={a.status} />
-                    {a.amount > 0 && <p className="mt-0.5 font-mono text-xs tabular-nums">{formatMoney(a.amount)}</p>}
+                    {a.amount != null && a.amount > 0 && <p className="mt-0.5 font-mono text-xs tabular-nums">{formatMoney(a.amount)}</p>}
                   </div>
                 </div>
               ))
