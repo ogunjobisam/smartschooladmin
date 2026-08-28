@@ -80,7 +80,7 @@ export function AppSidebar() {
   const renderGroup = (label: string, items: NavItem[]) => {
     if (items.length === 0) return null;
     return (
-      <SidebarGroup>
+      <SidebarGroup key={label}>
         <SidebarGroupLabel className="text-sidebar-muted text-[11px] font-semibold uppercase tracking-wider">
           {!collapsed && label}
         </SidebarGroupLabel>
