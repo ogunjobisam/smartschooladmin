@@ -224,21 +224,32 @@ export default function SettingsPage() {
     }
   };
 
-  const handleToggleCurrentPeriod = async (periodId: string, yearId: string) => {
+  const handleToggleCurrentPeriod = async (periodId: string) => {
     setTogglingCurrent(periodId);
-    // Clear all is_current for this year's periods first
-    const year = academicYears?.find((y: any) => y.id === yearId);
-    if (year?.academic_periods) {
-      for (const p of year.academic_periods) {
-        if (p.is_current) {
-          await supabase.from("academic_periods").update({ is_current: false }).eq("id", p.id);
-        }
-      }
+
+    // Clear across every year in the organisation, not just the one being
+    // edited. Clearing per-year left two terms current at once, which the rest
+    // of the app cannot represent: student enrolment, attendance and exams each
+    // pick "the" current term and would silently disagree about which.
+    const currentIds = (academicYears || [])
+      .flatMap((y: any) => y.academic_periods || [])
+      .filter((p: any) => p.is_current && p.id !== periodId)
+      .map((p: any) => p.id);
+
+    if (currentIds.length > 0) {
+      await supabase.from("academic_periods").update({ is_current: false }).in("id", currentIds);
     }
-    await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+    const { error } = await supabase.from("academic_periods").update({ is_current: true }).eq("id", periodId);
+
     setTogglingCurrent(null);
-    toast.success("Current period updated");
+    if (error) {
+      toast.error("Could not set the current term: " + error.message);
+      return;
+    }
+    toast.success("Current term updated");
     queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+    queryClient.invalidateQueries({ queryKey: ["current-period"] });
+    queryClient.invalidateQueries({ queryKey: ["attendance-periods"] });
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -587,7 +598,7 @@ export default function SettingsPage() {
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground">{p.start_date} — {p.end_date}</span>
                                     {canManage && !p.is_current && (
-                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id, year.id)}>
+                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" disabled={togglingCurrent === p.id} onClick={() => handleToggleCurrentPeriod(p.id)}>
                                         {togglingCurrent === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set Current"}
                                       </Button>
                                     )}
