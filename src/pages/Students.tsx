@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { GraduationCap, Plus, Search, Download, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +23,6 @@ import { PromoteStudentsDialog } from "@/components/students/PromoteStudentsDial
 import { ArrowRight } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
 import { sortBySection } from "@/lib/sections";
-import { displayClassName } from "@/lib/sections";
 
 const PAGE_SIZE = 20;
 

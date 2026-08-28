@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gradeForScore as computeGrade } from "@/lib/performance";
@@ -17,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
-import { displayClassName } from "@/lib/sections";
 
 interface ScoreEntry {
   studentId: string;

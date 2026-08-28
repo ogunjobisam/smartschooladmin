@@ -1,3 +1,4 @@
+import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -13,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { CreateExamDialog } from "@/components/exams/CreateExamDialog";
-import { displayClassName } from "@/lib/sections";
 
 export default function Exams() {
   const { schoolId } = useAuth();
