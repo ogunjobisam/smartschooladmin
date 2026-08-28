@@ -193,6 +193,9 @@ export default function Dashboard() {
             </TableBody>
           </Table>
         </div>
+        )}
+
+
 
         {/* Recent Activity */}
         <div className="rounded-lg border bg-card xl:col-span-2 min-w-0 overflow-hidden">
