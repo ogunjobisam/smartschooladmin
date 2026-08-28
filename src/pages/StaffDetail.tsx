@@ -26,6 +26,7 @@ import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { SalaryChangeDialog } from "@/components/payroll/SalaryChangeDialog";
 import { EditPayrollProfileDialog } from "@/components/payroll/EditPayrollProfileDialog";
 import { calculatePayrollLine } from "@/lib/payroll";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -181,6 +182,7 @@ export default function StaffDetail() {
         <TabsList>
           <TabsTrigger value="salary">Salary & Payroll</TabsTrigger>
           <TabsTrigger value="payslips">Payslips</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
