@@ -101,6 +101,28 @@ async function findUserByEmail(admin: AdminClient, email: string) {
   return undefined;
 }
 
+/**
+ * Student is exclusive except for parent — mirrors public.roles_compatible().
+ * The database enforces this too; checking here gives a readable message.
+ */
+function rolesCompatible(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a === "student") return b === "parent";
+  if (b === "student") return a === "parent";
+  return true;
+}
+
+/** All roles a user already holds, most senior first. */
+async function rolesOf(admin: AdminClient, userId: string) {
+  const { data } = await admin
+    .from("user_roles")
+    .select("id, role, org_id, school_id")
+    .eq("user_id", userId);
+  return (data ?? []).sort(
+    (a, b) => (ROLE_RANK[a.role as string] ?? 99) - (ROLE_RANK[b.role as string] ?? 99)
+  ) as { id: string; role: string; org_id: string | null; school_id: string | null }[];
+}
+
 function canAssignRole(callerRole: string, targetRole: string): boolean {
   const callerRank = ROLE_RANK[callerRole];
   const targetRank = ROLE_RANK[targetRole];
@@ -131,13 +153,16 @@ Deno.serve(async (req) => {
     // Check caller is super_admin, proprietor, or school_admin
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
-    const { data: callerRole } = await adminClient
+    // A caller may hold several roles; their authority is their most senior one.
+    const { data: callerRoles } = await adminClient
       .from("user_roles")
       .select("role, school_id, org_id")
       .eq("user_id", caller.id)
-      .in("role", ADMIN_ROLES)
-      .limit(1)
-      .maybeSingle();
+      .in("role", ADMIN_ROLES);
+
+    const callerRole = (callerRoles ?? []).sort(
+      (a, b) => (ROLE_RANK[a.role as string] ?? 99) - (ROLE_RANK[b.role as string] ?? 99)
+    )[0] as { role: string; school_id: string | null; org_id: string | null } | undefined;
 
     if (!callerRole) return jsonResponse({ error: "Insufficient permissions" }, 403);
 
