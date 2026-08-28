@@ -8,7 +8,8 @@ export type NotificationType =
   | "guardian_invite"
   | "staff_invite"
   | "payroll_pending"
-  | "approval_result";
+  | "approval_result"
+  | "recognition_published";
 
 interface CreateNotificationParams {
   orgId: string;
