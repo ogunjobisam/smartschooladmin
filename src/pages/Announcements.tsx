@@ -180,7 +180,7 @@ export default function Announcements() {
       return;
     }
 
-    let result = { sent: 0, queuedEmails: 0 };
+    let result: { sent: number; queuedEmails?: number } = { sent: 0, queuedEmails: 0 };
     if (notifyNow && channels.length) {
       result = await sendAnnouncementNotifications({
         orgId,
