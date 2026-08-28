@@ -113,8 +113,12 @@ export function AiInsightPanel({
           <p className="text-sm text-muted-foreground">{disabledReason}</p>
         ) : outOfAllowance ? (
           <p className="text-sm text-muted-foreground">
-            This organisation has used all {entitlement.monthlyLimit} analyses for this month.
-            The allowance resets at the start of next month.
+            This organisation has used all {entitlement.monthlyLimit}{" "}
+            {entitlement.hasAddon ? "" : "free "}analyses for this month. The allowance resets at
+            the start of next month
+            {entitlement.hasAddon
+              ? "."
+              : ", or add the AI Analysis add-on for a larger monthly allowance."}
           </p>
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
