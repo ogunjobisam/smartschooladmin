@@ -140,7 +140,7 @@ to repair.
 
 ## Confirmed defects
 
-From Part 4, ranked. Six are fixed; three remain open.
+From Part 4, ranked. Eight are fixed; one remains open.
 
 ### Fixed
 
@@ -177,12 +177,15 @@ From Part 4, ranked. Six are fixed; three remain open.
    omitted `school_admin` though RLS grants it manage rights on classes, notices
    and applications.
 
+7. **Transport fees are now billed.** Generating invoices
+   offers a tick box — on by default, shown only when the class actually has
+   riders — naming how many will be charged and the total. Each rider gets a
+   separate `Transport — <route>` line under an auto-created Transport fee
+   category, at `fee_override ?? fee_per_term`. Opt-in per run so a school that
+   bills transport separately is not silently double-charging.
+
 ### Open
 
-7. **Transport fees are never billed.** `generate-invoices` has no reference to
-   transport, so a route carries a per-term fee that nothing charges. Left alone
-   deliberately: it needs a decision about which fee category the line belongs to
-   and whether it should appear on every invoice or only the rider's.
 8. **A route can only be retired by deleting it**, which cascades away its stops
    and every rider assignment. `is_active` is filtered on but has no UI.
 9. **Columns declared and never written:** `applications.desired_class_id`,
@@ -226,8 +229,10 @@ honorific, so the parent portal greeted "Welcome, Mrs".
 - **Check `admissions_open` on each school.** The audit toggled it and restored
   it to `true`, but its own notes say all three started `false`.
 - **Organisation currency is GBP**, so money renders in £. Change it to NGN.
-- The application reference sequence is global, not per-school, so one school can
-  infer another's volume from the gaps.
+- ~~The application reference sequence is global, not per-school.~~ **Fixed** —
+  each school now numbers from 1 each year via `next_application_reference()`,
+  and uniqueness moved from `reference` to `(school_id, reference)` so the short
+  form a parent reads out over the phone is kept.
 
 ---
 

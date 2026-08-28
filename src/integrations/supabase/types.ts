@@ -147,6 +147,24 @@ export type Database = {
           },
         ]
       }
+      application_counters: {
+        Row: {
+          last_number: number
+          school_id: string
+          year: number
+        }
+        Insert: {
+          last_number?: number
+          school_id: string
+          year: number
+        }
+        Update: {
+          last_number?: number
+          school_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           applicant_first_name: string
