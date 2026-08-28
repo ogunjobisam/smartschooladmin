@@ -516,6 +516,20 @@ export default function StudentDetail() {
       </Tabs>
 
       {student && <EditStudentDialog open={editOpen} onOpenChange={setEditOpen} student={student} />}
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        defaultKind={totalBilled - totalPaid > 0 ? "fee_reminder" : "general"}
+        contextLabel={`${student.first_name} ${student.last_name}`}
+        targets={[{
+          studentId: student.id,
+          studentName: `${student.first_name} ${student.last_name}`,
+          studentIdNumber: student.student_id_number,
+          className,
+          balance: Math.max(totalBilled - totalPaid, 0),
+        }]}
+      />
     </div>
   );
 }
