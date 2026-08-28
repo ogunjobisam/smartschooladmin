@@ -33,8 +33,13 @@ table is isolated by organisation through PostgreSQL row-level security.
 `finance_officer`, `hr_admin`, `teacher`, `parent`.
 
 Navigation, page access and database policies are all driven from the role on the
-user's `user_roles` row. See [`docs/USER_JOURNEYS.md`](docs/USER_JOURNEYS.md) for
-what each role can do end to end.
+user's `user_roles` row. [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) is the guide
+for school staff; [`docs/USER_JOURNEYS.md`](docs/USER_JOURNEYS.md) maps what each
+role can do and what is still missing.
+
+**Teachers see only the classes they are assigned to** under Settings → Classes.
+After deploying, assign classes before teachers log in, or their accounts open to
+an empty page.
 
 ## Tech stack
 
@@ -186,8 +191,9 @@ supabase/
   functions/    Deno edge functions
   migrations/   SQL schema, policies and functions
 docs/
-  PRODUCT_SPEC.md   Original product brief
+  USER_GUIDE.md     End-to-end guide for school staff
   USER_JOURNEYS.md  Per-role journey map and known gaps
+  PRODUCT_SPEC.md   Original product brief
 ```
 
 ## Contributing

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Download, Printer, CreditCard } from "lucide-react";
+import { ArrowLeft, Printer, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -150,8 +150,9 @@ export default function InvoiceDetail() {
             <p className="text-sm text-muted-foreground">{invoice.schools?.name || "—"}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Printer className="h-3.5 w-3.5" /> Print</Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}><Download className="h-3.5 w-3.5" /> Download PDF</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
+              <Printer className="h-3.5 w-3.5" /> Print or save as PDF
+            </Button>
             {balance > 0 && (
               <Button size="sm" className="gap-1.5" onClick={() => setPayOpen(true)}>
                 <CreditCard className="h-3.5 w-3.5" /> Pay Now
