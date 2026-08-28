@@ -2587,7 +2587,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      users_with_multiple_roles: {
+        Row: {
+          org_ids: string[] | null
+          resolves_to: string | null
+          role_count: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
@@ -2639,6 +2647,14 @@ export type Database = {
       next_application_reference: {
         Args: { _school_id: string }
         Returns: string
+      }
+      primary_user_role: {
+        Args: { _user_id: string }
+        Returns: {
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id: string
+        }[]
       }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
