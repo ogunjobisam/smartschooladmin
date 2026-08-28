@@ -2603,6 +2603,7 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
