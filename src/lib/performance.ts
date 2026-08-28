@@ -60,6 +60,38 @@ export function remarkForGrade(grade: string): string {
   return GRADE_BANDS.find((b) => b.grade === grade)?.remark ?? "";
 }
 
+/** A single rubric band configured for one exam. */
+export interface RubricBand {
+  label: string;
+  minPercent: number;
+  remark?: string | null;
+}
+
+/** Default rubric offered when an exam has no bands configured yet. */
+export const DEFAULT_RUBRIC: RubricBand[] = GRADE_BANDS.map((b) => ({
+  label: b.grade,
+  minPercent: b.min,
+  remark: b.remark,
+}));
+
+/**
+ * Grade for a percentage using an exam's own rubric. Falls back to the built-in
+ * bands so an exam without a rubric still grades consistently.
+ */
+export function gradeFromRubric(percentage: number | null, bands: RubricBand[]): string {
+  if (percentage === null || !Number.isFinite(percentage)) return "—";
+  const scale = bands.length > 0 ? bands : DEFAULT_RUBRIC;
+  const clamped = Math.max(0, Math.min(100, percentage));
+  const sorted = [...scale].sort((a, b) => b.minPercent - a.minPercent);
+  return sorted.find((b) => clamped >= b.minPercent)?.label ?? sorted[sorted.length - 1]?.label ?? "—";
+}
+
+/** Rubric grade for a raw score out of a per-subject maximum. */
+export function gradeScoreFromRubric(score: number | null, maxScore: number, bands: RubricBand[]): string {
+  return gradeFromRubric(toPercentage(score, maxScore), bands);
+}
+
+
 function mean(values: number[]): number | null {
   if (values.length === 0) return null;
   return values.reduce((a, b) => a + b, 0) / values.length;

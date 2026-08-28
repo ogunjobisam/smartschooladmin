@@ -1,3 +1,4 @@
+import { canManageStudents } from "@/lib/access";
 import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
 import { GraduationCap, Plus, Search, Download, Upload } from "lucide-react";
@@ -28,7 +29,9 @@ const PAGE_SIZE = 20;
 
 export default function Students() {
   const navigate = useNavigate();
-  const { schoolId } = useAuth();
+  const { schoolId, userRole } = useAuth();
+  // Teachers read the register; they do not create, import or promote students.
+  const canManage = canManageStudents(userRole);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<Enums<"student_status"> | "all">("all");
@@ -99,9 +102,13 @@ export default function Students() {
           exportToCsv("students", ["Student ID", "First Name", "Last Name", "Class", "Type", "Status"],
             data.students.map((s) => [s.student_id_number || "", s.first_name, s.last_name, getClassName(s), s.student_type || "", s.status]));
         }}><Download className="h-4 w-4" /> Export</Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPromote(true)}><ArrowRight className="h-4 w-4" /> Promote</Button>
-        <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
+        {canManage && (
+          <>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowImport(true)}><Upload className="h-4 w-4" /> Import CSV</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowPromote(true)}><ArrowRight className="h-4 w-4" /> Promote</Button>
+            <Button size="sm" className="gap-1.5" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4" /> Add Student</Button>
+          </>
+        )}
       </PageHeader>
       <AddStudentDialog open={showAdd} onOpenChange={setShowAdd} />
       <CsvImportDialog open={showImport} onOpenChange={setShowImport} mode="students" />
@@ -128,6 +135,9 @@ export default function Students() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectItem value="withdrawn">Withdrawn</SelectItem>
+            <SelectItem value="graduated">Graduated</SelectItem>
+            <SelectItem value="expelled">Expelled</SelectItem>
           </SelectContent>
         </Select>
       </div>

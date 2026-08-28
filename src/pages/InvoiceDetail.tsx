@@ -1,6 +1,6 @@
 import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
-import { ArrowLeft, Printer, CreditCard } from "lucide-react";
+import { ArrowLeft, Printer, CreditCard, Mail } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
 import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
+import { LetterDialog } from "@/components/letters/LetterDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -23,6 +24,7 @@ export default function InvoiceDetail() {
   const { schoolId, orgId } = useAuth();
   const { formatMoney, currency } = useCurrency();
   const [payOpen, setPayOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -154,6 +156,11 @@ export default function InvoiceDetail() {
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
               <Printer className="h-3.5 w-3.5" /> Print or save as PDF
             </Button>
+            {balance > 0 && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLetterOpen(true)}>
+                <Mail className="h-3.5 w-3.5" /> Reminder letter
+              </Button>
+            )}
             {balance > 0 && (
               <Button size="sm" className="gap-1.5" onClick={() => setPayOpen(true)}>
                 <CreditCard className="h-3.5 w-3.5" /> Pay Now
@@ -288,6 +295,23 @@ export default function InvoiceDetail() {
           }}
         />
       )}
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        defaultKind={invoice.status === "overdue" ? "overdue_notice" : "fee_reminder"}
+        contextLabel={`${studentName} — ${invoice.invoice_number}`}
+        targets={[{
+          studentId: invoice.student_id,
+          studentName,
+          studentIdNumber: student?.student_id_number,
+          className,
+          invoiceNumber: invoice.invoice_number,
+          balance,
+          dueDate: invoice.due_date,
+          periodName: invoice.academic_periods?.name,
+        }]}
+      />
     </div>
   );
 }

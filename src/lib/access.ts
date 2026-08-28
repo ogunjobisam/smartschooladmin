@@ -51,6 +51,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "events", title: "Events", url: "/events", group: "communications" },
   { key: "announcements", title: "Announcements", url: "/announcements", group: "communications" },
   { key: "templates", title: "Templates", url: "/notification-templates", group: "communications" },
+  { key: "delivery", title: "Message Delivery", url: "/message-delivery", group: "communications" },
   { key: "preferences", title: "My Preferences", url: "/notification-settings", group: "communications" },
 
   { key: "transport", title: "Transport", url: "/transport", group: "operations" },
@@ -82,14 +83,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   school_admin: [
     "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "fees", "invoices", "payments", "arrears",
-    "announcements", "templates", "events", "preferences",
+    "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports",
     "settings", "users",
   ],
   principal: [
     "dashboard", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance",
     "invoices", "arrears",
-    "announcements", "templates", "events", "preferences",
+    "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports",
     "users",
   ],
@@ -173,8 +174,44 @@ export function canAccessPath(role: string | null, pathname: string): boolean {
     }
   }
 
-  if (!bestKey) return true;
+  // An app-shell path that matches no nav item is not something we can reason
+  // about, so it is refused rather than waved through.
+  if (!bestKey) return false;
   return keys.includes(bestKey);
+}
+
+/** Roles allowed to create, import or promote student records. */
+const STUDENT_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar",
+];
+
+/** Whether a role may change student records (as opposed to just reading them). */
+export function canManageStudents(role: string | null): boolean {
+  return STUDENT_WRITERS.includes((role || "") as AppRole);
+}
+
+/** Roles allowed to change staff records, including their photo. */
+const STAFF_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "hr_admin",
+];
+
+/** Whether a role may change staff records (as opposed to just reading them). */
+export function canManageStaff(role: string | null): boolean {
+  return STAFF_WRITERS.includes((role || "") as AppRole);
+}
+
+/** Roles allowed to change the wording of notification templates. */
+const TEMPLATE_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal",
+];
+
+/**
+ * Whether a role may create, edit or delete notification templates. Everyone
+ * else with access to the page reads them only — template wording goes out in
+ * the school's name, so it is not a bursar-level change.
+ */
+export function canManageTemplates(role: string | null): boolean {
+  return TEMPLATE_WRITERS.includes((role || "") as AppRole);
 }
 
 /** Exported for tests. */

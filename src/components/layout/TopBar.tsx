@@ -8,7 +8,7 @@ import {
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 export function TopBar() {
-  const { schools, schoolId, setSchoolId } = useAuth();
+  const { schools, schoolId, setSchoolId, orgs, orgId, setOrgId } = useAuth();
 
   const openCommandPalette = () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -17,6 +17,19 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4">
       <SidebarTrigger className="shrink-0" />
+
+      {orgs.length > 1 && (
+        <Select value={orgId || ""} onValueChange={setOrgId}>
+          <SelectTrigger className="h-8 w-[190px] text-xs">
+            <SelectValue placeholder="Select organisation" />
+          </SelectTrigger>
+          <SelectContent>
+            {orgs.map((o) => (
+              <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       {schools.length > 1 && (
         <Select value={schoolId || ""} onValueChange={setSchoolId}>

@@ -276,3 +276,218 @@ export async function sendAnnouncementNotifications(params: {
 
   return { sent: userIds.length, queuedEmails };
 }
+
+/**
+ * Tell the audience about a newly created calendar event.
+ *
+ * In-app alerts go to everyone in the audience who has a login. Email and SMS
+ * copies are queued only for the contacts that actually have an address or a
+ * number on file — a parent with neither still gets the in-app entry and sees
+ * the event on their dashboard.
+ */
+/**
+ * Who wants to hear about events, and how.
+ *
+ * Every recipient's saved preferences decide the channels: an opted-out person
+ * gets nothing, and someone who ticked email but has no address on file simply
+ * has nothing to queue. Reminder timing comes from the same settings, so the
+ * copy that lands before the event respects each person's lead time.
+ */
+async function eventAudienceContacts(orgId: string, schoolId: string, audience: string) {
+  const contacts: { userId: string | null; email: string | null; phone: string | null }[] = [];
+
+  const wantsStaff = audience === "staff" || audience === "all";
+  const wantsParents = audience === "parents" || audience === "all";
+  const wantsStudents = audience === "students" || audience === "all";
+
+  if (wantsStaff) {
+    const { data } = await supabase
+      .from("staff")
+      .select("user_id, email, phone")
+      .eq("school_id", schoolId)
+      .eq("employment_status", "active");
+    for (const s of data || []) contacts.push({ userId: s.user_id, email: s.email, phone: s.phone });
+  }
+
+  if (wantsParents) {
+    const { data } = await supabase
+      .from("guardians")
+      .select("user_id, email, phone")
+      .eq("org_id", orgId);
+    for (const g of data || []) contacts.push({ userId: g.user_id, email: g.email, phone: g.phone });
+  }
+
+  if (wantsStudents) {
+    const { data } = await supabase
+      .from("students")
+      .select("user_id")
+      .eq("school_id", schoolId)
+      .eq("status", "active")
+      .not("user_id", "is", null);
+    for (const s of data || []) contacts.push({ userId: s.user_id, email: null, phone: null });
+  }
+
+  return contacts;
+}
+
+interface EventChannelChoice {
+  inApp: boolean;
+  email: boolean;
+  sms: boolean;
+  remind: boolean;
+  leadMinutes: number;
+}
+
+const DEFAULT_CHOICE: EventChannelChoice = {
+  inApp: true,
+  email: true,
+  sms: false,
+  remind: true,
+  leadMinutes: 1440,
+};
+
+/** Saved per-recipient preferences for event messages, keyed by user id. */
+async function eventChannelChoices(userIds: string[]): Promise<Map<string, EventChannelChoice>> {
+  const choices = new Map<string, EventChannelChoice>();
+  if (userIds.length === 0) return choices;
+
+  const [{ data: prefs }, { data: settings }] = await Promise.all([
+    supabase
+      .from("notification_preferences")
+      .select("user_id, channel_in_app, channel_email, channel_sms")
+      .eq("notification_type", "school_event")
+      .in("user_id", userIds),
+    supabase
+      .from("notification_settings")
+      .select("user_id, email_frequency, sms_frequency, in_app_frequency, event_reminders_enabled, event_reminder_lead_minutes")
+      .in("user_id", userIds),
+  ]);
+
+  const prefBy = new Map((prefs || []).map((p) => [p.user_id, p]));
+  const setBy = new Map((settings || []).map((s) => [s.user_id, s]));
+
+  for (const userId of userIds) {
+    const pref = prefBy.get(userId);
+    const setting = setBy.get(userId);
+    choices.set(userId, {
+      inApp: (pref?.channel_in_app ?? DEFAULT_CHOICE.inApp) && setting?.in_app_frequency !== "off",
+      email: (pref?.channel_email ?? DEFAULT_CHOICE.email) && setting?.email_frequency !== "off",
+      sms: (pref?.channel_sms ?? DEFAULT_CHOICE.sms) && setting?.sms_frequency !== "off",
+      remind: setting?.event_reminders_enabled ?? DEFAULT_CHOICE.remind,
+      leadMinutes: setting?.event_reminder_lead_minutes ?? DEFAULT_CHOICE.leadMinutes,
+    });
+  }
+
+  return choices;
+}
+
+export async function sendEventNotifications(params: {
+  orgId: string;
+  schoolId: string;
+  eventId: string;
+  title: string;
+  when: string;
+  location?: string | null;
+  description?: string | null;
+  startsAt?: string;
+  audience: string;
+  channels: ("in_app" | "email" | "sms")[];
+}) {
+  const contacts = await eventAudienceContacts(params.orgId, params.schoolId, params.audience);
+  const userIds = [...new Set(contacts.map((c) => c.userId).filter((id): id is string => !!id))];
+  const choices = await eventChannelChoices(userIds);
+
+  const body = [
+    params.when,
+    params.location ? `Venue: ${params.location}` : null,
+    params.description || null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const subject = `New event: ${params.title}`;
+  const allowEmail = params.channels.includes("email");
+  const allowSms = params.channels.includes("sms");
+
+  // In-app alerts, for everyone who has not turned them off.
+  const inAppUsers = userIds.filter((id) => choices.get(id)?.inApp !== false);
+  if (inAppUsers.length > 0) {
+    await createBulkNotifications(
+      inAppUsers.map((uid) => ({
+        orgId: params.orgId,
+        schoolId: params.schoolId,
+        userId: uid,
+        type: "school_event" as NotificationType,
+        title: subject,
+        message: body,
+        entityType: "event",
+        entityId: params.eventId,
+      })),
+    );
+  }
+
+  // Email and SMS: one row per contact per channel, deduplicated by address.
+  const rows: {
+    channel: string;
+    recipient: string;
+    subject: string;
+    body: string;
+    scheduled_for: string | null;
+  }[] = [];
+  const seen = new Set<string>();
+  const eventStart = params.startsAt ? new Date(params.startsAt) : null;
+
+  const push = (channel: string, recipient: string, scheduledFor: string | null, text: string) => {
+    const key = `${channel}:${recipient}:${scheduledFor ?? "now"}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ channel, recipient, subject, body: text, scheduled_for: scheduledFor });
+  };
+
+  for (const contact of contacts) {
+    const choice = (contact.userId && choices.get(contact.userId)) || DEFAULT_CHOICE;
+
+    if (allowEmail && choice.email && contact.email) {
+      push("email", contact.email, null, `${params.title}\n${body}`);
+    }
+    if (allowSms && choice.sms && contact.phone) {
+      push("sms", contact.phone, null, `${params.title} — ${params.when}`);
+    }
+
+    // "Remind me": a second copy timed to the recipient's own lead time.
+    if (choice.remind && eventStart) {
+      const remindAt = new Date(eventStart.getTime() - choice.leadMinutes * 60 * 1000);
+      if (remindAt.getTime() > Date.now()) {
+        const reminderText = `Reminder: ${params.title}\n${body}`;
+        if (allowEmail && choice.email && contact.email) {
+          push("email", contact.email, remindAt.toISOString(), reminderText);
+        }
+        if (allowSms && choice.sms && contact.phone) {
+          push("sms", contact.phone, remindAt.toISOString(), `Reminder: ${params.title} — ${params.when}`);
+        }
+      }
+    }
+  }
+
+  let queued = 0;
+  if (rows.length > 0) {
+    const { error } = await supabase.from("outbound_message_queue").insert(
+      rows.map((row) => ({
+        org_id: params.orgId,
+        school_id: params.schoolId,
+        channel: row.channel,
+        recipient: row.recipient,
+        subject: row.subject,
+        body: row.body,
+        status: "queued",
+        entity_type: "event",
+        entity_id: params.eventId,
+        scheduled_for: row.scheduled_for,
+      })),
+    );
+    if (error) console.error("Failed to queue event messages:", error);
+    else queued = rows.length;
+  }
+
+  return { sent: inAppUsers.length, queued };
+}

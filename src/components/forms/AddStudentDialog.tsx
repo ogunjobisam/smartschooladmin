@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { describeIdError } from "@/lib/id-numbers";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -132,7 +133,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
           address: parsed.address || null,
           school_id: schoolId,
         })
-        .select("id")
+        .select("id, student_id_number")
         .single();
       if (studentError) throw studentError;
 
@@ -178,7 +179,10 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["guardians"] });
-      toast({ title: "Student added", description: `${form.first_name} ${form.last_name} has been enrolled.` });
+      toast({
+        title: "Student added",
+        description: `${form.first_name} ${form.last_name} has been enrolled${data?.student_id_number ? ` as ${data.student_id_number}` : ""}.`,
+      });
       onOpenChange(false);
       setForm({ student_type: "day", add_guardian: false });
       setErrors({});
@@ -190,7 +194,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
         err.errors.forEach(e => { if (e.path[0]) fieldErrors[e.path[0] as string] = e.message; });
         setErrors(fieldErrors);
       } else {
-        toast({ title: "Error", description: err.message || "Failed to add student.", variant: "destructive" });
+        toast({ title: "Error", description: describeIdError(err, "student", "Failed to add student."), variant: "destructive" });
       }
     },
   });
@@ -231,8 +235,16 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Student ID</Label>
-              <Input value={form.student_id_number || ""} onChange={(e) => set("student_id_number", e.target.value)} className="font-mono" />
+              <Label>Student ID <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                value={form.student_id_number || ""}
+                onChange={(e) => set("student_id_number", e.target.value)}
+                className="font-mono"
+                placeholder="Auto-generated"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank and we generate one, e.g. SSL/{new Date().getFullYear()}/0001.
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,6 @@
 import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
-import { AlertTriangle, Users, Bell, Loader2 } from "lucide-react";
+import { AlertTriangle, Users, Bell, Loader2, Printer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-currency";
+import { LetterDialog, type LetterTarget } from "@/components/letters/LetterDialog";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -25,6 +26,16 @@ export default function Arrears() {
   const { schoolId, orgId, user } = useAuth();
   const { formatMoney } = useCurrency();
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [letterTargets, setLetterTargets] = useState<LetterTarget[]>([]);
+  const [letterLabel, setLetterLabel] = useState<string>("");
+  const [letterOpen, setLetterOpen] = useState(false);
+
+  const openLetters = (targets: LetterTarget[], label: string) => {
+    if (targets.length === 0) return;
+    setLetterTargets(targets);
+    setLetterLabel(label);
+    setLetterOpen(true);
+  };
 
   type OverdueInvoice = NonNullable<NonNullable<typeof data>["overdueInvoices"]>[number];
 
@@ -113,8 +124,35 @@ export default function Arrears() {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <div className="border-b px-5 py-3">
-          <h3 className="text-sm font-semibold text-card-foreground">Overdue Invoices</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3">
+          <div>
+            <h3 className="text-sm font-semibold text-card-foreground">Overdue Invoices</h3>
+            <p className="text-xs text-muted-foreground">
+              Print letters for guardians who have no email or portal login — the student takes the letter home.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            disabled={!data?.overdueInvoices?.length}
+            onClick={() =>
+              openLetters(
+                (data?.overdueInvoices || []).map((inv) => ({
+                  studentId: inv.student_id,
+                  studentName: inv.studentName,
+                  className: inv.className,
+                  invoiceNumber: inv.invoice_number,
+                  balance: inv.balance,
+                  dueDate: inv.due_date,
+                  daysOverdue: inv.daysOverdue,
+                })),
+                `all ${data?.overdueInvoices?.length || 0} overdue invoices`,
+              )
+            }
+          >
+            <Printer className="h-3.5 w-3.5" /> Print letters for all
+          </Button>
         </div>
         <Table>
           <TableHeader>
@@ -124,7 +162,7 @@ export default function Arrears() {
               <TableHead className="text-xs">Invoice</TableHead>
               <TableHead className="text-xs text-right">Outstanding</TableHead>
               <TableHead className="text-xs">Ageing</TableHead>
-              <TableHead className="text-xs w-20" />
+              <TableHead className="text-xs w-44" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -149,16 +187,39 @@ export default function Arrears() {
                   <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.balance)}</TableCell>
                   <TableCell>{ageingBadge(s.daysOverdue)}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      disabled={sendingReminder === s.id}
-                      onClick={() => handleSendReminder(s)}
-                    >
-                      {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
-                      Remind
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        disabled={sendingReminder === s.id}
+                        onClick={() => handleSendReminder(s)}
+                      >
+                        {sendingReminder === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                        Remind
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() =>
+                          openLetters(
+                            [{
+                              studentId: s.student_id,
+                              studentName: s.studentName,
+                              className: s.className,
+                              invoiceNumber: s.invoice_number,
+                              balance: s.balance,
+                              dueDate: s.due_date,
+                              daysOverdue: s.daysOverdue,
+                            }],
+                            `${s.studentName} — ${s.invoice_number}`,
+                          )
+                        }
+                      >
+                        <Printer className="h-3 w-3" /> Letter
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -166,6 +227,14 @@ export default function Arrears() {
           </TableBody>
         </Table>
       </div>
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        targets={letterTargets}
+        defaultKind="overdue_notice"
+        contextLabel={letterLabel}
+      />
     </div>
   );
 }

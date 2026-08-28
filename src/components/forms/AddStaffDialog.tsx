@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
+import { describeIdError } from "@/lib/id-numbers";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -138,7 +139,7 @@ export function AddStaffDialog({ open, onOpenChange }: AddStaffDialogProps) {
         err.errors.forEach(e => { if (e.path[0]) fieldErrors[e.path[0] as string] = e.message; });
         setErrors(fieldErrors);
       } else {
-        toast({ title: "Error", description: err.message || "Failed to add staff.", variant: "destructive" });
+        toast({ title: "Error", description: describeIdError(err, "staff", "Failed to add staff."), variant: "destructive" });
       }
     },
   });
@@ -175,8 +176,14 @@ export function AddStaffDialog({ open, onOpenChange }: AddStaffDialogProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Staff ID</Label>
-              <Input value={form.staff_id_number || ""} onChange={(e) => set("staff_id_number", e.target.value)} className="font-mono" />
+              <Label>Staff ID <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                value={form.staff_id_number || ""}
+                onChange={(e) => set("staff_id_number", e.target.value)}
+                className="font-mono"
+                placeholder="Auto-generated"
+              />
+              <p className="text-[11px] text-muted-foreground">Leave blank and we generate one from your ID numbering settings.</p>
             </div>
             <div className="space-y-1.5">
               <Label>Gender</Label>

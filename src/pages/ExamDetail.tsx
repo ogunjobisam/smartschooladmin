@@ -1,7 +1,10 @@
 import { displayClassName } from "@/lib/sections";
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { gradeForScore as computeGrade } from "@/lib/performance";
+import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
+import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
+import { canManageStudents } from "@/lib/access";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -29,7 +32,7 @@ interface ScoreEntry {
 export default function ExamDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { schoolId, user } = useAuth();
+  const { schoolId, user, userRole } = useAuth();
   const queryClient = useQueryClient();
   const [scores, setScores] = useState<Map<string, ScoreEntry>>(new Map());
   const [saving, setSaving] = useState(false);
@@ -46,23 +49,24 @@ export default function ExamDetail() {
 
     const pages = students.map((student) => {
       const studentScores = Array.from(scores.values())
-        .filter((s) => s.studentId === student.id && s.score !== "")
+        .filter((s) => s.studentId === student.id && s.score !== "" && subjectMap.has(s.subjectId))
         .map((s) => ({
           subjectId: s.subjectId,
           score: parseFloat(s.score),
-          grade: computeGrade(parseFloat(s.score), exam.max_score),
+          max: maxFor(s.subjectId),
+          grade: gradeFor(parseFloat(s.score), maxFor(s.subjectId)),
         }));
 
       const totalScore = studentScores.reduce((sum, s) => sum + s.score, 0);
-      const average = studentScores.length > 0 ? totalScore / studentScores.length : 0;
-      const pct = (average / exam.max_score) * 100;
-      const overallGrade = studentScores.length > 0 ? computeGrade(average, exam.max_score) : "N/A";
+      const pct = weightedPercent(student.id) ?? 0;
+      const overallGrade = studentScores.length > 0 ? gradeFromPercent(pct) : "N/A";
 
       const rows = studentScores.map((s, idx) => {
         const sub = subjectMap.get(s.subjectId);
-        const p = ((s.score / exam.max_score) * 100).toFixed(1);
-        return `<tr><td>${idx + 1}</td><td>${sub?.name || "Unknown"}</td><td class="text-center">${s.score}</td><td class="text-center">${exam.max_score}</td><td class="text-center">${p}%</td><td class="text-center">${s.grade}</td></tr>`;
+        const p = ((s.score / s.max) * 100).toFixed(1);
+        return `<tr><td>${idx + 1}</td><td>${sub?.name || "Unknown"}</td><td class="text-center">${s.score}</td><td class="text-center">${s.max}</td><td class="text-center">${p}%</td><td class="text-center">${s.grade}</td></tr>`;
       }).join("");
+
 
       return `
         <div class="page">
@@ -81,7 +85,7 @@ export default function ExamDetail() {
           <table><thead><tr><th>#</th><th>Subject</th><th class="text-center">Score</th><th class="text-center">Max</th><th class="text-center">%</th><th class="text-center">Grade</th></tr></thead><tbody>${rows}</tbody></table>
           <div class="summary"><div class="summary-grid">
             <div><div class="summary-value">${totalScore}</div><div class="summary-label">Total Score</div></div>
-            <div><div class="summary-value">${average.toFixed(1)}</div><div class="summary-label">Average</div></div>
+            <div><div class="summary-value">${pct.toFixed(1)}%</div><div class="summary-label">Weighted Average</div></div>
             <div><div class="summary-value">${overallGrade}</div><div class="summary-label">Overall Grade</div></div>
           </div></div>
           <div class="footer"><div><div class="sign-line">Class Teacher's Signature</div></div><div><div class="sign-line">Principal's Signature & Stamp</div></div></div>
@@ -127,8 +131,23 @@ export default function ExamDetail() {
     enabled: !!id,
   });
 
+  // The term's date range bounds the attendance figures below.
+  const { data: period } = useQuery({
+    queryKey: ["exam-period", exam?.academic_period_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("name, start_date, end_date")
+        .eq("id", exam!.academic_period_id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!exam?.academic_period_id,
+  });
+
   // Fetch subjects assigned to the exam's class (falls back to all school subjects)
-  const { data: subjects = [] } = useQuery({
+  const { data: classSubjectList = [] } = useQuery({
+
     queryKey: ["exam-subjects", exam?.class_id, schoolId],
     queryFn: async () => {
       if (!schoolId) return [];
@@ -159,6 +178,57 @@ export default function ExamDetail() {
     enabled: !!schoolId && !!exam,
   });
 
+  // Per-exam scoring setup: which subjects count, their maximum score and weight.
+  const { data: subjectConfig = [] } = useQuery({
+    queryKey: ["exam-subject-config", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exam_subjects")
+        .select("subject_id, max_score, weight")
+        .eq("exam_id", id!);
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  // The exam's own grade rubric; empty means fall back to the default bands.
+  const { data: gradeBands = [] } = useQuery({
+    queryKey: ["exam-grade-bands", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exam_grade_bands")
+        .select("label, min_percent, remark")
+        .eq("exam_id", id!)
+        .order("min_percent", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const rubric: RubricBand[] = useMemo(
+    () => gradeBands.map((b) => ({ label: b.label, minPercent: Number(b.min_percent), remark: b.remark })),
+    [gradeBands]
+  );
+
+  const configMap = useMemo(
+    () => new Map(subjectConfig.map((c) => [c.subject_id, c])),
+    [subjectConfig]
+  );
+
+  // Once an exam is configured, only the configured subjects are scored.
+  const subjects = useMemo(
+    () => (configMap.size > 0 ? classSubjectList.filter((s) => configMap.has(s.id)) : classSubjectList),
+    [classSubjectList, configMap]
+  );
+
+  const maxFor = (subjectId: string) => Number(configMap.get(subjectId)?.max_score ?? exam?.max_score ?? 100);
+  const weightFor = (subjectId: string) => Number(configMap.get(subjectId)?.weight ?? 1);
+  const gradeFor = (score: number | null, max: number) => gradeScoreFromRubric(score, max, rubric);
+  const gradeFromPercent = (percent: number | null) =>
+    gradeScoreFromRubric(percent, 100, rubric);
+
+
+
   // Fetch enrolled students for the exam's class
   const { data: students = [] } = useQuery({
     queryKey: ["exam-students", exam?.class_id, exam?.academic_period_id],
@@ -187,6 +257,50 @@ export default function ExamDetail() {
     },
     enabled: !!id,
   });
+
+  // Attendance for the exam's class over the exam's term, so results can be read
+  // alongside how often each student actually attended.
+  const { data: attendance = [] } = useQuery({
+    queryKey: ["exam-attendance", exam?.class_id, exam?.academic_period_id],
+    queryFn: async () => {
+      if (!exam?.class_id) return [];
+      let q = supabase
+        .from("attendance_records")
+        .select("student_id, status, date")
+        .eq("class_id", exam.class_id);
+      if (period?.start_date && period?.end_date) {
+        q = q.gte("date", period.start_date).lte("date", period.end_date);
+      }
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: !!exam?.class_id,
+  });
+
+  // Approvals raised against this exam (e.g. score changes needing sign-off).
+  const { data: approvals = [] } = useQuery({
+    queryKey: ["exam-approvals", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("approval_requests")
+        .select("id, type, description, status, amount, created_at, review_notes")
+        .eq("reference_type", "exam")
+        .eq("reference_id", id!)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const attendanceByStudent = useMemo(() => {
+    const map: Record<string, { present: number; total: number }> = {};
+    for (const r of attendance) {
+      if (!map[r.student_id]) map[r.student_id] = { present: 0, total: 0 };
+      map[r.student_id].total += 1;
+      if (r.status === "present" || r.status === "late") map[r.student_id].present += 1;
+    }
+    return map;
+  }, [attendance]);
 
   // Initialize scores map from existing data
   useEffect(() => {
@@ -229,14 +343,14 @@ export default function ExamDetail() {
     setSaving(true);
 
     const entries = Array.from(scores.values()).filter((s) => s.score !== "");
-    const maxScore = exam?.max_score || 100;
 
     const records = entries.map((e) => ({
       exam_id: id,
       student_id: e.studentId,
       subject_id: e.subjectId,
       score: parseFloat(e.score) || 0,
-      grade: computeGrade(parseFloat(e.score) || 0, maxScore),
+      grade: gradeFor(parseFloat(e.score) || 0, maxFor(e.subjectId)),
+
       entered_by: user.id,
       updated_at: new Date().toISOString(),
     }));
@@ -254,7 +368,24 @@ export default function ExamDetail() {
     }
   };
 
-  // Student averages
+  // Weighted average percentage per student, honouring each subject's own
+  // maximum score and weight from the exam's scoring setup.
+  const weightedPercent = (studentId: string): number | null => {
+    let weightSum = 0;
+    let acc = 0;
+    scores.forEach((entry) => {
+      if (entry.studentId !== studentId || entry.score === "") return;
+      const max = maxFor(entry.subjectId);
+      if (!(max > 0)) return;
+      const weight = weightFor(entry.subjectId);
+      acc += ((parseFloat(entry.score) || 0) / max) * 100 * weight;
+      weightSum += weight;
+    });
+    if (weightSum === 0) return null;
+    return acc / weightSum;
+  };
+
+  // Raw totals, still useful on the report card summary.
   const studentAverages = useMemo(() => {
     const avgs: Record<string, { total: number; count: number }> = {};
     scores.forEach((entry) => {
@@ -265,6 +396,7 @@ export default function ExamDetail() {
     });
     return avgs;
   }, [scores]);
+
 
   if (examLoading) return <div className="space-y-4 p-6">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
   if (!exam) return (
@@ -302,7 +434,7 @@ export default function ExamDetail() {
           scores={studentScores.map((s) => ({
             subjectId: s.subjectId,
             score: parseFloat(s.score),
-            grade: computeGrade(parseFloat(s.score), exam.max_score),
+            grade: gradeFor(parseFloat(s.score), maxFor(s.subjectId)),
           }))}
           maxScore={exam.max_score}
         />
@@ -333,6 +465,17 @@ export default function ExamDetail() {
           )}
         </div>
       </PageHeader>
+
+      {id && (
+        <ExamRubricEditor
+          examId={id}
+          examMaxScore={exam.max_score}
+          subjects={classSubjectList}
+          canEdit={canManageStudents(userRole) || userRole === "teacher"}
+        />
+      )}
+
+
 
       {subjects.length === 0 ? (
         <Card>
@@ -374,18 +517,21 @@ export default function ExamDetail() {
                   {subjects.map((sub) => (
                     <TableHead key={sub.id} className="min-w-[90px] text-center">
                       {sub.short_code || sub.name}
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        /{maxFor(sub.id)} × {weightFor(sub.id)}
+                      </span>
                     </TableHead>
                   ))}
-                  <TableHead className="text-center min-w-[80px]">Average</TableHead>
+                  <TableHead className="text-center min-w-[90px]">Weighted %</TableHead>
                   <TableHead className="text-center min-w-[60px]">Grade</TableHead>
+                  <TableHead className="text-center min-w-[110px]">Attendance</TableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {students.map((student) => {
-                  const avg = studentAverages[student.id];
-                  const averageScore = avg ? avg.total / avg.count : null;
-                  const grade = averageScore != null ? computeGrade(averageScore, exam.max_score) : "—";
+                  const percent = weightedPercent(student.id);
+                  const grade = percent != null ? gradeFromPercent(percent) : "—";
 
                   return (
                     <TableRow key={student.id}>
@@ -397,7 +543,7 @@ export default function ExamDetail() {
                           <Input
                             type="number"
                             min="0"
-                            max={exam.max_score}
+                            max={maxFor(sub.id)}
                             className="h-8 w-full text-center text-sm"
                             value={getScore(student.id, sub.id)}
                             onChange={(e) => updateScore(student.id, sub.id, e.target.value)}
@@ -406,8 +552,9 @@ export default function ExamDetail() {
                         </TableCell>
                       ))}
                       <TableCell className="text-center font-medium">
-                        {averageScore != null ? averageScore.toFixed(1) : "—"}
+                        {percent != null ? `${percent.toFixed(1)}%` : "—"}
                       </TableCell>
+
                       <TableCell className="text-center">
                         <Badge variant="secondary" className={
                           grade === "A+" || grade === "A" ? "status-paid" :
@@ -416,6 +563,13 @@ export default function ExamDetail() {
                         }>
                           {grade}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-sm text-muted-foreground">
+                        {(() => {
+                          const att = attendanceByStudent[student.id];
+                          if (!att || att.total === 0) return "—";
+                          return `${Math.round((att.present / att.total) * 100)}% (${att.present}/${att.total})`;
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setReportCardStudent(student.id)}>
@@ -430,6 +584,50 @@ export default function ExamDetail() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Linked Approvals</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {approvals.length === 0 ? (
+            <p className="px-6 pb-6 text-sm text-muted-foreground">
+              No approval requests are linked to this exam.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Raised</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvals.map((a) => (
+                    <TableRow key={a.id} className="cursor-pointer" onClick={() => navigate("/approvals")}>
+                      <TableCell className="capitalize">{a.type.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="text-muted-foreground">{a.description}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={
+                          a.status === "approved" ? "status-paid" : a.status === "rejected" ? "status-overdue" : "status-pending"
+                        }>
+                          {a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

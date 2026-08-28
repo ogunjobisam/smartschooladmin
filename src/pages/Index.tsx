@@ -10,7 +10,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { useCurrency } from "@/hooks/use-currency";
-import { portalPathForRole } from "@/lib/access";
+import { canAccessPath, canManageStudents, portalPathForRole } from "@/lib/access";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
@@ -33,6 +33,8 @@ export default function Dashboard() {
   // Parents and students each have their own portal; the school dashboard is
   // not theirs to see.
   const portalPath = portalPathForRole(userRole);
+  // Approvals are only the business of the people who can action them.
+  const canReviewApprovals = canAccessPath(userRole, "/approvals");
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", schoolId, orgId],
@@ -76,7 +78,7 @@ export default function Dashboard() {
         .limit(5);
       return data || [];
     },
-    enabled: !!orgId && !portalPath,
+    enabled: !!orgId && !portalPath && canReviewApprovals,
   });
 
   const { data: auditLogs } = useQuery({
@@ -144,7 +146,9 @@ export default function Dashboard() {
             <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" />
             <StatCard title="Fees Collected" value={formatMoney(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
             <StatCard title="Outstanding Fees" value={formatMoney(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
-            <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
+            {canReviewApprovals && (
+              <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
+            )}
           </>
         )}
       </div>
@@ -154,6 +158,7 @@ export default function Dashboard() {
       {/* Bottom Row */}
       <div className="grid gap-6 xl:grid-cols-5">
         {/* Pending Approvals */}
+        {canReviewApprovals && (
         <div className="rounded-lg border bg-card xl:col-span-3 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b px-5 py-3">
             <h3 className="text-sm font-semibold text-card-foreground">Pending Approvals</h3>
@@ -188,9 +193,12 @@ export default function Dashboard() {
             </TableBody>
           </Table>
         </div>
+        )}
+
+
 
         {/* Recent Activity */}
-        <div className="rounded-lg border bg-card xl:col-span-2 min-w-0 overflow-hidden">
+        <div className={`rounded-lg border bg-card min-w-0 overflow-hidden ${canReviewApprovals ? "xl:col-span-2" : "xl:col-span-5"}`}>
           <div className="border-b px-5 py-3">
             <h3 className="text-sm font-semibold text-card-foreground">Recent Activity</h3>
           </div>

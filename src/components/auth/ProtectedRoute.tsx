@@ -3,6 +3,7 @@ import { Loader2, Lock, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { canAccessPath } from "@/lib/access";
+import { WorkspacePicker } from "@/components/auth/WorkspacePicker";
 
 /**
  * Shown when someone is signed in but the app cannot place them in a school.
@@ -83,7 +84,7 @@ function NoAccess({ role }: { role: string | null }) {
 }
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, orgId, userRole, roleError, retryRole, signOut } = useAuth();
+  const { user, loading, orgId, userRole, roleError, retryRole, signOut, needsWorkspaceChoice } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -128,6 +129,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         onSignOut={signOut}
       />
     );
+  }
+
+  // Accounts with more than one organisation or school say which one they are
+  // signing into before any figures are shown.
+  if (needsWorkspaceChoice && location.pathname !== "/onboarding") {
+    return <WorkspacePicker />;
   }
 
   // Redirect to onboarding if user has no org (and isn't already on onboarding)

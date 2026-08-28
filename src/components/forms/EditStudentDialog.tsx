@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
+import { describeIdError } from "@/lib/id-numbers";
 import type { Enums } from "@/integrations/supabase/types";
 
 interface StudentData {
@@ -97,7 +98,7 @@ export function EditStudentDialog({ open, onOpenChange, student }: Props) {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       onOpenChange(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to update student."));
+      toast.error(describeIdError(err, "student", "Failed to update student."));
     } finally {
       setLoading(false);
     }
@@ -160,6 +161,8 @@ export function EditStudentDialog({ open, onOpenChange, student }: Props) {
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  <SelectItem value="graduated">Graduated</SelectItem>
+                  <SelectItem value="expelled">Expelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

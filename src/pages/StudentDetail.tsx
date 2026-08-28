@@ -1,14 +1,18 @@
 import { displayClassName } from "@/lib/sections";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer, IdCard, FileText } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoUpload } from "@/components/common/PhotoUpload";
+import { schoolPhotoPath } from "@/lib/photos";
+import { canManageStudents } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LetterDialog } from "@/components/letters/LetterDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +24,8 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
-import { printTranscript, TranscriptData } from "@/lib/print-documents";
+import { printTranscript, printIdCard, TranscriptData } from "@/lib/print-documents";
+import { getPhotoUrl } from "@/lib/photos";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
 import { InviteStudentButton } from "@/components/students/InviteStudentButton";
@@ -31,7 +36,8 @@ import { StudentTransportCard } from "@/components/students/StudentTransportCard
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
-  const { schoolId, orgId } = useAuth();
+  const { schoolId, orgId, userRole } = useAuth();
+  const queryClient = useQueryClient();
   const {
     scores: performanceScores,
     attendance: performanceAttendance,
@@ -44,6 +50,7 @@ export default function StudentDetail() {
   const { formatMoney } = useCurrency();
   const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ["student", id],
@@ -205,6 +212,26 @@ export default function StudentDetail() {
     });
   };
 
+  const handlePrintIdCard = async () => {
+    const photoUrl = await getPhotoUrl(student.photo_url);
+    printIdCard({
+      schoolName: school?.name || branding.name,
+      schoolAddress: school?.address,
+      schoolPhone: school?.phone,
+      logoUrl: school?.logo_url || branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      holderName: `${student.first_name} ${student.last_name}`,
+      holderKind: "Student",
+      idNumber: student.student_id_number || "—",
+      subtitle: className === "—" ? "Student" : className,
+      photoUrl,
+      extraRows: [
+        ...(student.date_of_birth ? [{ label: "Date of birth", value: new Date(student.date_of_birth).toLocaleDateString() }] : []),
+        ...(student.gender ? [{ label: "Gender", value: student.gender }] : []),
+      ],
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -217,9 +244,20 @@ export default function StudentDetail() {
       <div className="rounded-lg border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">{initials}</AvatarFallback>
-            </Avatar>
+            <PhotoUpload
+              value={student.photo_url}
+              fallback={initials}
+              size="sm"
+              label="Student photo"
+              editable={canManageStudents(userRole)}
+              pathFor={(file) => schoolPhotoPath(student.school_id, "students", student.id, file)}
+              onSaved={async (path) => {
+                const { error } = await supabase.from("students").update({ photo_url: path }).eq("id", student.id);
+                if (error) throw new Error(error.message);
+                await queryClient.invalidateQueries({ queryKey: ["student", id] });
+                await queryClient.invalidateQueries({ queryKey: ["students"] });
+              }}
+            />
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-card-foreground">{student.first_name} {student.last_name}</h2>
@@ -236,6 +274,8 @@ export default function StudentDetail() {
               hasLogin={!!student.user_id}
             />
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintTranscript}><Printer className="h-3.5 w-3.5" /> Transcript</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLetterOpen(true)}><FileText className="h-3.5 w-3.5" /> Letter home</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
           </div>
         </div>
@@ -476,6 +516,20 @@ export default function StudentDetail() {
       </Tabs>
 
       {student && <EditStudentDialog open={editOpen} onOpenChange={setEditOpen} student={student} />}
+
+      <LetterDialog
+        open={letterOpen}
+        onOpenChange={setLetterOpen}
+        defaultKind={totalBilled - totalPaid > 0 ? "fee_reminder" : "general"}
+        contextLabel={`${student.first_name} ${student.last_name}`}
+        targets={[{
+          studentId: student.id,
+          studentName: `${student.first_name} ${student.last_name}`,
+          studentIdNumber: student.student_id_number,
+          className,
+          balance: Math.max(totalBilled - totalPaid, 0),
+        }]}
+      />
     </div>
   );
 }

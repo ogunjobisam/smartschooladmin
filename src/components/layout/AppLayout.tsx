@@ -8,9 +8,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { canAccessPath } from "@/lib/access";
+import { DemoBanner } from "@/components/demo/DemoBanner";
+import { AnnouncementBanner } from "./AnnouncementBanner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { orgId } = useAuth();
+  const { orgId, userRole } = useAuth();
+  // Only people who can actually action an approval should be nagged about one.
+  const canReviewApprovals = canAccessPath(userRole, "/approvals");
 
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-approvals-count", orgId],
@@ -23,7 +28,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         .eq("status", "pending");
       return count || 0;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && canReviewApprovals,
   });
 
   return (
@@ -32,6 +37,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
+
+          <DemoBanner />
+
+          <AnnouncementBanner />
 
           <InstallPrompt />
 
