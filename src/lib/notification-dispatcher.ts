@@ -491,3 +491,115 @@ export async function sendEventNotifications(params: {
 
   return { sent: inAppUsers.length, queued };
 }
+
+/**
+ * A published award is news the family wants to hear. Notifies the recipient in
+ * the app, and queues email/SMS for the recipient and — for a student — their
+ * guardians, using whatever contact details the school holds.
+ */
+export async function sendRecognitionNotifications(params: {
+  orgId: string;
+  schoolId: string;
+  recognitionId: string;
+  subjectType: "student" | "staff";
+  studentId: string | null;
+  staffId: string | null;
+  recipientName: string;
+  title: string;
+  citation?: string | null;
+  awardDate?: string | null;
+}) {
+  const when = params.awardDate ? new Date(params.awardDate).toLocaleDateString() : null;
+  const subject = `Award published: ${params.title}`;
+  const bodyFor = (name: string) =>
+    [`${name} has been awarded the ${params.title}.`, params.citation || null, when ? `Award date: ${when}` : null]
+      .filter(Boolean)
+      .join("\n");
+
+  const inAppUsers: string[] = [];
+  const contacts: { email: string | null; phone: string | null; name: string }[] = [];
+
+  if (params.subjectType === "student" && params.studentId) {
+    const [{ data: student }, { data: links }] = await Promise.all([
+      supabase.from("students").select("user_id, first_name, last_name").eq("id", params.studentId).maybeSingle(),
+      supabase
+        .from("student_guardians")
+        .select("guardians(user_id, email, phone, first_name, last_name)")
+        .eq("student_id", params.studentId),
+    ]);
+
+    if (student?.user_id) inAppUsers.push(student.user_id);
+
+    for (const link of links || []) {
+      const g = link.guardians as
+        | { user_id: string | null; email: string | null; phone: string | null; first_name: string; last_name: string }
+        | null;
+      if (!g) continue;
+      if (g.user_id) inAppUsers.push(g.user_id);
+      contacts.push({ email: g.email, phone: g.phone, name: `${g.first_name} ${g.last_name}` });
+    }
+  }
+
+  if (params.subjectType === "staff" && params.staffId) {
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("user_id, email, phone")
+      .eq("id", params.staffId)
+      .maybeSingle();
+    if (staff?.user_id) inAppUsers.push(staff.user_id);
+    if (staff?.email || staff?.phone) {
+      contacts.push({ email: staff.email ?? null, phone: staff.phone ?? null, name: params.recipientName });
+    }
+  }
+
+  const uniqueUsers = [...new Set(inAppUsers)];
+  if (uniqueUsers.length > 0) {
+    await createBulkNotifications(
+      uniqueUsers.map((userId) => ({
+        orgId: params.orgId,
+        schoolId: params.schoolId,
+        userId,
+        type: "recognition_published" as NotificationType,
+        title: subject,
+        message: bodyFor(params.recipientName),
+        entityType: "recognition",
+        entityId: params.recognitionId,
+      })),
+    );
+  }
+
+  const rows: { channel: string; recipient: string; subject: string; body: string }[] = [];
+  const seen = new Set<string>();
+  for (const contact of contacts) {
+    const text = bodyFor(params.recipientName);
+    if (contact.email && !seen.has(`email:${contact.email}`)) {
+      seen.add(`email:${contact.email}`);
+      rows.push({ channel: "email", recipient: contact.email, subject, body: text });
+    }
+    if (contact.phone && !seen.has(`sms:${contact.phone}`)) {
+      seen.add(`sms:${contact.phone}`);
+      rows.push({ channel: "sms", recipient: contact.phone, subject, body: `${params.recipientName}: ${params.title}` });
+    }
+  }
+
+  let queued = 0;
+  if (rows.length > 0) {
+    const { error } = await supabase.from("outbound_message_queue").insert(
+      rows.map((row) => ({
+        org_id: params.orgId,
+        school_id: params.schoolId,
+        channel: row.channel,
+        recipient: row.recipient,
+        subject: row.subject,
+        body: row.body,
+        status: "queued",
+        entity_type: "recognition",
+        entity_id: params.recognitionId,
+      })),
+    );
+    if (error) console.error("Failed to queue recognition messages:", error);
+    else queued = rows.length;
+  }
+
+  return { sent: uniqueUsers.length, queued };
+}

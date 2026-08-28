@@ -20,6 +20,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { CertificateDialog } from "@/components/achievements/CertificateDialog";
+import { RecognitionPhotoField } from "@/components/achievements/RecognitionPhotoField";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { usePhotoUrls } from "@/hooks/usePhotoUrl";
+import { sendRecognitionNotifications } from "@/lib/notification-dispatcher";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/lib/errors";
@@ -66,6 +70,7 @@ interface RecognitionRow {
   class_id: string | null;
   subject_id: string | null;
   published_at: string | null;
+  photo_path: string | null;
   students: PersonRef | null;
   staff: PersonRef | null;
   classes: { name: string } | null;
@@ -168,7 +173,7 @@ export default function Achievements() {
         .from("recognitions")
         .select(`
           id, school_id, subject_type, student_id, staff_id, category, title, description,
-          award_date, status, academic_period_id, class_id, subject_id, published_at,
+          award_date, status, academic_period_id, class_id, subject_id, published_at, photo_path,
           students(first_name, last_name, student_id_number),
           staff(first_name, last_name, staff_id_number),
           classes(name),
@@ -240,6 +245,37 @@ export default function Achievements() {
     });
   };
 
+  /** Tells the recipient — and, for a student, their guardians — about a new award. */
+  const notifyPublished = async (id: string) => {
+    const row = recognitions.find((r) => r.id === id);
+    if (!row || !orgId) return;
+    try {
+      await sendRecognitionNotifications({
+        orgId,
+        schoolId: row.school_id,
+        recognitionId: row.id,
+        subjectType: row.subject_type,
+        studentId: row.student_id,
+        staffId: row.staff_id,
+        recipientName: personName(row),
+        title: row.title,
+        citation: row.description,
+        awardDate: row.award_date,
+      });
+    } catch (err) {
+      console.error("Could not send recognition notifications", err);
+    }
+  };
+
+  const setPhoto = useMutation({
+    mutationFn: async ({ id, path }: { id: string; path: string | null }) => {
+      const { error } = await supabase.from("recognitions").update({ photo_path: path }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recognitions"] }),
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   const setStatus = useMutation({
     mutationFn: async ({ id, status, table }: { id: string; status: Status; table: "recognitions" | "appointments" }) => {
       const { error } = await supabase.from(table).update({ status }).eq("id", id);
@@ -247,6 +283,7 @@ export default function Achievements() {
       return { id, status, table };
     },
     onSuccess: async ({ id, status, table }) => {
+      if (status === "published" && table === "recognitions") await notifyPublished(id);
       await logAudit(`recognition_${status}`, `${table === "appointments" ? "Appointment" : "Recognition"} moved to ${status}`, id);
       queryClient.invalidateQueries({ queryKey: [table === "appointments" ? "appointments" : "recognitions"] });
       toast.success(status === "published" ? "Published" : `Moved to ${status}`);
@@ -275,6 +312,8 @@ export default function Achievements() {
     });
   };
 
+  const photoUrls = usePhotoUrls(recognitions.map((r) => r.photo_path));
+
   const printRecipients: CertificateRecipient[] = useMemo(
     () =>
       published
@@ -290,8 +329,9 @@ export default function Achievements() {
           awardDate: r.award_date,
           periodName: r.academic_periods?.name ?? null,
           subjectName: r.subjects?.name ?? null,
+          photoUrl: r.photo_path ? photoUrls[r.photo_path] ?? null : null,
         })),
-    [published, selected],
+    [published, selected, photoUrls],
   );
 
   const filters = (
@@ -354,6 +394,16 @@ export default function Achievements() {
             className="mt-1"
           />
         )}
+        <Avatar className="h-14 w-14 rounded-lg border border-border">
+          <AvatarImage
+            src={r.photo_path ? photoUrls[r.photo_path] : undefined}
+            alt={`${personName(r)} award photo`}
+            className="object-cover"
+          />
+          <AvatarFallback className="rounded-lg bg-muted text-base">
+            {personName(r).split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{personName(r)}</span>
@@ -374,7 +424,17 @@ export default function Achievements() {
         </div>
 
         {showActions && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {canDraft && (
+              <RecognitionPhotoField
+                recognitionId={r.id}
+                schoolId={r.school_id}
+                value={r.photo_path}
+                size="sm"
+                onChange={(path) => setPhoto.mutateAsync({ id: r.id, path })}
+                fallback="🏅"
+              />
+            )}
             {r.status !== "published" && canPublish && (
               <Button size="sm" onClick={() => setStatus.mutate({ id: r.id, status: "published", table: "recognitions" })}>
                 <Check className="mr-1 h-4 w-4" /> Publish
@@ -615,6 +675,8 @@ function RecognitionForm({
   const [periodId, setPeriodId] = useState<string>(ALL);
   const [classId, setClassId] = useState<string>(ALL);
   const [publishNow, setPublishNow] = useState(false);
+  const [recognitionId, setRecognitionId] = useState(() => crypto.randomUUID());
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
 
   const { data: people = [] } = usePeople(schoolId, subject, open);
   const { data: subjects = [] } = useQuery({
@@ -638,6 +700,8 @@ function RecognitionForm({
       if (!orgId || !schoolId) throw new Error("Choose a school first");
       if (!personId) throw new Error("Choose who the recognition is for");
       const { error } = await supabase.from("recognitions").insert({
+        id: recognitionId,
+        photo_path: photoPath,
         org_id: orgId,
         school_id: schoolId,
         subject_type: subject,
@@ -653,6 +717,22 @@ function RecognitionForm({
         status: publishNow && canPublish ? "published" : "draft",
       });
       if (error) throw error;
+
+      // A published award is announced straight away; drafts stay quiet.
+      if (publishNow && canPublish) {
+        await sendRecognitionNotifications({
+          orgId,
+          schoolId,
+          recognitionId,
+          subjectType: subject,
+          studentId: subject === "student" ? personId : null,
+          staffId: subject === "staff" ? personId : null,
+          recipientName: people.find((p) => p.id === personId)?.label ?? "The recipient",
+          title: title.trim() || categoryLabel(category),
+          citation: description.trim() || null,
+          awardDate,
+        });
+      }
     },
     onSuccess: () => {
       toast.success(publishNow && canPublish ? "Recognition published" : "Saved as a draft for approval");
@@ -662,6 +742,8 @@ function RecognitionForm({
       setTitle("");
       setDescription("");
       setPublishNow(false);
+      setPhotoPath(null);
+      setRecognitionId(crypto.randomUUID());
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
@@ -771,6 +853,16 @@ function RecognitionForm({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Highest average in the class for the term."
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Award photo (optional)</Label>
+            <RecognitionPhotoField
+              recognitionId={recognitionId}
+              schoolId={schoolId}
+              value={photoPath}
+              onChange={(path) => setPhotoPath(path)}
             />
           </div>
 

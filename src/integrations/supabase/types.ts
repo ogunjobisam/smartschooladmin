@@ -2049,6 +2049,7 @@ export type Database = {
           description: string | null
           id: string
           org_id: string
+          photo_path: string | null
           published_at: string | null
           published_by: string | null
           school_id: string
@@ -2070,6 +2071,7 @@ export type Database = {
           description?: string | null
           id?: string
           org_id: string
+          photo_path?: string | null
           published_at?: string | null
           published_by?: string | null
           school_id: string
@@ -2091,6 +2093,7 @@ export type Database = {
           description?: string | null
           id?: string
           org_id?: string
+          photo_path?: string | null
           published_at?: string | null
           published_by?: string | null
           school_id?: string
@@ -3128,6 +3131,10 @@ export type Database = {
         Returns: boolean
       }
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
+      can_view_own_recognition_photo: {
+        Args: { _name: string }
+        Returns: boolean
+      }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       create_demo_org: {
         Args: { _hours?: number; _label?: string }
@@ -3271,6 +3278,7 @@ export type Database = {
         | "payment_confirmation"
         | "school_announcement"
         | "school_event"
+        | "recognition_published"
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
@@ -3465,6 +3473,7 @@ export const Constants = {
         "payment_confirmation",
         "school_announcement",
         "school_event",
+        "recognition_published",
       ],
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
