@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { classifyEmailFailure } from "../_shared/email-result.ts";
+import { formatSender, replyToAddress } from "../_shared/sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,11 +23,21 @@ function json(body: Record<string, unknown>, status = 200) {
 interface QueueRow {
   id: string;
   org_id: string;
+  school_id: string | null;
   channel: string;
   recipient: string;
   subject: string | null;
   body: string;
+  reply_to: string | null;
   attempts: number;
+}
+
+/** The From name and Reply-To for one message, resolved before sending. */
+interface Sender {
+  /** Display name — the school this message is from. */
+  name: string | null;
+  /** Where a reply should go, or null to omit the header. */
+  replyTo: string | null;
 }
 
 /**
@@ -62,7 +73,7 @@ const DEFAULT_FROM = "onboarding@resend.dev";
  * providers means replacing this one function — everything else works off the
  * queue table.
  */
-async function sendEmail(row: QueueRow): Promise<SendResult> {
+async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   // A missing sender is no longer a blocker: without this default, setting only
   // RESEND_API_KEY left the whole queue "unconfigured" with nothing to say why.
@@ -75,14 +86,18 @@ async function sendEmail(row: QueueRow): Promise<SendResult> {
     };
   }
 
+  // One platform domain sends for every school: the school's name goes on the
+  // From line, and a reply reaches the school rather than the platform.
+  const replyTo = replyToAddress(sender.replyTo);
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from,
+      from: formatSender(sender.name, from),
       to: [row.recipient],
       subject: row.subject || "A message from your school",
       text: row.body,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
 
@@ -179,7 +194,7 @@ Deno.serve(async (req) => {
 
     let query = admin
       .from("outbound_message_queue")
-      .select("id, org_id, channel, recipient, subject, body, attempts")
+      .select("id, org_id, school_id, channel, recipient, subject, body, reply_to, attempts")
       .eq("status", "queued")
       .lt("attempts", MAX_ATTEMPTS)
       .order("created_at")
@@ -191,12 +206,33 @@ Deno.serve(async (req) => {
     if (fetchError) throw fetchError;
 
     const pending = (rows || []) as QueueRow[];
+
+    // One lookup for the handful of distinct schools in the batch, rather than
+    // a query per message. Names go on the From line; the school's own address
+    // is the fallback reply-to for rows queued before reply_to was resolved.
+    const schoolIds = [...new Set(pending.map((r) => r.school_id).filter((id): id is string => !!id))];
+    const schools = new Map<string, { name: string; email: string | null }>();
+    if (schoolIds.length > 0) {
+      const { data: schoolRows } = await admin
+        .from("schools")
+        .select("id, name, email")
+        .in("id", schoolIds);
+      for (const school of schoolRows || []) {
+        schools.set(school.id, { name: school.name, email: school.email });
+      }
+    }
+
     let sent = 0;
     let failed = 0;
     let deferred = 0;
 
     for (const row of pending) {
-      const result = row.channel === "email" ? await sendEmail(row) : sendSms();
+      const school = row.school_id ? schools.get(row.school_id) : undefined;
+      const sender: Sender = {
+        name: school?.name ?? null,
+        replyTo: row.reply_to ?? school?.email ?? null,
+      };
+      const result = row.channel === "email" ? await sendEmail(row, sender) : sendSms();
       const now = new Date().toISOString();
 
       if (result.status === "sent") {

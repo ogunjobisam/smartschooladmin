@@ -1308,15 +1308,17 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
                   </p>
                 ) : senderState.sender_is_default ? (
                   <p>
-                    Sending as <strong>{senderState.sender}</strong>, Resend&rsquo;s test sender.
-                    It only reaches the address that owns your Resend account — everyone else is
-                    refused, and those messages stay queued rather than failing. To reach parents,
-                    verify your school&rsquo;s domain in Resend and set{" "}
-                    <code>NOTIFICATIONS_FROM_EMAIL</code> to an address on it.
+                    Sending as <strong>{senderState.sender}</strong>, the provider&rsquo;s test
+                    sender. It only reaches the address that owns the email account — everyone
+                    else is refused, and those messages stay queued rather than failing. Whoever
+                    runs this platform needs to verify a sending domain before parents receive
+                    anything; nothing is lost until they do.
                   </p>
                 ) : (
                   <p>
-                    Sending as <strong>{senderState.sender}</strong>.
+                    Messages go out from <strong>{senderState.sender}</strong> under your
+                    school&rsquo;s name, and replies come back to your school&rsquo;s own address.
+                    Set that address under <strong>Settings → General</strong>.
                   </p>
                 )}
               </div>

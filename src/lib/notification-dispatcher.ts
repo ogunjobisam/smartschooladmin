@@ -63,6 +63,9 @@ export async function dispatchNotification(params: DispatchParams) {
     const { error } = await supabase.from("outbound_message_queue").insert(
       queueItems.map((item) => ({
         org_id: params.orgId,
+        // The processor puts this school's name on the From line and falls back
+        // to its address for reply-to.
+        school_id: params.schoolId ?? null,
         channel: item.channel,
         recipient: item.recipient,
         subject: item.subject,
@@ -258,6 +261,7 @@ export async function sendAnnouncementNotifications(params: {
       const { error } = await supabase.from("outbound_message_queue").insert(
         recipients.map((recipient) => ({
           org_id: params.orgId,
+          school_id: params.schoolId,
           channel: "email",
           recipient,
           subject: params.title,

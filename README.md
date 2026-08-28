@@ -119,12 +119,26 @@ npx supabase functions deploy process-message-queue
 
 That alone works. With no `NOTIFICATIONS_FROM_EMAIL`, messages go out as
 Resend's built-in `onboarding@resend.dev`, **which only reaches the address that
-owns the Resend account.** Everyone else is refused. To reach parents, verify
-your school's domain in Resend and set the sender:
+owns the Resend account.** Everyone else is refused.
+
+**One domain serves every school.** Verify a single domain that *you* control —
+not each school's — and set it as the sender:
 
 ```sh
-npx supabase secrets set NOTIFICATIONS_FROM_EMAIL="Your School <noreply@yourschool.com>"
+npx supabase secrets set NOTIFICATIONS_FROM_EMAIL=notifications@yourplatform.com
 ```
+
+Each message then goes out as `Grace Academy <notifications@yourplatform.com>`,
+with **Reply-To set to that school's own address** from Settings → General, so a
+parent sees the school in their inbox and a reply reaches the school rather than
+you. Adding a school needs no DNS work at all.
+
+The school's name and reply-to travel on the queue row (`school_id`,
+`reply_to`), so this works across a multi-school group. A row with no school
+falls back to a bare platform address rather than failing.
+
+A school that later wants mail genuinely from `@theirschool.com` verifies that
+domain separately — an upgrade, not a requirement.
 
 A refusal caused by an unverified sender is treated as a configuration problem,
 not a bad message: those rows stay queued and go out once the domain is
