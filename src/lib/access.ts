@@ -189,5 +189,15 @@ export function canManageStudents(role: string | null): boolean {
   return STUDENT_WRITERS.includes((role || "") as AppRole);
 }
 
+/** Roles allowed to change staff records, including their photo. */
+const STAFF_WRITERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "hr_admin",
+];
+
+/** Whether a role may change staff records (as opposed to just reading them). */
+export function canManageStaff(role: string | null): boolean {
+  return STAFF_WRITERS.includes((role || "") as AppRole);
+}
+
 /** Exported for tests. */
 export const _internals = { NAV_KEY_BY_ROLE, URL_BY_KEY };

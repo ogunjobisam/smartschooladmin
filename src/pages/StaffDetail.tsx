@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery , useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoUpload } from "@/components/common/PhotoUpload";
 import { schoolPhotoPath } from "@/lib/photos";
-import { isSchoolManager } from "@/lib/access";
+import { canManageStaff } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -28,6 +28,7 @@ export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const { formatMoney } = useCurrency();
   const { schoolId, orgId, userRole } = useAuth();
+  const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
   const [payrollProfileOpen, setPayrollProfileOpen] = useState(false);
@@ -121,7 +122,7 @@ export default function StaffDetail() {
               fallback={initials}
               size="sm"
               label="Staff photo"
-              editable={isSchoolManager(userRole)}
+              editable={canManageStaff(userRole)}
               pathFor={(file) => schoolPhotoPath(staff.school_id, "staff", staff.id, file)}
               onSaved={async (path) => {
                 const { error } = await supabase.from("staff").update({ photo_url: path }).eq("id", staff.id);

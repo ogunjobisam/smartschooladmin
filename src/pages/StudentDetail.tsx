@@ -2,7 +2,7 @@ import { displayClassName } from "@/lib/sections";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Mail, Phone, MapPin, Calendar, GraduationCap, CreditCard, Edit, Printer } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery , useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -35,6 +35,7 @@ import { StudentTransportCard } from "@/components/students/StudentTransportCard
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId, userRole } = useAuth();
+  const queryClient = useQueryClient();
   const {
     scores: performanceScores,
     attendance: performanceAttendance,
