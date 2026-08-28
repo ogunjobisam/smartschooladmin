@@ -355,9 +355,21 @@ Deno.serve(async (req) => {
     }
 
     // Handle standard invite
-    const { email, full_name, role, org_id, school_id, staff_id } = body;
+    const { email, full_name, role, staff_id } = body;
 
-    if (!email || !role || !org_id) return jsonResponse({ error: "email, role, and org_id are required" }, 400);
+    // The client's auth context can still be hydrating when the invite is sent,
+    // so org_id/school_id may arrive undefined. The caller's own role row is the
+    // authoritative source anyway (and a mismatched org_id was already rejected
+    // above), so fall back to it instead of failing the request.
+    const school_id = body.school_id ?? (callerIsSchoolLevel ? callerSchoolId : null);
+    let org_id: string | null = body.org_id ?? callerRole.org_id ?? null;
+    if (!org_id && school_id) {
+      const { data: sch } = await adminClient.from("schools").select("org_id").eq("id", school_id).maybeSingle();
+      org_id = (sch?.org_id as string | undefined) ?? null;
+    }
+
+    if (!email || !role) return jsonResponse({ error: "email and role are required" }, 400);
+    if (!org_id) return jsonResponse({ error: "Could not determine your organisation" }, 400);
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email) || email.length > 255) return jsonResponse({ error: "Invalid email format" }, 400);
