@@ -13,6 +13,11 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: string | null;
+  /**
+   * Every role the user holds. `userRole` is the most senior of these and drives
+   * navigation and gating; this list is for screens that need the full picture.
+   */
+  userRoles: string[];
   orgId: string | null;
   schoolId: string | null;
   currency: string;
@@ -30,7 +35,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, orgId: null, schoolId: null, currency: "NGN", schools: [], roleError: null, retryRole: () => {}, setSchoolId: () => {}, signOut: async () => {},
+  user: null, session: null, loading: true, userRole: null, userRoles: [], orgId: null, schoolId: null, currency: "NGN", schools: [], roleError: null, retryRole: () => {}, setSchoolId: () => {}, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -38,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
@@ -53,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (!session?.user) {
         setUserRole(null);
+        setUserRoles([]);
         setOrgId(null);
         setSchoolId(null);
         setSchools([]);
@@ -84,12 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchRole = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.rpc('get_my_role');
+        // get_my_roles returns every role the user holds, most senior first.
+        const { data, error } = await supabase.rpc('get_my_roles');
         if (error) throw error;
         if (cancelled) return;
 
         setRoleError(null);
-        const row = Array.isArray(data) ? data[0] : data;
+        const rows = (Array.isArray(data) ? data : data ? [data] : []) as
+          { role: string; org_id: string | null; school_id: string | null }[];
+        const row = rows[0];
+        setUserRoles(rows.map((r) => r.role));
         setUserRole(row?.role ?? null);
         setOrgId(row?.org_id ?? null);
 
@@ -116,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Failed to load user role:', err);
         if (!cancelled) {
           setUserRole(null);
+          setUserRoles([]);
           setOrgId(null);
           setRoleError(diagnoseError(err, 'Could not read your role.'));
         }
@@ -133,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setUserRole(null);
+    setUserRoles([]);
     setOrgId(null);
     setSchoolId(null);
     setSchools([]);
@@ -140,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, orgId, schoolId, currency, schools, roleError, retryRole, setSchoolId, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, userRoles, orgId, schoolId, currency, schools, roleError, retryRole, setSchoolId, signOut }}>
       {children}
     </AuthContext.Provider>
   );
