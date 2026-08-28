@@ -50,6 +50,7 @@ export default function StudentDetail() {
   const { formatMoney } = useCurrency();
   const { branding } = useSchoolBranding();
   const [editOpen, setEditOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ["student", id],
