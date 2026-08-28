@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { displayClassName } from "@/lib/sections";
 
 interface Props {
   studentId: string;
@@ -95,7 +96,7 @@ export function StudentHistoryTab({ studentId, schoolId }: Props) {
             ) : (
               enrolments.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-medium">{e.classes?.name || "—"}</TableCell>
+                  <TableCell className="font-medium">{displayClassName(e.classes?.name) || "—"}</TableCell>
                   <TableCell>{e.academic_periods?.name || "—"}</TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">{new Date(e.enrolled_at).toLocaleDateString()}</TableCell>
                 </TableRow>

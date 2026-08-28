@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { gradeForScore, remarkForGrade } from "@/lib/performance";
+import { displayClassName } from "@/lib/sections";
 
 interface ScoreItem {
   subjectId: string;
@@ -99,7 +100,7 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
           <div className="mb-6 grid grid-cols-2 gap-2 text-sm">
             <div><span className="text-muted-foreground">Student Name: </span><strong>{student.first_name} {student.last_name}</strong></div>
             <div><span className="text-muted-foreground">Student ID: </span><strong>{student.student_id_number || "N/A"}</strong></div>
-            <div><span className="text-muted-foreground">Class: </span><strong>{exam.classes?.name || "—"}</strong></div>
+            <div><span className="text-muted-foreground">Class: </span><strong>{displayClassName(exam.classes?.name) || "—"}</strong></div>
             <div><span className="text-muted-foreground">Term/Period: </span><strong>{exam.academic_periods?.name || "—"}</strong></div>
           </div>
 

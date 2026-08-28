@@ -27,6 +27,7 @@ import { PerformanceSummary } from "@/components/performance/PerformanceSummary"
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { StudentTransportCard } from "@/components/students/StudentTransportCard";
+import { displayClassName } from "@/lib/sections";
 
 export default function StudentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -380,7 +381,7 @@ export default function StudentDetail() {
                   attendance?.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="tabular-nums">{a.date}</TableCell>
-                      <TableCell>{a.classes?.name || "—"}</TableCell>
+                      <TableCell>{displayClassName(a.classes?.name) || "—"}</TableCell>
                       <TableCell><StatusBadge status={a.status} /></TableCell>
                       <TableCell className="text-muted-foreground">{a.notes || "—"}</TableCell>
                     </TableRow>

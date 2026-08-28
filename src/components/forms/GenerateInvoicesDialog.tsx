@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/errors";
 import { Checkbox } from "@/components/ui/checkbox";
+import { displayClassName } from "@/lib/sections";
 
 interface Props {
   open: boolean;
@@ -175,7 +176,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
                 <SelectContent>
                   {schedules?.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.classes?.name || "All Classes"} ({formatMoney(s.total_amount)})
+                      {s.name} — {displayClassName(s.classes?.name) || "All Classes"} ({formatMoney(s.total_amount)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -186,7 +187,7 @@ export function GenerateInvoicesDialog({ open, onOpenChange }: Props) {
               <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Class:</span>
-                  <span className="font-medium">{selectedSchedule.classes?.name || "All Classes"}</span>
+                  <span className="font-medium">{displayClassName(selectedSchedule.classes?.name) || "All Classes"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Period:</span>
