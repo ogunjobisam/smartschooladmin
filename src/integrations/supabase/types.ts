@@ -2696,6 +2696,14 @@ export type Database = {
           school_id: string
         }[]
       }
+      get_my_roles: {
+        Args: never
+        Returns: {
+          org_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          school_id: string
+        }[]
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_school_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -2739,6 +2747,17 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           school_id: string
         }[]
+      }
+      role_rank: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
+      }
+      roles_compatible: {
+        Args: {
+          _a: Database["public"]["Enums"]["app_role"]
+          _b: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
       }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }

@@ -101,6 +101,28 @@ async function findUserByEmail(admin: AdminClient, email: string) {
   return undefined;
 }
 
+/**
+ * Student is exclusive except for parent — mirrors public.roles_compatible().
+ * The database enforces this too; checking here gives a readable message.
+ */
+function rolesCompatible(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a === "student") return b === "parent";
+  if (b === "student") return a === "parent";
+  return true;
+}
+
+/** All roles a user already holds, most senior first. */
+async function rolesOf(admin: AdminClient, userId: string) {
+  const { data } = await admin
+    .from("user_roles")
+    .select("id, role, org_id, school_id")
+    .eq("user_id", userId);
+  return (data ?? []).sort(
+    (a, b) => (ROLE_RANK[a.role as string] ?? 99) - (ROLE_RANK[b.role as string] ?? 99)
+  ) as { id: string; role: string; org_id: string | null; school_id: string | null }[];
+}
+
 function canAssignRole(callerRole: string, targetRole: string): boolean {
   const callerRank = ROLE_RANK[callerRole];
   const targetRank = ROLE_RANK[targetRole];
@@ -131,13 +153,16 @@ Deno.serve(async (req) => {
     // Check caller is super_admin, proprietor, or school_admin
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const ADMIN_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin"];
-    const { data: callerRole } = await adminClient
+    // A caller may hold several roles; their authority is their most senior one.
+    const { data: callerRoles } = await adminClient
       .from("user_roles")
       .select("role, school_id, org_id")
       .eq("user_id", caller.id)
-      .in("role", ADMIN_ROLES)
-      .limit(1)
-      .maybeSingle();
+      .in("role", ADMIN_ROLES);
+
+    const callerRole = (callerRoles ?? []).sort(
+      (a, b) => (ROLE_RANK[a.role as string] ?? 99) - (ROLE_RANK[b.role as string] ?? 99)
+    )[0] as { role: string; school_id: string | null; org_id: string | null } | undefined;
 
     if (!callerRole) return jsonResponse({ error: "Insufficient permissions" }, 403);
 
@@ -167,28 +192,96 @@ Deno.serve(async (req) => {
       canAssignRole(callerRole.role, targetRole) &&
       (!callerIsSchoolLevel || SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole));
 
-    // Handle role update
-    if (action === "update_role") {
-      const { user_id, new_role } = body;
-      if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
-      if (!assignableByCaller(new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
-      // Also check caller outranks the target's current role
-      const { data: targetRole } = await adminClient.from("user_roles").select("role, school_id").eq("user_id", user_id).maybeSingle();
-      if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot manage a ${targetRole.role}` }, 403);
-      if (callerIsSchoolLevel && targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
-      const { error } = await adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
+    /**
+     * A user may now hold several roles, so every management action works on the
+     * target's whole role set: the caller must outrank each of the target's
+     * existing roles, and school-level callers may only touch their own school.
+     */
+    const guardTarget = async (userId: string) => {
+      const existing = await rolesOf(adminClient, userId);
+      for (const r of existing) {
+        if (!canAssignRole(callerRole.role, r.role)) {
+          return { error: jsonResponse({ error: `Your role cannot manage a ${r.role}` }, 403), existing };
+        }
+        if (callerIsSchoolLevel && r.school_id !== callerSchoolId) {
+          return { error: jsonResponse({ error: "Cannot manage users from other schools" }, 403), existing };
+        }
+      }
+      return { error: null, existing };
+    };
+
+    // Add one more role to an existing user, keeping what they already have.
+    if (action === "add_role") {
+      const { user_id, role: extraRole } = body;
+      if (!user_id || !extraRole) return jsonResponse({ error: "user_id and role required" }, 400);
+      if (!VALID_ROLES.includes(extraRole)) return jsonResponse({ error: "Invalid role" }, 400);
+      if (!assignableByCaller(extraRole)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${extraRole} role` }, 403);
+
+      const guard = await guardTarget(user_id);
+      if (guard.error) return guard.error;
+      if (guard.existing.some((r) => r.role === extraRole)) {
+        return jsonResponse({ error: "User already has that role" }, 409);
+      }
+      const clash = guard.existing.find((r) => !rolesCompatible(r.role, extraRole));
+      if (clash) {
+        return jsonResponse({ error: `The ${extraRole} role cannot be combined with the ${clash.role} role` }, 400);
+      }
+
+      const target_school_id = body.school_id
+        ?? (callerIsSchoolLevel ? callerSchoolId : guard.existing[0]?.school_id ?? null);
+      const { error } = await adminClient.from("user_roles").insert({
+        user_id,
+        role: extraRole,
+        org_id: callerRole.org_id,
+        school_id: target_school_id,
+      });
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
     }
 
-    // Handle delete user role
+    // Replace one specific role. `old_role` says which of the target's roles to
+    // change; without it the whole set is replaced by the new role.
+    if (action === "update_role") {
+      const { user_id, new_role, old_role } = body;
+      if (!user_id || !new_role) return jsonResponse({ error: "user_id and new_role required" }, 400);
+      if (!VALID_ROLES.includes(new_role)) return jsonResponse({ error: "Invalid role" }, 400);
+      if (!assignableByCaller(new_role)) return jsonResponse({ error: `Your role (${callerRole.role}) cannot assign the ${new_role} role` }, 403);
+
+      const guard = await guardTarget(user_id);
+      if (guard.error) return guard.error;
+
+      const kept = guard.existing.filter((r) => (old_role ? r.role !== old_role : false));
+      if (kept.some((r) => r.role === new_role)) {
+        return jsonResponse({ error: "User already has that role" }, 409);
+      }
+      const clash = kept.find((r) => !rolesCompatible(r.role, new_role));
+      if (clash) {
+        return jsonResponse({ error: `The ${new_role} role cannot be combined with the ${clash.role} role` }, 400);
+      }
+
+      let query = adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
+      if (old_role) query = query.eq("role", old_role);
+      const { error } = await query;
+      if (error) return jsonResponse({ error: error.message }, 400);
+
+      // Replacing the whole set: drop the now-redundant extra rows.
+      if (!old_role && guard.existing.length > 1) {
+        const survivors = guard.existing.slice(1).map((r) => r.id);
+        await adminClient.from("user_roles").delete().in("id", survivors);
+      }
+      return jsonResponse({ success: true });
+    }
+
+    // Remove one role, or all of them when no role is named.
     if (action === "delete_role") {
-      const { user_id } = body;
+      const { user_id, role: roleToRemove } = body;
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
-      const { data: targetRole } = await adminClient.from("user_roles").select("school_id, role").eq("user_id", user_id).maybeSingle();
-      if (targetRole && !canAssignRole(callerRole.role, targetRole.role)) return jsonResponse({ error: `Your role cannot remove a ${targetRole.role}` }, 403);
-      if (callerIsSchoolLevel && targetRole?.school_id !== callerSchoolId) return jsonResponse({ error: "Cannot manage users from other schools" }, 403);
-      const { error } = await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      const guard = await guardTarget(user_id);
+      if (guard.error) return guard.error;
+
+      let query = adminClient.from("user_roles").delete().eq("user_id", user_id);
+      if (roleToRemove) query = query.eq("role", roleToRemove);
+      const { error } = await query;
       if (error) return jsonResponse({ error: error.message }, 400);
       return jsonResponse({ success: true });
     }
@@ -236,13 +329,14 @@ Deno.serve(async (req) => {
       let isNew = false;
       if (existingUser) {
         userId = existingUser.id;
-        const { data: existingRole } = await adminClient
-          .from("user_roles")
-          .select("id")
-          .eq("user_id", existingUser.id)
-          .eq("org_id", org_id)
-          .maybeSingle();
-        if (existingRole) return jsonResponse({ error: "User already has a role in this organisation" }, 409);
+        // Multiple roles are allowed, so only a duplicate or an incompatible
+        // combination is a problem.
+        const heldRoles = await rolesOf(adminClient, existingUser.id);
+        if (heldRoles.some((r) => r.role === "parent")) {
+          return jsonResponse({ error: "User already has the parent role" }, 409);
+        }
+        const clash = heldRoles.find((r) => !rolesCompatible(r.role, "parent"));
+        if (clash) return jsonResponse({ error: `The parent role cannot be combined with the ${clash.role} role` }, 400);
       } else {
         const tempPassword = crypto.randomUUID() + "Aa1!";
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -313,13 +407,14 @@ Deno.serve(async (req) => {
       let isNew = false;
       if (existingUser) {
         userId = existingUser.id;
-        const { data: existingRole } = await adminClient
-          .from("user_roles")
-          .select("id")
-          .eq("user_id", existingUser.id)
-          .eq("org_id", org_id)
-          .maybeSingle();
-        if (existingRole) return jsonResponse({ error: "User already has a role in this organisation" }, 409);
+        const heldRoles = await rolesOf(adminClient, existingUser.id);
+        if (heldRoles.some((r) => r.role === "student")) {
+          return jsonResponse({ error: "User already has the student role" }, 409);
+        }
+        const clash = heldRoles.find((r) => !rolesCompatible(r.role, "student"));
+        if (clash) {
+          return jsonResponse({ error: `A student account cannot also hold the ${clash.role} role` }, 400);
+        }
       } else {
         const tempPassword = crypto.randomUUID() + "Aa1!";
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -398,13 +493,18 @@ Deno.serve(async (req) => {
     let isNew = false;
 
     if (existingUser) {
-      const { data: existingRole } = await adminClient
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", existingUser.id)
-        .eq("org_id", org_id)
-        .maybeSingle();
-      if (existingRole) return jsonResponse({ error: "User already has a role in this organisation" }, 409);
+      const heldRoles = await rolesOf(adminClient, existingUser.id);
+      if (heldRoles.some((r) => r.role === role)) {
+        return jsonResponse({ error: "User already has that role in this organisation" }, 409);
+      }
+      const clash = heldRoles.find((r) => !rolesCompatible(r.role, role));
+      if (clash) {
+        return jsonResponse({ error: `The ${role} role cannot be combined with the ${clash.role} role` }, 400);
+      }
+      const otherOrg = heldRoles.find((r) => r.org_id && r.org_id !== org_id);
+      if (otherOrg) {
+        return jsonResponse({ error: "That user belongs to another organisation" }, 409);
+      }
       userId = existingUser.id;
     } else {
       const tempPassword = crypto.randomUUID() + "Aa1!";
