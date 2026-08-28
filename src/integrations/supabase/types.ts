@@ -1120,6 +1120,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          email_frequency: string
+          id: string
+          in_app_frequency: string
+          quiet_end: string
+          quiet_hours_enabled: boolean
+          quiet_start: string
+          sms_frequency: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_frequency?: string
+          id?: string
+          in_app_frequency?: string
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          sms_frequency?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_frequency?: string
+          id?: string
+          in_app_frequency?: string
+          quiet_end?: string
+          quiet_hours_enabled?: boolean
+          quiet_start?: string
+          sms_frequency?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           body: string
