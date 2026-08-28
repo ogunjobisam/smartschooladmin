@@ -39,6 +39,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           <DemoBanner />
 
+          <AnnouncementBanner />
+
           <InstallPrompt />
 
           {(pendingCount ?? 0) > 0 && (
