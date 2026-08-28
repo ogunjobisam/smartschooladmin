@@ -12,6 +12,7 @@ import { PhotoUpload } from "@/components/common/PhotoUpload";
 import { schoolPhotoPath } from "@/lib/photos";
 import { canManageStudents } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 import { LetterDialog } from "@/components/letters/LetterDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -314,6 +315,7 @@ export default function StudentDetail() {
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="grades">Grades</TabsTrigger>
           <TabsTrigger value="transport">Transport</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
@@ -502,6 +504,10 @@ export default function StudentDetail() {
 
         <TabsContent value="transport" className="mt-4">
           <StudentTransportCard studentId={id!} schoolId={schoolId} />
+        </TabsContent>
+
+        <TabsContent value="achievements" className="mt-4">
+          <RecognitionsPanel subjectType="student" personId={id!} />
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">

@@ -58,6 +58,7 @@ const ExamDetail = lazy(() => import("./pages/ExamDetail"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const Events = lazy(() => import("./pages/Events"));
 const Transport = lazy(() => import("./pages/Transport"));
+const Achievements = lazy(() => import("./pages/Achievements"));
 const Admissions = lazy(() => import("./pages/Admissions"));
 const Apply = lazy(() => import("./pages/Apply"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
@@ -146,6 +147,7 @@ function AppRoutes() {
           <Route path="/announcements" element={withLayout(<Announcements />)} />
           <Route path="/events" element={withLayout(<Events />)} />
           <Route path="/transport" element={withLayout(<Transport />)} />
+          <Route path="/achievements" element={withLayout(<Achievements />)} />
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
           <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
           <Route path="/message-delivery" element={withLayout(<MessageDelivery />)} />
