@@ -127,6 +127,20 @@ export default function ExamDetail() {
     enabled: !!id,
   });
 
+  // The term's date range bounds the attendance figures below.
+  const { data: period } = useQuery({
+    queryKey: ["exam-period", exam?.academic_period_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("name, start_date, end_date")
+        .eq("id", exam!.academic_period_id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!exam?.academic_period_id,
+  });
+
   // Fetch subjects assigned to the exam's class (falls back to all school subjects)
   const { data: subjects = [] } = useQuery({
     queryKey: ["exam-subjects", exam?.class_id, schoolId],
@@ -187,6 +201,50 @@ export default function ExamDetail() {
     },
     enabled: !!id,
   });
+
+  // Attendance for the exam's class over the exam's term, so results can be read
+  // alongside how often each student actually attended.
+  const { data: attendance = [] } = useQuery({
+    queryKey: ["exam-attendance", exam?.class_id, exam?.academic_period_id],
+    queryFn: async () => {
+      if (!exam?.class_id) return [];
+      let q = supabase
+        .from("attendance_records")
+        .select("student_id, status, date")
+        .eq("class_id", exam.class_id);
+      if (period?.start_date && period?.end_date) {
+        q = q.gte("date", period.start_date).lte("date", period.end_date);
+      }
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: !!exam?.class_id,
+  });
+
+  // Approvals raised against this exam (e.g. score changes needing sign-off).
+  const { data: approvals = [] } = useQuery({
+    queryKey: ["exam-approvals", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("approval_requests")
+        .select("id, type, description, status, amount, created_at, review_notes")
+        .eq("reference_type", "exam")
+        .eq("reference_id", id!)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const attendanceByStudent = useMemo(() => {
+    const map: Record<string, { present: number; total: number }> = {};
+    for (const r of attendance) {
+      if (!map[r.student_id]) map[r.student_id] = { present: 0, total: 0 };
+      map[r.student_id].total += 1;
+      if (r.status === "present" || r.status === "late") map[r.student_id].present += 1;
+    }
+    return map;
+  }, [attendance]);
 
   // Initialize scores map from existing data
   useEffect(() => {
@@ -371,6 +429,7 @@ export default function ExamDetail() {
                   ))}
                   <TableHead className="text-center min-w-[80px]">Average</TableHead>
                   <TableHead className="text-center min-w-[60px]">Grade</TableHead>
+                  <TableHead className="text-center min-w-[110px]">Attendance</TableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
@@ -410,6 +469,13 @@ export default function ExamDetail() {
                           {grade}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-center text-sm text-muted-foreground">
+                        {(() => {
+                          const att = attendanceByStudent[student.id];
+                          if (!att || att.total === 0) return "—";
+                          return `${Math.round((att.present / att.total) * 100)}% (${att.present}/${att.total})`;
+                        })()}
+                      </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setReportCardStudent(student.id)}>
                           <Printer className="mr-1 h-3 w-3" /> Report
@@ -423,6 +489,50 @@ export default function ExamDetail() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Linked Approvals</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {approvals.length === 0 ? (
+            <p className="px-6 pb-6 text-sm text-muted-foreground">
+              No approval requests are linked to this exam.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Raised</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvals.map((a) => (
+                    <TableRow key={a.id} className="cursor-pointer" onClick={() => navigate("/approvals")}>
+                      <TableCell className="capitalize">{a.type.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="text-muted-foreground">{a.description}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={
+                          a.status === "approved" ? "status-paid" : a.status === "rejected" ? "status-overdue" : "status-pending"
+                        }>
+                          {a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {a.created_at ? new Date(a.created_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
