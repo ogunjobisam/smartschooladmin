@@ -22,15 +22,33 @@ serve(async (req) => {
     const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
     if (!user) throw new Error("Unauthorized");
 
-    // Onboarding runs once per user. Re-running it (a double submit, a stale tab)
-    // would otherwise leave orphaned organisations behind.
-    const { data: existingRole } = await supabase
+    // Onboarding runs once per user. Re-running it (a double submit, a stale
+    // tab, or a first attempt that appeared to fail) would otherwise leave
+    // orphaned organisations behind.
+    //
+    // This checks for *any* role row, not just one carrying an org_id, and it
+    // counts every row rather than reading an arbitrary one. The old version
+    // did both: `.limit(1).maybeSingle()` with no order picked whichever row
+    // Postgres reached first, so an account holding a role row with a null
+    // org_id sailed past the guard and built a second organisation — which is
+    // unreachable, because the interface has a school switcher and no
+    // organisation switcher.
+    const { data: existingRoles, error: existingErr } = await supabase
       .from("user_roles")
-      .select("org_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    if (existingRole?.org_id) throw new Error("This account already belongs to an organisation");
+      .select("id, org_id")
+      .eq("user_id", user.id);
+    if (existingErr) throw existingErr;
+
+    if (existingRoles && existingRoles.length > 0) {
+      const withOrg = existingRoles.find((r) => r.org_id);
+      if (withOrg) throw new Error("This account already belongs to an organisation");
+      // A role row with no organisation behind it. Creating a second
+      // organisation would strand this one; it needs repairing instead.
+      throw new Error(
+        "This account already has a role, but it is not attached to an organisation. " +
+        "Ask an administrator to reissue your access rather than setting up again."
+      );
+    }
 
     const { orgName, country, currency, schoolName, campusName, academicYear, terms, classes: customClasses } = await req.json();
     if (!orgName || !schoolName) throw new Error("orgName and schoolName required");

@@ -274,6 +274,60 @@ real new signup still goes to onboarding as before.
 
 ---
 
+## If saving appears to work but nothing changes
+
+Everything is linked. What used to go wrong is that the app and the database
+could disagree about **which organisation you are in**.
+
+Three functions each answered that question, and two of them answered it with
+`LIMIT 1` and no `ORDER BY`:
+
+| Function | Read by |
+| --- | --- |
+| `get_my_role()` | `AuthContext` — decides `orgId` and `schoolId` for every query the app sends |
+| `get_user_org_id()` | 212 references across the row-level security policies |
+| `get_user_school_id()` | the school-scoped policies |
+
+With one role row on your account they agree by luck. With two — a proprietor
+who ran onboarding twice, someone invited to a second school — `LIMIT 1` with
+no `ORDER BY` returns whichever row Postgres reaches first. That is physical
+row order, and it changes after an ordinary `UPDATE` to a role row.
+
+Reproduced against Postgres 16: one `UPDATE` flipped `get_user_org_id()` to the
+second organisation while `get_my_role()` stayed on the first. From then on the
+app filtered every query by org A while the database evaluated org B, so **every
+read came back empty and every write matched no rows**.
+
+And a write that matches no rows is not an error. PostgREST returns
+`{ data: [], error: null }` — a success. So the school name was typed, saved,
+confirmed with a green toast, and never stored.
+
+All three now delegate to one `primary_user_role()`, which prefers a row with an
+organisation, then one with a school, then **the most recently granted**. Most
+recent matters: the old ordering preferred the oldest row, so someone who had
+just created a school was put back into an older, empty one.
+
+Two guards keep it fixed. `scripts/check-migrations.sh` asserts the app and RLS
+resolve the same organisation across repeated rewrites of the role rows, and
+`assertWrote()` (`src/lib/writes.ts`) makes a write that changes nothing report
+a failure instead of a success.
+
+### Repairing an account that already has two
+
+The fix stops new ones appearing and lands you in the newer organisation, but
+the older one is still there. To find affected accounts:
+
+```sql
+SELECT * FROM public.users_with_multiple_roles;
+```
+
+`resolves_to` is the organisation that account will actually land in. The others
+are unreachable — there is a school switcher in the interface but no
+organisation switcher. Delete the stray `user_roles` row (and the empty
+organisation behind it, if nothing else uses it) from the Supabase dashboard.
+
+---
+
 ## Prompt A — the audit (already run)
 
 Kept so it can be re-run after fixes. Paste into Lovable as one message.
