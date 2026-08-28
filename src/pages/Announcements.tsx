@@ -72,6 +72,7 @@ export default function Announcements() {
   const [mode, setMode] = useState<DisplayMode>("one_off");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [isPinned, setIsPinned] = useState(false);
 
   // Edit / remove state
   const [editing, setEditing] = useState<AnnouncementRow | null>(null);
