@@ -29,7 +29,9 @@ const PAGE_SIZE = 20;
 
 export default function Students() {
   const navigate = useNavigate();
-  const { schoolId } = useAuth();
+  const { schoolId, userRole } = useAuth();
+  // Teachers read the register; they do not create, import or promote students.
+  const canManage = canManageStudents(userRole);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<Enums<"student_status"> | "all">("all");
