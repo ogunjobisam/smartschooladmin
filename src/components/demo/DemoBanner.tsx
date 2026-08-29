@@ -17,6 +17,7 @@ export function DemoBanner() {
   const { orgId, signOut } = useAuth();
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
+  const [ending, setEnding] = useState(false);
 
   const { data: demo } = useQuery({
     queryKey: ["demo-org", orgId],
@@ -52,8 +53,6 @@ export function DemoBanner() {
   }, [expiresAt, now, signOut, navigate]);
 
   if (!expiresAt) return null;
-
-  const [ending, setEnding] = useState(false);
 
   const endDemo = async () => {
     setEnding(true);
