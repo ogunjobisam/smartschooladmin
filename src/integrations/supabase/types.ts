@@ -738,6 +738,42 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_cleanup_log: {
+        Row: {
+          error: string | null
+          expired_at: string | null
+          id: string
+          org_id: string
+          org_name: string | null
+          reason: string
+          removed: Json
+          swept_at: string
+          total_rows_removed: number
+        }
+        Insert: {
+          error?: string | null
+          expired_at?: string | null
+          id?: string
+          org_id: string
+          org_name?: string | null
+          reason?: string
+          removed?: Json
+          swept_at?: string
+          total_rows_removed?: number
+        }
+        Update: {
+          error?: string | null
+          expired_at?: string | null
+          id?: string
+          org_id?: string
+          org_name?: string | null
+          reason?: string
+          removed?: Json
+          swept_at?: string
+          total_rows_removed?: number
+        }
+        Relationships: []
+      }
       document_files: {
         Row: {
           category: string | null
@@ -3246,6 +3282,7 @@ export type Database = {
         Returns: Json
       }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
+      demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
@@ -3335,6 +3372,7 @@ export type Database = {
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
     }
