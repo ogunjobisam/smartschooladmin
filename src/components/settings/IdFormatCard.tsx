@@ -332,7 +332,11 @@ function EntityFormat({ entity, schoolId, schoolName, orgId, canManage, saved, c
         </div>
         <div className="space-y-2">
           <Label>Separator</Label>
-          <Select value={form.separator} onValueChange={(v) => setForm((f) => ({ ...f, separator: v }))} disabled={!canManage}>
+          <Select
+            value={form.separator === "" ? NO_SEPARATOR : form.separator}
+            onValueChange={(v) => setForm((f) => ({ ...f, separator: v === NO_SEPARATOR ? "" : v }))}
+            disabled={!canManage}
+          >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {SEPARATORS.map((s) => (
