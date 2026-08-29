@@ -26,7 +26,9 @@ import { EditStudentDialog } from "@/components/forms/EditStudentDialog";
 import { LinkGuardianSection } from "@/components/students/LinkGuardianSection";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { StudentHistoryTab } from "@/components/students/StudentHistoryTab";
-import { printTranscript, printIdCard, TranscriptData } from "@/lib/print-documents";
+import { printTranscript, TranscriptData } from "@/lib/print-documents";
+import { IdCardDialog } from "@/components/id-card/IdCardDialog";
+import { IdCardData } from "@/lib/id-card";
 import { getPhotoUrl } from "@/lib/photos";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { AiInsightPanel } from "@/components/ai/AiInsightPanel";
@@ -54,6 +56,8 @@ export default function StudentDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
+  const [idCard, setIdCard] = useState<IdCardData | null>(null);
+  const [idCardOpen, setIdCardOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ["student", id],
@@ -215,9 +219,9 @@ export default function StudentDetail() {
     });
   };
 
-  const handlePrintIdCard = async () => {
+  const handleOpenIdCard = async () => {
     const photoUrl = await getPhotoUrl(student.photo_url);
-    printIdCard({
+    setIdCard({
       schoolName: school?.name || branding.name,
       schoolAddress: school?.address,
       schoolPhone: school?.phone,
@@ -232,7 +236,9 @@ export default function StudentDetail() {
         ...(student.date_of_birth ? [{ label: "Date of birth", value: new Date(student.date_of_birth).toLocaleDateString() }] : []),
         ...(student.gender ? [{ label: "Gender", value: student.gender }] : []),
       ],
+      profileUrl: `${window.location.origin}/students/${student.id}`,
     });
+    setIdCardOpen(true);
   };
 
   return (
@@ -277,7 +283,7 @@ export default function StudentDetail() {
               hasLogin={!!student.user_id}
             />
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintTranscript}><Printer className="h-3.5 w-3.5" /> Transcript</Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleOpenIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setStatementOpen(true)}><Receipt className="h-3.5 w-3.5" /> Statement</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setLetterOpen(true)}><FileText className="h-3.5 w-3.5" /> Letter home</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Student</Button>
@@ -551,6 +557,9 @@ export default function StudentDetail() {
           balance: Math.max(totalBilled - totalPaid, 0),
         }]}
       />
+      {idCard && (
+        <IdCardDialog open={idCardOpen} onOpenChange={setIdCardOpen} data={idCard} />
+      )}
     </div>
   );
 }
