@@ -65,12 +65,15 @@ export function DemoBanner() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-accent/10 px-4 py-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-accent/10 px-4 py-2 text-xs sm:text-sm">
       <FlaskConical className="h-4 w-4 shrink-0 text-accent" />
       <span className="font-medium">Demo session</span>
-      <span className="text-muted-foreground">
+      {/* The long explanation eats a third of a phone screen; the timer and the
+          exit are what matter on mobile. */}
+      <span className="hidden text-muted-foreground md:inline">
         Sample data only — this sandbox and everything you change in it is deleted when the timer ends.
       </span>
+      <span className="text-muted-foreground md:hidden">Sample data only.</span>
       <span className="ml-auto flex items-center gap-3">
         <span className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />

@@ -681,6 +681,99 @@ export type Database = {
           },
         ]
       }
+      client_errors: {
+        Row: {
+          error_name: string | null
+          fingerprint: string
+          id: string
+          kind: string
+          message: string
+          occurred_at: string
+          org_id: string | null
+          release: string | null
+          route: string
+          school_id: string | null
+          stack: string | null
+          status_code: number | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          error_name?: string | null
+          fingerprint: string
+          id?: string
+          kind?: string
+          message: string
+          occurred_at?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          school_id?: string | null
+          stack?: string | null
+          status_code?: number | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          error_name?: string | null
+          fingerprint?: string
+          id?: string
+          kind?: string
+          message?: string
+          occurred_at?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          school_id?: string | null
+          stack?: string | null
+          status_code?: number | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
+      demo_cleanup_log: {
+        Row: {
+          error: string | null
+          expired_at: string | null
+          id: string
+          org_id: string
+          org_name: string | null
+          reason: string
+          removed: Json
+          swept_at: string
+          total_rows_removed: number
+        }
+        Insert: {
+          error?: string | null
+          expired_at?: string | null
+          id?: string
+          org_id: string
+          org_name?: string | null
+          reason?: string
+          removed?: Json
+          swept_at?: string
+          total_rows_removed?: number
+        }
+        Update: {
+          error?: string | null
+          expired_at?: string | null
+          id?: string
+          org_id?: string
+          org_name?: string | null
+          reason?: string
+          removed?: Json
+          swept_at?: string
+          total_rows_removed?: number
+        }
+        Relationships: []
+      }
       document_files: {
         Row: {
           category: string | null
@@ -789,6 +882,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      error_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          error_count: number
+          fingerprint: string
+          first_seen_at: string
+          id: string
+          kind: string
+          last_seen_at: string
+          message: string
+          org_id: string | null
+          release: string | null
+          route: string
+          status_code: number | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          error_count?: number
+          fingerprint: string
+          first_seen_at?: string
+          id?: string
+          kind: string
+          last_seen_at?: string
+          message: string
+          org_id?: string | null
+          release?: string | null
+          route: string
+          status_code?: number | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          error_count?: number
+          fingerprint?: string
+          first_seen_at?: string
+          id?: string
+          kind?: string
+          last_seen_at?: string
+          message?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          status_code?: number | null
+        }
+        Relationships: []
       }
       event_rsvps: {
         Row: {
@@ -3141,6 +3282,7 @@ export type Database = {
         Returns: Json
       }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
+      demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
@@ -3230,6 +3372,7 @@ export type Database = {
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
     }

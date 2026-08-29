@@ -24,7 +24,7 @@ const PAGE_SIZE = 20;
 export default function Invoices() {
   const navigate = useNavigate();
   const { schoolId } = useAuth();
-  const { formatMoney } = useCurrency();
+  const { formatMoney, formatMoneyCompact } = useCurrency();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Enums<"invoice_status"> | "all">("all");
   const [page, setPage] = useState(0);
@@ -84,10 +84,10 @@ export default function Invoices() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs">Invoice #</TableHead>
+              <TableHead className="hidden text-xs sm:table-cell">Invoice #</TableHead>
               <TableHead className="text-xs">Student</TableHead>
               <TableHead className="text-xs text-right">Amount</TableHead>
-              <TableHead className="text-xs text-right">Paid</TableHead>
+              <TableHead className="hidden text-xs text-right md:table-cell">Paid</TableHead>
               <TableHead className="text-xs text-right">Balance</TableHead>
               <TableHead className="text-xs">Status</TableHead>
             </TableRow>
@@ -111,11 +111,14 @@ export default function Invoices() {
                 const studentName = student ? `${student.first_name} ${student.last_name}` : "—";
                 return (
                   <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{inv.invoice_number}</TableCell>
-                    <TableCell className="font-medium">{studentName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.amount_paid)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoney(inv.total_amount - inv.amount_paid)}</TableCell>
+                    <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">{inv.invoice_number}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="block max-w-[9rem] truncate sm:max-w-none">{studentName}</span>
+                      <span className="block font-mono text-[11px] text-muted-foreground sm:hidden">{inv.invoice_number}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoneyCompact(inv.total_amount)}</TableCell>
+                    <TableCell className="hidden text-right font-mono text-sm tabular-nums md:table-cell">{formatMoney(inv.amount_paid)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm tabular-nums">{formatMoneyCompact(inv.total_amount - inv.amount_paid)}</TableCell>
                     <TableCell><StatusBadge status={inv.status} /></TableCell>
                   </TableRow>
                 );

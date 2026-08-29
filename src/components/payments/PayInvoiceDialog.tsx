@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2, CreditCard, CheckCircle } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { generatePaymentReference } from "@/lib/payment-providers";
+import { getErrorMessage } from "@/lib/errors";
 import type { Enums } from "@/integrations/supabase/types";
 
 interface PayInvoiceDialogProps {
@@ -46,12 +47,17 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
     const reference = generatePaymentReference();
 
     // Create payment transaction record
+    // The database knows three gateways: paystack, flutterwave and manual.
+    // The simulated demo payment is a manual one.
+    const gatewayValue: Enums<"payment_gateway"> =
+      gateway === "mock" ? "manual" : (gateway as Enums<"payment_gateway">);
+
     const { error: txError } = await supabase.from("payment_transactions").insert({
       school_id: invoice.school_id,
       student_id: invoice.student_id,
       invoice_id: invoice.id,
       amount: payAmount,
-      gateway: gateway as Enums<"payment_gateway">,
+      gateway: gatewayValue,
       gateway_reference: reference,
       status: "initiated",
       payer_name: user.user_metadata?.full_name || user.email,
@@ -59,7 +65,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
     });
 
     if (txError) {
-      toast.error("Failed to initiate payment");
+      toast.error(getErrorMessage(txError) || "Failed to initiate payment");
       setStatus("idle");
       return;
     }
@@ -82,7 +88,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
         payment_method: "online",
         reference_number: reference,
         recorded_by: user.id,
-        notes: `Online payment via ${gateway} — ${invoice.invoice_number}`,
+        notes: `Online payment via ${gateway === "mock" ? "demo (simulated)" : gateway} — ${invoice.invoice_number}`,
       }).select("id").single();
 
       // Allocate to invoice
@@ -130,7 +136,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" /> Pay Invoice {invoice.invoice_number}

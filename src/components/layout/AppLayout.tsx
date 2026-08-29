@@ -45,7 +45,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <InstallPrompt />
 
           {(pendingCount ?? 0) > 0 && (
-            <div className="flex items-center gap-2 border-b bg-warning/10 px-4 py-2 text-sm text-warning-foreground">
+            <div className="flex flex-wrap items-center gap-2 border-b bg-warning/10 px-4 py-2 text-xs text-warning-foreground sm:text-sm">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <span>
                 You have <strong>{pendingCount} pending approvals</strong> requiring your review.
@@ -56,7 +56,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+          {/* One scroller only: an inner overflow-y-auto here fought the window
+              scroll and gave phones two nested scrollbars. */}
+          <main className="flex-1 overflow-x-hidden p-4 md:p-6">
             {children}
           </main>
         </div>
