@@ -56,6 +56,8 @@ export default function StudentDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
+  const [idCard, setIdCard] = useState<IdCardData | null>(null);
+  const [idCardOpen, setIdCardOpen] = useState(false);
 
   const { data: student, isLoading } = useQuery({
     queryKey: ["student", id],
@@ -555,6 +557,9 @@ export default function StudentDetail() {
           balance: Math.max(totalBilled - totalPaid, 0),
         }]}
       />
+      {idCard && (
+        <IdCardDialog open={idCardOpen} onOpenChange={setIdCardOpen} data={idCard} />
+      )}
     </div>
   );
 }

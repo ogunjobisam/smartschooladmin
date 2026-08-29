@@ -38,6 +38,8 @@ export default function StaffDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [salaryChangeOpen, setSalaryChangeOpen] = useState(false);
   const [payrollProfileOpen, setPayrollProfileOpen] = useState(false);
+  const [idCard, setIdCard] = useState<IdCardData | null>(null);
+  const [idCardOpen, setIdCardOpen] = useState(false);
   const canRequestSalaryChange = userRole === "super_admin" || userRole === "proprietor" || userRole === "bursar" || userRole === "hr_admin";
 
   const { data: staff, isLoading } = useQuery({
@@ -322,6 +324,9 @@ export default function StaffDetail() {
           schoolId={schoolId}
           currentValues={pp || {}}
         />
+      )}
+      {idCard && (
+        <IdCardDialog open={idCardOpen} onOpenChange={setIdCardOpen} data={idCard} />
       )}
     </div>
   );
