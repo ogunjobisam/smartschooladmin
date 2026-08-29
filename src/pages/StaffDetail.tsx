@@ -11,7 +11,8 @@ import { PhotoUpload } from "@/components/common/PhotoUpload";
 import { schoolPhotoPath } from "@/lib/photos";
 import { canManageStaff } from "@/lib/access";
 import { getPhotoUrl } from "@/lib/photos";
-import { printIdCard } from "@/lib/print-documents";
+import { IdCardDialog } from "@/components/id-card/IdCardDialog";
+import { IdCardData } from "@/lib/id-card";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -110,9 +111,9 @@ export default function StaffDetail() {
   const salary = calculatePayrollLine(pp || {});
   const { gross: grossPay, pension: pensionDeduction, tax: taxDeduction, netPay } = salary;
 
-  const handlePrintIdCard = async () => {
+  const handleOpenIdCard = async () => {
     const photoUrl = await getPhotoUrl(staff.photo_url);
-    printIdCard({
+    setIdCard({
       schoolName: staff.schools?.name || branding.name,
       logoUrl: branding.logoUrl,
       primaryColor: branding.primaryColor,
@@ -125,7 +126,9 @@ export default function StaffDetail() {
         ...(staff.phone ? [{ label: "Phone", value: staff.phone }] : []),
         ...(staff.employment_date ? [{ label: "Since", value: new Date(staff.employment_date).toLocaleDateString() }] : []),
       ],
+      profileUrl: `${window.location.origin}/staff/${staff.id}`,
     });
+    setIdCardOpen(true);
   };
 
   return (
@@ -165,7 +168,7 @@ export default function StaffDetail() {
           </div>
           <div className="flex gap-2">
             <InviteStaffButton staffId={staff.id} staffName={`${staff.first_name} ${staff.last_name}`} staffEmail={staff.email} hasUserId={!!staff.user_id} />
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrintIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleOpenIdCard}><IdCard className="h-3.5 w-3.5" /> ID card</Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}><Edit className="h-3.5 w-3.5" /> Edit Staff</Button>
           </div>
         </div>
