@@ -85,7 +85,7 @@ export default function InvoiceDetail() {
 
   if (isLoading || !invoice) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-40 w-full" />
       </div>
@@ -142,7 +142,7 @@ export default function InvoiceDetail() {
         <span className="text-sm font-medium">{invoice.invoice_number}</span>
       </div>
 
-      <div className="rounded-lg border bg-card p-6">
+      <div className="rounded-lg border bg-card p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export default function InvoiceDetail() {
             <p className="text-sm text-muted-foreground">{studentName} ({student?.student_id_number || "—"}) • {className}</p>
             <p className="text-sm text-muted-foreground">{invoice.schools?.name || "—"}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
               <Printer className="h-3.5 w-3.5" /> Print or save as PDF
             </Button>

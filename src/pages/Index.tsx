@@ -30,7 +30,7 @@ function greeting() {
 export default function Dashboard() {
   const { user, orgId, schoolId, userRole } = useAuth();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
-  const { formatMoney } = useCurrency();
+  const { formatMoney, formatMoneyCompact } = useCurrency();
   // Parents and students each have their own portal; the school dashboard is
   // not theirs to see.
   const portalPath = portalPathForRole(userRole);
@@ -170,8 +170,8 @@ export default function Dashboard() {
         ) : (
           <>
             <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" />
-            <StatCard title="Fees Collected" value={formatMoney(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
-            <StatCard title="Outstanding Fees" value={formatMoney(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
+            <StatCard title="Fees Collected" value={formatMoneyCompact(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
+            <StatCard title="Outstanding Fees" value={formatMoneyCompact(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
             {canReviewApprovals && (
               <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
             )}
