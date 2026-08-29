@@ -603,3 +603,330 @@ export async function sendRecognitionNotifications(params: {
 
   return { sent: uniqueUsers.length, queued };
 }
+
+/* ------------------------------------------------------------------ *
+ * Scheduled invoice reminders
+ * ------------------------------------------------------------------ */
+
+interface DeliverySetting {
+  in_app_frequency: string;
+  email_frequency: string;
+  sms_frequency: string;
+  quiet_hours_enabled: boolean;
+  quiet_start: string;
+  quiet_end: string;
+}
+
+const DEFAULT_DELIVERY: DeliverySetting = {
+  in_app_frequency: "immediate",
+  email_frequency: "immediate",
+  sms_frequency: "immediate",
+  quiet_hours_enabled: false,
+  quiet_start: "21:00",
+  quiet_end: "07:00",
+};
+
+function minutesOfDay(time: string): number {
+  const [h, m] = time.split(":").map((n) => Number(n) || 0);
+  return h * 60 + m;
+}
+
+function atTime(base: Date, time: string, addDays = 0): Date {
+  const d = new Date(base);
+  const [h, m] = time.split(":").map((n) => Number(n) || 0);
+  d.setDate(d.getDate() + addDays);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/**
+ * When may we send this person a message?
+ *
+ * `null` means "now". A digest frequency defers to the next morning or the start
+ * of next week, and quiet hours push a send past the end of the quiet window, so
+ * nobody's phone buzzes at 3am because a due date rolled over.
+ */
+export function nextSendTime(setting: DeliverySetting, channel: "email" | "sms", now = new Date()): string | null | false {
+  const frequency = channel === "email" ? setting.email_frequency : setting.sms_frequency;
+  if (frequency === "off") return false;
+
+  let candidate: Date | null = null;
+  if (frequency === "daily") candidate = atTime(now, "08:00", now.getHours() >= 8 ? 1 : 0);
+  if (frequency === "weekly") {
+    const daysToMonday = (8 - now.getDay()) % 7 || 7;
+    candidate = atTime(now, "08:00", daysToMonday);
+  }
+
+  if (setting.quiet_hours_enabled) {
+    const check = candidate ?? now;
+    const mins = check.getHours() * 60 + check.getMinutes();
+    const start = minutesOfDay(setting.quiet_start);
+    const end = minutesOfDay(setting.quiet_end);
+    const inQuiet = start <= end ? mins >= start && mins < end : mins >= start || mins < end;
+    if (inQuiet) {
+      // The quiet window that wraps midnight ends the following morning.
+      const wraps = start > end;
+      const sameDayEnd = mins < end;
+      candidate = atTime(check, setting.quiet_end, wraps && !sameDayEnd ? 1 : 0);
+    }
+  }
+
+  return candidate ? candidate.toISOString() : null;
+}
+
+async function deliverySettings(userIds: string[]): Promise<Map<string, DeliverySetting>> {
+  const map = new Map<string, DeliverySetting>();
+  if (userIds.length === 0) return map;
+  const { data } = await supabase
+    .from("notification_settings")
+    .select("user_id, in_app_frequency, email_frequency, sms_frequency, quiet_hours_enabled, quiet_start, quiet_end")
+    .in("user_id", userIds);
+  for (const row of data || []) {
+    map.set(row.user_id, {
+      in_app_frequency: row.in_app_frequency,
+      email_frequency: row.email_frequency,
+      sms_frequency: row.sms_frequency,
+      quiet_hours_enabled: row.quiet_hours_enabled,
+      quiet_start: row.quiet_start,
+      quiet_end: row.quiet_end,
+    });
+  }
+  return map;
+}
+
+async function channelPreferences(
+  userIds: string[],
+  type: "fee_reminder" | "overdue_reminder",
+): Promise<Map<string, { inApp: boolean; email: boolean; sms: boolean }>> {
+  const map = new Map<string, { inApp: boolean; email: boolean; sms: boolean }>();
+  if (userIds.length === 0) return map;
+  const { data } = await supabase
+    .from("notification_preferences")
+    .select("user_id, channel_in_app, channel_email, channel_sms")
+    .eq("notification_type", type)
+    .in("user_id", userIds);
+  for (const row of data || []) {
+    map.set(row.user_id, {
+      inApp: row.channel_in_app,
+      email: row.channel_email,
+      sms: row.channel_sms,
+    });
+  }
+  return map;
+}
+
+export interface InvoiceReminderOptions {
+  orgId: string;
+  schoolId: string;
+  /** Warn before the due date, chase after it, or both. */
+  scope?: "upcoming" | "overdue" | "both";
+  /** How many days ahead of the due date counts as "upcoming". */
+  daysAhead?: number;
+}
+
+/**
+ * Reminders for invoices that are about to fall due or already have.
+ *
+ * Everything here is opt-out aware: a guardian who muted fee reminders on a
+ * channel gets nothing on that channel, digest settings and quiet hours decide
+ * *when* email/SMS leaves the queue, and the same invoice is never reminded on
+ * twice in one run.
+ */
+export async function sendInvoiceReminders(options: InvoiceReminderOptions) {
+  const scope = options.scope ?? "both";
+  const daysAhead = options.daysAhead ?? 7;
+  const today = new Date();
+  const horizon = new Date(today.getTime() + daysAhead * 86_400_000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  const { data: invoices, error } = await supabase
+    .from("invoices")
+    .select(
+      `id, invoice_number, total_amount, amount_paid, due_date, status, student_id,
+       students!inner(id, first_name, last_name, user_id,
+         student_guardians(guardians(user_id, email, phone, first_name, last_name)))`,
+    )
+    .eq("school_id", options.schoolId)
+    .in("status", ["pending", "overdue"]);
+
+  if (error) {
+    console.error("Failed to load invoices for reminders:", error);
+    return { candidates: 0, sent: 0, queued: 0, skipped: 0 };
+  }
+
+  type Target = {
+    userId: string | null;
+    email: string | null;
+    phone: string | null;
+    invoiceId: string;
+    invoiceNumber: string;
+    studentName: string;
+    balance: number;
+    dueDate: string | null;
+    overdue: boolean;
+  };
+
+  const targets: Target[] = [];
+
+  for (const inv of invoices || []) {
+    const balance = (inv.total_amount || 0) - (inv.amount_paid || 0);
+    if (balance <= 0) continue;
+
+    const overdue = !!inv.due_date && inv.due_date < iso(today);
+    const upcoming = !!inv.due_date && inv.due_date >= iso(today) && inv.due_date <= iso(horizon);
+    if (scope === "overdue" && !overdue) continue;
+    if (scope === "upcoming" && !upcoming) continue;
+    if (scope === "both" && !overdue && !upcoming) continue;
+
+    const student = inv.students as unknown as {
+      first_name: string;
+      last_name: string;
+      user_id: string | null;
+      student_guardians: {
+        guardians: {
+          user_id: string | null;
+          email: string | null;
+          phone: string | null;
+          first_name: string;
+          last_name: string;
+        } | null;
+      }[];
+    };
+    const studentName = `${student.first_name} ${student.last_name}`;
+
+    for (const link of student.student_guardians || []) {
+      const g = link.guardians;
+      if (!g) continue;
+      targets.push({
+        userId: g.user_id,
+        email: g.email,
+        phone: g.phone,
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoice_number,
+        studentName,
+        balance,
+        dueDate: inv.due_date,
+        overdue,
+      });
+    }
+
+    // Older students often manage their own fees; they see it in the app only.
+    if (student.user_id) {
+      targets.push({
+        userId: student.user_id,
+        email: null,
+        phone: null,
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoice_number,
+        studentName,
+        balance,
+        dueDate: inv.due_date,
+        overdue,
+      });
+    }
+  }
+
+  if (targets.length === 0) return { candidates: 0, sent: 0, queued: 0, skipped: 0 };
+
+  const userIds = [...new Set(targets.map((t) => t.userId).filter((id): id is string => !!id))];
+  const [settings, overduePrefs, upcomingPrefs] = await Promise.all([
+    deliverySettings(userIds),
+    channelPreferences(userIds, "overdue_reminder"),
+    channelPreferences(userIds, "fee_reminder"),
+  ]);
+
+  const notifications: Parameters<typeof createBulkNotifications>[0] = [];
+  const rows: {
+    org_id: string;
+    school_id: string;
+    channel: string;
+    recipient: string;
+    subject: string;
+    body: string;
+    status: string;
+    entity_type: string;
+    entity_id: string;
+    scheduled_for: string | null;
+  }[] = [];
+  const seen = new Set<string>();
+  let skipped = 0;
+
+  for (const target of targets) {
+    const type = target.overdue ? "overdue_reminder" : "fee_reminder";
+    const prefs = (target.overdue ? overduePrefs : upcomingPrefs).get(target.userId || "") ?? {
+      inApp: true,
+      email: true,
+      sms: false,
+    };
+    const setting = settings.get(target.userId || "") ?? DEFAULT_DELIVERY;
+
+    const due = target.dueDate ? new Date(target.dueDate).toLocaleDateString() : "shortly";
+    const title = target.overdue
+      ? `Overdue fees for ${target.studentName}`
+      : `Fees due soon for ${target.studentName}`;
+    const message = target.overdue
+      ? `Invoice ${target.invoiceNumber} was due on ${due} and still has an outstanding balance. Please settle it or contact the school office.`
+      : `Invoice ${target.invoiceNumber} is due on ${due}. Please arrange payment before the deadline.`;
+
+    if (target.userId && prefs.inApp && setting.in_app_frequency !== "off") {
+      const key = `app:${target.userId}:${target.invoiceId}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        notifications.push({
+          orgId: options.orgId,
+          schoolId: options.schoolId,
+          userId: target.userId,
+          type: type as NotificationType,
+          title,
+          message,
+          entityType: "invoice",
+          entityId: target.invoiceId,
+        });
+      }
+    } else if (target.userId) {
+      skipped += 1;
+    }
+
+    const queue = (channel: "email" | "sms", recipient: string | null) => {
+      if (!recipient) return;
+      if (channel === "email" && !prefs.email) { skipped += 1; return; }
+      if (channel === "sms" && !prefs.sms) { skipped += 1; return; }
+      const when = nextSendTime(setting, channel);
+      if (when === false) { skipped += 1; return; }
+      const key = `${channel}:${recipient}:${target.invoiceId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      rows.push({
+        org_id: options.orgId,
+        school_id: options.schoolId,
+        channel,
+        recipient,
+        subject: title,
+        body: channel === "sms" ? `${title}. ${message}`.slice(0, 300) : message,
+        status: "queued",
+        entity_type: "invoice",
+        entity_id: target.invoiceId,
+        scheduled_for: when,
+      });
+    };
+
+    queue("email", target.email);
+    queue("sms", target.phone);
+  }
+
+  if (notifications.length > 0) await createBulkNotifications(notifications);
+
+  let queued = 0;
+  if (rows.length > 0) {
+    const { error: queueError } = await supabase.from("outbound_message_queue").insert(rows);
+    if (queueError) console.error("Failed to queue invoice reminders:", queueError);
+    else queued = rows.length;
+  }
+
+  return {
+    candidates: new Set(targets.map((t) => t.invoiceId)).size,
+    sent: notifications.length,
+    queued,
+    skipped,
+  };
+}

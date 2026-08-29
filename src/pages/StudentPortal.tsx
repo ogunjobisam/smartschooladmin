@@ -1,7 +1,7 @@
 import { displayClassName } from "@/lib/sections";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info } from "lucide-react";
+import { CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info, ArrowRight, CalendarClock, FileText } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -22,6 +22,7 @@ import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
+import { StatementDialog } from "@/components/finance/StatementDialog";
 
 /**
  * What a student sees when they sign in.
@@ -32,6 +33,7 @@ import { AchievementHighlights } from "@/components/achievements/AchievementHigh
 export default function StudentPortal() {
   const { user } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const [statementOpen, setStatementOpen] = useState(false);
 
   const { data: student, isLoading: studentLoading } = useQuery({
     queryKey: ["student-portal-self", user?.id],
@@ -70,6 +72,16 @@ export default function StudentPortal() {
   const totalBilled = invoices.reduce((sum, i) => sum + (i.total_amount || 0), 0);
   const totalPaid = invoices.reduce((sum, i) => sum + (i.amount_paid || 0), 0);
   const outstanding = totalBilled - totalPaid;
+
+  /** The soonest deadline that still has money against it — what a student needs to know. */
+  const nextDue = invoices
+    .filter((i) => (i.total_amount || 0) - (i.amount_paid || 0) > 0 && !!i.due_date)
+    .map((i) => i.due_date as string)
+    .sort()[0];
+  const unpaidCount = invoices.filter((i) => (i.total_amount || 0) - (i.amount_paid || 0) > 0).length;
+  const daysToDue = nextDue
+    ? Math.ceil((new Date(nextDue).getTime() - Date.now()) / 86_400_000)
+    : null;
 
   const handlePrintInvoice = async (invoice: (typeof invoices)[number]) => {
     const { data: lineItems } = await supabase
@@ -166,6 +178,49 @@ export default function StudentPortal() {
         />
       </div>
 
+      {/* My fees — the three numbers a student is asked about at home, and a way
+          straight through to the detail. */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-4 w-4 text-accent" /> My fees
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Current balance</p>
+            <p className={`mt-1 font-mono text-xl font-semibold tabular-nums ${outstanding > 0 ? "text-destructive" : "text-success"}`}>
+              {formatMoney(Math.max(outstanding, 0))}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {unpaidCount === 0 ? "Nothing outstanding" : `${unpaidCount} invoice${unpaidCount === 1 ? "" : "s"} to settle`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Next due date</p>
+            <p className="mt-1 flex items-center gap-1.5 text-xl font-semibold tabular-nums">
+              <CalendarClock className="h-4 w-4 text-accent" />
+              {nextDue ? new Date(nextDue).toLocaleDateString() : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {daysToDue === null
+                ? "No upcoming deadline"
+                : daysToDue < 0
+                  ? `${Math.abs(daysToDue)} day${Math.abs(daysToDue) === 1 ? "" : "s"} overdue`
+                  : `In ${daysToDue} day${daysToDue === 1 ? "" : "s"}`}
+            </p>
+          </div>
+          <div className="flex flex-col justify-center gap-2">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <a href="#my-invoices">My invoices <ArrowRight className="h-3.5 w-3.5" /></a>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setStatementOpen(true)}>
+              <FileText className="h-3.5 w-3.5" /> Statement of account
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <NoticeBoard />
 
       {studentId && <TransportRiderCard studentIds={[studentId]} />}
@@ -188,11 +243,14 @@ export default function StudentPortal() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
+      <Card id="my-invoices" className="scroll-mt-24">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Receipt className="h-4 w-4 text-accent" /> Your fees
           </CardTitle>
+          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setStatementOpen(true)}>
+            <FileText className="h-3 w-3" /> Statement
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -284,6 +342,20 @@ export default function StudentPortal() {
           </div>
         </CardContent>
       </Card>
+
+      {student && (
+        <StatementDialog
+          open={statementOpen}
+          onOpenChange={setStatementOpen}
+          students={[{
+            id: student.id,
+            schoolId: student.school_id,
+            name: `${student.first_name} ${student.last_name}`,
+            idNumber: student.student_id_number,
+            className,
+          }]}
+        />
+      )}
     </div>
   );
 }
