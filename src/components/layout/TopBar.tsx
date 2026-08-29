@@ -15,12 +15,12 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card px-4">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 sm:gap-3 sm:px-4">
       <SidebarTrigger className="shrink-0" />
 
       {orgs.length > 1 && (
         <Select value={orgId || ""} onValueChange={setOrgId}>
-          <SelectTrigger className="h-8 w-[190px] text-xs">
+          <SelectTrigger className="h-8 w-[130px] text-xs sm:w-[190px]">
             <SelectValue placeholder="Select organisation" />
           </SelectTrigger>
           <SelectContent>
@@ -33,7 +33,7 @@ export function TopBar() {
 
       {schools.length > 1 && (
         <Select value={schoolId || ""} onValueChange={setSchoolId}>
-          <SelectTrigger className="h-8 w-[220px] text-xs">
+          <SelectTrigger className="h-8 w-[150px] text-xs sm:w-[220px]">
             <SelectValue placeholder="Select School" />
           </SelectTrigger>
           <SelectContent>
@@ -45,7 +45,7 @@ export function TopBar() {
       )}
 
       {schools.length === 1 && (
-        <span className="text-xs font-medium text-muted-foreground">{schools[0].name}</span>
+        <span className="truncate text-xs font-medium text-muted-foreground">{schools[0].name}</span>
       )}
 
       <div className="flex-1" />
