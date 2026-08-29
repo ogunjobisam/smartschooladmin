@@ -33,11 +33,14 @@ interface Props {
   canManage: boolean;
 }
 
+/** Radix forbids an empty option value, so "no separator" travels as a sentinel. */
+const NO_SEPARATOR = "__none__";
+
 const SEPARATORS: { value: string; label: string }[] = [
   { value: "/", label: "Slash  /" },
   { value: "-", label: "Hyphen  -" },
   { value: ".", label: "Dot  ." },
-  { value: "", label: "None" },
+  { value: NO_SEPARATOR, label: "None" },
 ];
 
 const YEAR_LABELS: Record<YearPosition, string> = {
