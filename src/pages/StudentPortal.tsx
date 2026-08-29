@@ -342,6 +342,20 @@ export default function StudentPortal() {
           </div>
         </CardContent>
       </Card>
+
+      {student && (
+        <StatementDialog
+          open={statementOpen}
+          onOpenChange={setStatementOpen}
+          students={[{
+            id: student.id,
+            schoolId: student.school_id,
+            name: `${student.first_name} ${student.last_name}`,
+            idNumber: student.student_id_number,
+            className,
+          }]}
+        />
+      )}
     </div>
   );
 }
