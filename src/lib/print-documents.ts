@@ -424,7 +424,12 @@ export interface IdCardData {
   validUntil?: string | null;
 }
 
-/** Print a wallet-sized (85.6mm x 54mm) identity card, front and back. */
+/**
+ * Print a true CR80 credit-card sized identity card (85.6mm x 54mm).
+ * The page itself is set to the card size so the printer produces a card,
+ * never a small card floating on an A4 sheet. Front prints on page 1,
+ * back on page 2 (feed the same card back in, or print duplex).
+ */
 export function printIdCard(data: IdCardData) {
   const win = window.open("", "_blank");
   if (!win) return;
@@ -433,79 +438,117 @@ export function printIdCard(data: IdCardData) {
   const initials = data.holderName.split(" ").filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   const photoHtml = data.photoUrl
-    ? `<img src="${data.photoUrl}" alt="${data.holderName}" style="height:96px;width:80px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0" />`
-    : `<div style="height:96px;width:80px;border-radius:6px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#475569">${initials}</div>`;
+    ? `<img src="${data.photoUrl}" alt="${data.holderName}" class="photo" />`
+    : `<div class="photo photo-fallback">${initials}</div>`;
 
   const logoHtml = data.logoUrl
-    ? `<img src="${data.logoUrl}" alt="Logo" style="height:28px;width:28px;object-fit:contain;border-radius:4px;background:white" />`
-    : `<div style="height:28px;width:28px;border-radius:4px;background:white;color:${brand};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">${data.schoolName[0]}</div>`;
+    ? `<img src="${data.logoUrl}" alt="" class="logo" />`
+    : `<div class="logo logo-fallback">${data.schoolName[0]}</div>`;
 
   const rows = data.extraRows
-    .map(
-      (r) => `<tr>
-        <td style="padding:1px 0;font-size:8.5px;color:#64748b;white-space:nowrap">${r.label}</td>
-        <td style="padding:1px 0 1px 8px;font-size:9.5px;font-weight:600">${r.value}</td>
-      </tr>`,
-    )
+    .map((r) => `<div class="row"><span class="k">${r.label}</span><span class="v">${r.value}</span></div>`)
     .join("");
 
-  const html = `<!DOCTYPE html><html><head><title>${data.holderKind} ID — ${data.holderName}</title>
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${data.holderKind} ID — ${data.holderName}</title>
 <style>
-  @page { size: auto; margin: 12mm; }
-  @media print { .no-print { display:none } }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color:#0f172a; margin:0; padding:24px; background:#f8fafc }
-  .card { width:85.6mm; height:54mm; border-radius:10px; overflow:hidden; border:1px solid #cbd5e1; background:white; box-sizing:border-box }
+  :root { --brand: ${brand}; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color:#0f172a; margin:0; padding:28px; background:#eef2f7; }
+  .sheet { display:flex; flex-wrap:wrap; gap:18px; }
+  .card {
+    width:85.6mm; height:54mm; border-radius:3.2mm; overflow:hidden; background:#fff;
+    position:relative; box-shadow:0 6px 20px rgba(15,23,42,.18);
+  }
+
+  /* ---------- front ---------- */
+  .band { height:15mm; background:linear-gradient(135deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 62%, #000) 100%); color:#fff; padding:2.6mm 4mm; display:flex; align-items:center; gap:2.6mm; }
+  .band:after { content:""; position:absolute; top:-6mm; right:-8mm; width:26mm; height:26mm; border-radius:50%; background:rgba(255,255,255,.12); }
+  .logo { height:9mm; width:9mm; object-fit:contain; border-radius:1.6mm; background:#fff; flex:none; }
+  .logo-fallback { display:flex; align-items:center; justify-content:center; color:var(--brand); font-weight:800; font-size:11pt; }
+  .school { margin:0; font-size:8.4pt; font-weight:800; line-height:1.15; letter-spacing:.01em; }
+  .kind { margin:.3mm 0 0; font-size:5.6pt; letter-spacing:.16em; text-transform:uppercase; opacity:.9; }
+  .body { padding:3.4mm 4mm; display:flex; gap:3.4mm; height:calc(54mm - 15mm - 5mm); }
+  .photo { height:26mm; width:21mm; object-fit:cover; border-radius:1.6mm; border:.4mm solid #fff; box-shadow:0 0 0 .3mm #cbd5e1; flex:none; }
+  .photo-fallback { display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#475569; font-size:16pt; font-weight:800; }
+  .name { margin:0; font-size:10.5pt; font-weight:800; line-height:1.15; }
+  .sub { margin:.6mm 0 2.2mm; font-size:6.8pt; color:#64748b; }
+  .idbox { display:inline-block; padding:.8mm 2mm; border-radius:1.2mm; background:color-mix(in srgb, var(--brand) 10%, #fff); border:.25mm solid color-mix(in srgb, var(--brand) 28%, #fff); margin-bottom:1.6mm; }
+  .idbox .k { display:block; font-size:5.2pt; letter-spacing:.14em; text-transform:uppercase; color:#64748b; }
+  .idbox .v { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:8.6pt; font-weight:700; color:var(--brand); }
+  .row { display:flex; gap:2mm; align-items:baseline; }
+  .row .k { font-size:5.8pt; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; min-width:14mm; }
+  .row .v { font-size:6.9pt; font-weight:600; }
+  .foot { position:absolute; left:0; right:0; bottom:0; height:5mm; background:#f1f5f9; border-top:.25mm solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; padding:0 4mm; font-size:5.4pt; color:#64748b; letter-spacing:.06em; text-transform:uppercase; }
+
+  /* ---------- back ---------- */
+  .back { padding:4mm; display:flex; flex-direction:column; justify-content:space-between; }
+  .stripe { position:absolute; top:6mm; left:0; right:0; height:8mm; background:#0f172a; }
+  .back-inner { margin-top:16mm; }
+  .back h4 { margin:0 0 1.2mm; font-size:6.4pt; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); }
+  .back p { margin:0; font-size:5.9pt; color:#475569; line-height:1.5; }
+  .sign { display:flex; align-items:flex-end; justify-content:space-between; gap:3mm; }
+  .sign .line { flex:1; border-bottom:.3mm solid #94a3b8; height:5mm; }
+  .sign small { font-size:5.2pt; color:#94a3b8; display:block; margin-top:.8mm; letter-spacing:.08em; text-transform:uppercase; }
+  .valid { font-size:5.6pt; color:#64748b; white-space:nowrap; text-align:right; }
+
+  .no-print { margin-top:22px; }
+  .hint { font-size:12px; color:#64748b; margin:10px 0 0; }
+
+  @page { size: 85.6mm 54mm; margin: 0; }
+  @media print {
+    body { background:#fff; padding:0; margin:0; }
+    .sheet { display:block; gap:0; }
+    .no-print, .hint { display:none !important; }
+    .card { box-shadow:none; border-radius:0; width:85.6mm; height:54mm; page-break-after:always; break-after:page; }
+    .card:last-child { page-break-after:auto; break-after:auto; }
+  }
 </style></head><body>
-  <div style="display:flex;flex-wrap:wrap;gap:16px">
-    <!-- Front -->
+  <div class="sheet">
     <div class="card">
-      <div style="background:${brand};color:white;padding:6px 10px;display:flex;align-items:center;gap:8px">
+      <div class="band">
         ${logoHtml}
         <div style="min-width:0">
-          <p style="margin:0;font-size:10px;font-weight:700;line-height:1.2">${data.schoolName}</p>
-          <p style="margin:0;font-size:7.5px;opacity:.85">${data.holderKind} Identity Card</p>
+          <p class="school">${data.schoolName}</p>
+          <p class="kind">${data.holderKind} Identity Card</p>
         </div>
       </div>
-      <div style="padding:8px 10px;display:flex;gap:10px">
+      <div class="body">
         ${photoHtml}
         <div style="min-width:0;flex:1">
-          <p style="margin:0;font-size:12px;font-weight:800;line-height:1.2">${data.holderName}</p>
-          <p style="margin:1px 0 6px;font-size:9px;color:#64748b">${data.subtitle}</p>
-          <table style="border-collapse:collapse">
-            <tr>
-              <td style="padding:1px 0;font-size:8.5px;color:#64748b">ID No.</td>
-              <td style="padding:1px 0 1px 8px;font-size:9.5px;font-weight:700;font-family:monospace">${data.idNumber}</td>
-            </tr>
-            ${rows}
-          </table>
+          <p class="name">${data.holderName}</p>
+          <p class="sub">${data.subtitle}</p>
+          <div class="idbox"><span class="k">ID Number</span><span class="v">${data.idNumber}</span></div>
+          ${rows}
         </div>
+      </div>
+      <div class="foot">
+        <span>${data.validUntil ? `Valid until ${data.validUntil}` : "Property of the school"}</span>
+        <span>${data.holderKind}</span>
       </div>
     </div>
 
-    <!-- Back -->
-    <div class="card" style="padding:10px;display:flex;flex-direction:column;justify-content:space-between">
-      <div>
-        <p style="margin:0 0 4px;font-size:9px;font-weight:700">Conditions of use</p>
-        <p style="margin:0;font-size:7.5px;color:#475569;line-height:1.45">
-          This card remains the property of ${data.schoolName} and must be carried on school premises
-          at all times. It is not transferable. If found, please return it to the school office
-          ${data.schoolAddress ? `at ${data.schoolAddress}` : ""}${data.schoolPhone ? ` or call ${data.schoolPhone}` : ""}.
+    <div class="card back">
+      <div class="stripe"></div>
+      <div class="back-inner">
+        <h4>Conditions of use</h4>
+        <p>
+          This card remains the property of ${data.schoolName} and must be carried on school premises at all
+          times. It is not transferable. If found, please return it to the school office${data.schoolAddress ? ` at ${data.schoolAddress}` : ""}${data.schoolPhone ? ` or call ${data.schoolPhone}` : ""}.
         </p>
       </div>
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px">
-        <div style="flex:1">
-          <div style="border-bottom:1px solid #94a3b8;height:16px"></div>
-          <p style="margin:2px 0 0;font-size:7px;color:#64748b">Authorised signature</p>
+      <div class="sign">
+        <div>
+          <div class="line"></div>
+          <small>Authorised signature</small>
         </div>
-        <p style="margin:0;font-size:7.5px;color:#64748b;white-space:nowrap">
-          ${data.validUntil ? `Valid until ${data.validUntil}` : ""}
-        </p>
+        <span class="valid">${data.idNumber}${data.validUntil ? `<br/>Valid until ${data.validUntil}` : ""}</span>
       </div>
     </div>
   </div>
 
-  <div class="no-print" style="margin-top:20px">
+  <div class="no-print">
     <button onclick="window.print()" style="padding:10px 24px;background:${brand};color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer">Print ID card</button>
+    <p class="hint">Prints at exact card size (85.6 × 54 mm) — front on page 1, back on page 2. In the print dialog choose scale 100% (not “Fit to page”).</p>
   </div>
 </body></html>`;
 
