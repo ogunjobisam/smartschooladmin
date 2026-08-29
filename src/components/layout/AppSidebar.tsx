@@ -63,8 +63,15 @@ const GROUP_ORDER: NavGroup[] = ["overview", "finance", "communications", "opera
 
 
 export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile, setOpenMobile } = useSidebar();
+  // On a phone the sidebar is a full-width sheet, so labels must always show —
+  // the desktop "collapsed" width has no meaning there.
+  const collapsed = !isMobile && state === "collapsed";
+  // Tapping a link on a phone should take you there, not leave the menu covering
+  // the page you just asked for.
+  const closeOnMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
   const location = useLocation();
   const { user, userRole, signOut } = useAuth();
   const { branding } = useSchoolBranding();
@@ -97,11 +104,12 @@ export function AppSidebar() {
                     <NavLink
                       to={url}
                       end={url === "/"}
+                      onClick={closeOnMobile}
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && <span className="truncate">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -116,7 +124,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <NavLink to={portalPath ?? "/dashboard"} className="flex items-center gap-2.5">
+        <NavLink to={portalPath ?? "/dashboard"} onClick={closeOnMobile} className="flex min-w-0 items-center gap-2.5">
           {branding.logoUrl ? (
             <Avatar className="h-8 w-8 shrink-0 rounded-lg">
               <AvatarImage src={branding.logoUrl} alt={branding.name} />
@@ -130,9 +138,9 @@ export function AppSidebar() {
             </div>
           )}
           {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-accent-foreground">{branding.name}</span>
-              <span className="text-[11px] text-sidebar-muted capitalize">{branding.tagline || userRole?.replace("_", " ") || 'User'}</span>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-sidebar-accent-foreground">{branding.name}</span>
+              <span className="truncate text-[11px] text-sidebar-muted capitalize">{branding.tagline || userRole?.replace("_", " ") || 'User'}</span>
             </div>
           )}
         </NavLink>
@@ -166,7 +174,7 @@ export function AppSidebar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem asChild>
-              <NavLink to={profileLinkForRole(userRole)} className="w-full">Profile &amp; Settings</NavLink>
+              <NavLink to={profileLinkForRole(userRole)} onClick={closeOnMobile} className="w-full">Profile &amp; Settings</NavLink>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
