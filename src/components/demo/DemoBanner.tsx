@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { FlaskConical, Clock } from "lucide-react";
-import {
-  clearDemoSession, formatTimeLeft, requestDemoCleanup,
-} from "@/lib/demo";
+import { clearDemoSession, endDemoSession, formatTimeLeft } from "@/lib/demo";
 
 /**
  * Sits above the app while a demo session is running.
@@ -19,6 +17,7 @@ export function DemoBanner() {
   const { orgId, signOut } = useAuth();
   const navigate = useNavigate();
   const [now, setNow] = useState(() => Date.now());
+  const [ending, setEnding] = useState(false);
 
   const { data: demo } = useQuery({
     queryKey: ["demo-org", orgId],
@@ -46,7 +45,7 @@ export function DemoBanner() {
     if (!expiresAt || expiresAt.getTime() > now) return;
     // Time is up: ask the server to erase the sandbox, then drop the session.
     (async () => {
-      await requestDemoCleanup();
+      await endDemoSession();
       clearDemoSession();
       await signOut();
       navigate("/?demo=expired", { replace: true });
@@ -56,10 +55,13 @@ export function DemoBanner() {
   if (!expiresAt) return null;
 
   const endDemo = async () => {
-    await requestDemoCleanup();
+    setEnding(true);
+    // Delete the sandbox first, while we still hold a session that proves it
+    // is ours; only then drop the login.
+    await endDemoSession();
     clearDemoSession();
     await signOut();
-    navigate("/", { replace: true });
+    navigate("/?demo=ended", { replace: true });
   };
 
   return (
@@ -74,8 +76,8 @@ export function DemoBanner() {
           <Clock className="h-3.5 w-3.5" />
           {formatTimeLeft(expiresAt.getTime() - now)} left
         </span>
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={endDemo}>
-          End demo
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={endDemo} disabled={ending}>
+          {ending ? "Ending…" : "End demo"}
         </Button>
       </span>
     </div>

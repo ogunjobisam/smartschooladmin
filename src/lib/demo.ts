@@ -80,6 +80,22 @@ export async function requestDemoCleanup() {
   }
 }
 
+/**
+ * Ends this visitor's demo now: the server deletes the sandbox organisation,
+ * everything seeded or typed into it, and the throwaway login itself. Falls
+ * back to the expiry sweep if the call fails.
+ */
+export async function endDemoSession(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke("start-demo", { body: { action: "end" } });
+    if (error || data?.error) throw error ?? new Error(data.error);
+    return true;
+  } catch {
+    await requestDemoCleanup();
+    return false;
+  }
+}
+
 /** "3h 12m" — how long is left on a demo session. */
 export function formatTimeLeft(ms: number): string {
   if (ms <= 0) return "0m";
