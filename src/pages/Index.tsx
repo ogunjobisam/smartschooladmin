@@ -132,18 +132,18 @@ export default function Dashboard() {
   if (portalPath) return <Navigate to={portalPath} replace />;
 
   return (
-    <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-accent/5 to-background p-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-accent/5 to-background p-4 sm:p-6">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-accent">
               <Sparkles className="h-3.5 w-3.5" /> Today at a glance
             </p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               {greeting()}, {displayName.split(' ')[0]}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="hidden text-sm text-muted-foreground sm:block">
               Fees, results, people and celebrations — all in one place.
             </p>
           </div>
@@ -159,7 +159,7 @@ export default function Dashboard() {
       <OnboardingChecklist />
 
       {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-lg border bg-card p-5">
@@ -180,7 +180,7 @@ export default function Dashboard() {
       </div>
 
       {quickLinks.length > 0 && (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {quickLinks.map((item) => (
             <Link
               key={item.key}
@@ -194,13 +194,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
         <UpcomingEvents limit={3} />
         <AchievementHighlights limit={4} />
       </div>
 
       {/* Bottom Row */}
-      <div className="grid gap-6 xl:grid-cols-5">
+      <div className="grid gap-4 sm:gap-6 xl:grid-cols-5">
         {/* Pending Approvals */}
         {canReviewApprovals && (
         <div className="rounded-lg border bg-card xl:col-span-3 min-w-0 overflow-hidden">
