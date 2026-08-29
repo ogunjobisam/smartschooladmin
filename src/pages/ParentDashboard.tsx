@@ -25,6 +25,8 @@ import { summariseStudent } from "@/lib/performance";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
+import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -273,7 +275,20 @@ export default function ParentDashboard() {
         />
       )}
 
-      <UpcomingEvents />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <UpcomingEvents />
+        <AchievementHighlights limit={4} title="School achievements" />
+      </div>
+
+      {/* Awards and appointments the school has published for each child. */}
+      {children?.map((child) => (
+        <div key={`awards-${child.id}`} className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">
+            {child.first_name} {child.last_name}
+          </p>
+          <RecognitionsPanel subjectType="student" personId={child.id!} />
+        </div>
+      ))}
 
       {/* Each child's academic performance — the same analysis staff see, for
           their own children only. */}
