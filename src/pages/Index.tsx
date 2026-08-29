@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import { PageHeader } from "@/components/dashboard/PageHeader";
 import { useCurrency } from "@/hooks/use-currency";
 import { canAccessPath, canManageStudents, portalPathForRole } from "@/lib/access";
 import { Skeleton } from "@/components/ui/skeleton";

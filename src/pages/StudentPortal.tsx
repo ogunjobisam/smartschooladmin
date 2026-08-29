@@ -20,6 +20,8 @@ import { printInvoice } from "@/lib/print-documents";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
+import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
 
 /**
  * What a student sees when they sign in.
@@ -168,7 +170,12 @@ export default function StudentPortal() {
 
       {studentId && <TransportRiderCard studentIds={[studentId]} />}
 
-      <UpcomingEvents />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <UpcomingEvents />
+        <AchievementHighlights limit={4} title="School achievements" />
+      </div>
+
+      {studentId && <RecognitionsPanel subjectType="student" personId={studentId} />}
 
       <Card>
         <CardHeader className="pb-2">
