@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   GraduationCap, CreditCard, Users, BarChart3, Shield, Zap, ArrowRight,
@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import heroIllustration from "@/assets/hero-illustration.png";
-import { DEMO_PERSONAS, DEMO_DURATION_HOURS, startDemoSession, type DemoRole } from "@/lib/demo";
+import {
+  DEMO_PERSONAS, DEMO_DURATION_HOURS, startDemoSession, requestDemoCleanup, clearDemoSession,
+  type DemoRole,
+} from "@/lib/demo";
 
 const features = [
   { icon: GraduationCap, title: "Student Management", desc: "Enrol, track, and manage students with class assignments and guardian linking." },
@@ -23,7 +26,15 @@ export default function Landing() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [starting, setStarting] = useState<DemoRole | null>(null);
-  const demoExpired = params.get("demo") === "expired";
+  const demoState = params.get("demo");
+  const demoExpired = demoState === "expired" || demoState === "ended";
+
+  // Sweep any sandbox whose four hours are up — this catches visitors who
+  // simply closed the tab instead of ending their demo.
+  useEffect(() => {
+    clearDemoSession();
+    void requestDemoCleanup();
+  }, []);
 
   /**
    * One click, no sign-up: the server builds a private sandbox school, signs
