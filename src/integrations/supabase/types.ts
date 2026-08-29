@@ -681,6 +681,63 @@ export type Database = {
           },
         ]
       }
+      client_errors: {
+        Row: {
+          error_name: string | null
+          fingerprint: string
+          id: string
+          kind: string
+          message: string
+          occurred_at: string
+          org_id: string | null
+          release: string | null
+          route: string
+          school_id: string | null
+          stack: string | null
+          status_code: number | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          error_name?: string | null
+          fingerprint: string
+          id?: string
+          kind?: string
+          message: string
+          occurred_at?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          school_id?: string | null
+          stack?: string | null
+          status_code?: number | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          error_name?: string | null
+          fingerprint?: string
+          id?: string
+          kind?: string
+          message?: string
+          occurred_at?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          school_id?: string | null
+          stack?: string | null
+          status_code?: number | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
       document_files: {
         Row: {
           category: string | null
@@ -789,6 +846,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      error_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          error_count: number
+          fingerprint: string
+          first_seen_at: string
+          id: string
+          kind: string
+          last_seen_at: string
+          message: string
+          org_id: string | null
+          release: string | null
+          route: string
+          status_code: number | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          error_count?: number
+          fingerprint: string
+          first_seen_at?: string
+          id?: string
+          kind: string
+          last_seen_at?: string
+          message: string
+          org_id?: string | null
+          release?: string | null
+          route: string
+          status_code?: number | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          error_count?: number
+          fingerprint?: string
+          first_seen_at?: string
+          id?: string
+          kind?: string
+          last_seen_at?: string
+          message?: string
+          org_id?: string | null
+          release?: string | null
+          route?: string
+          status_code?: number | null
+        }
+        Relationships: []
       }
       event_rsvps: {
         Row: {
