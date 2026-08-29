@@ -836,7 +836,18 @@ export async function sendInvoiceReminders(options: InvoiceReminderOptions) {
   ]);
 
   const notifications: Parameters<typeof createBulkNotifications>[0] = [];
-  const rows: Record<string, unknown>[] = [];
+  const rows: {
+    org_id: string;
+    school_id: string;
+    channel: string;
+    recipient: string;
+    subject: string;
+    body: string;
+    status: string;
+    entity_type: string;
+    entity_id: string;
+    scheduled_for: string | null;
+  }[] = [];
   const seen = new Set<string>();
   let skipped = 0;
 
