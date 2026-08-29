@@ -38,22 +38,30 @@ async function purgeExpired(admin: AdminClient) {
     .limit(20);
 
   for (const org of expired ?? []) {
-    const orgId = org.id as string;
-    // Collect the throwaway logins before the role rows disappear.
-    const { data: roles } = await admin.from("user_roles").select("user_id").eq("org_id", orgId);
-    const userIds = [...new Set((roles ?? []).map((r) => r.user_id as string))];
-
-    const { error } = await admin.rpc("delete_demo_org", { _org_id: orgId });
-    if (error) {
-      console.error("Could not delete demo org", orgId, error.message);
-      continue;
-    }
-    for (const userId of userIds) {
-      const { error: delErr } = await admin.auth.admin.deleteUser(userId);
-      if (delErr) console.error("Could not delete demo user", userId, delErr.message);
-      await admin.from("profiles").delete().eq("user_id", userId);
-    }
+    await destroyDemoOrg(admin, org.id as string);
   }
+}
+
+/**
+ * Erase one demo sandbox: its data, then the throwaway logins that were only
+ * ever created for it. Used both by the expiry sweep and by "End demo".
+ */
+async function destroyDemoOrg(admin: AdminClient, orgId: string): Promise<boolean> {
+  // Collect the throwaway logins before the role rows disappear.
+  const { data: roles } = await admin.from("user_roles").select("user_id").eq("org_id", orgId);
+  const userIds = [...new Set((roles ?? []).map((r) => r.user_id as string))];
+
+  const { error } = await admin.rpc("delete_demo_org", { _org_id: orgId });
+  if (error) {
+    console.error("Could not delete demo org", orgId, error.message);
+    return false;
+  }
+  for (const userId of userIds) {
+    await admin.from("profiles").delete().eq("user_id", userId);
+    const { error: delErr } = await admin.auth.admin.deleteUser(userId);
+    if (delErr) console.error("Could not delete demo user", userId, delErr.message);
+  }
+  return true;
 }
 
 Deno.serve(async (req) => {
@@ -69,6 +77,41 @@ Deno.serve(async (req) => {
     if (body.action === "cleanup") {
       await purgeExpired(admin);
       return jsonResponse({ success: true });
+    }
+
+    // "End demo" (or a timer that has just run out): delete the caller's own
+    // sandbox immediately, without waiting for the expiry sweep.
+    if (body.action === "end") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      const { data: { user } } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      }).auth.getUser();
+      if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("org_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      const orgId = roleRow?.org_id as string | undefined;
+      if (!orgId) return jsonResponse({ error: "No demo session to end" }, 400);
+
+      // Only ever delete a sandbox — never a real organisation.
+      const { data: org } = await admin
+        .from("organisation_groups")
+        .select("id, is_demo")
+        .eq("id", orgId)
+        .maybeSingle();
+      if (!org?.is_demo) return jsonResponse({ error: "Not a demo organisation" }, 403);
+
+      const deleted = await destroyDemoOrg(admin, orgId);
+      if (!deleted) return jsonResponse({ error: "Could not end the demo" }, 500);
+
+      await purgeExpired(admin);
+      return jsonResponse({ success: true, deleted: true });
     }
 
     const role: DemoRole = DEMO_ROLES.includes(body.role) ? body.role : "proprietor";
