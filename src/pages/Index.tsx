@@ -1,6 +1,6 @@
 import {
   GraduationCap, Receipt, CreditCard,
-  CheckSquare, Clock, FileText, ArrowRight
+  CheckSquare, Clock, FileText, ArrowRight, Medal, Sparkles
 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
+import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
+import { NAV_ITEMS } from "@/lib/access";
 
 function greeting() {
   const hour = new Date().getHours();
@@ -117,6 +119,14 @@ export default function Dashboard() {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  // A short list of the screens this role actually uses, so the dashboard always
+  // offers a way onwards instead of dead-ending on the stats.
+  const quickLinks = NAV_ITEMS.filter(
+    (item) =>
+      ["students", "invoices", "payments", "attendance", "exams", "wall", "reports", "announcements"].includes(item.key) &&
+      canAccessPath(userRole, item.url),
+  ).slice(0, 8);
+
   // This has to come after every hook above: returning early while `userRole`
   // is still resolving would change the hook count between renders and crash
   // the page.
@@ -124,10 +134,27 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`${greeting()}, ${displayName.split(' ')[0]}`}
-        description="Here's an overview of your schools today."
-      />
+      <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-primary/10 via-accent/5 to-background p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-accent">
+              <Sparkles className="h-3.5 w-3.5" /> Today at a glance
+            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {greeting()}, {displayName.split(' ')[0]}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Fees, results, people and celebrations — all in one place.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm" className="gap-1 self-start sm:self-auto">
+            <Link to="/wall">
+              <Medal className="h-4 w-4" /> Achievement wall
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {/* Onboarding Checklist */}
       <OnboardingChecklist />
@@ -153,7 +180,25 @@ export default function Dashboard() {
         )}
       </div>
 
-      <UpcomingEvents limit={3} />
+      {quickLinks.length > 0 && (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          {quickLinks.map((item) => (
+            <Link
+              key={item.key}
+              to={item.url}
+              className="group flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:border-accent/50 hover:bg-accent/5"
+            >
+              <span className="text-sm font-medium text-card-foreground">{item.title}</span>
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <UpcomingEvents limit={3} />
+        <AchievementHighlights limit={4} />
+      </div>
 
       {/* Bottom Row */}
       <div className="grid gap-6 xl:grid-cols-5">
