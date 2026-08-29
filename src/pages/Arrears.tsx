@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-currency";
 import { LetterDialog, type LetterTarget } from "@/components/letters/LetterDialog";
+import { sendInvoiceReminders } from "@/lib/notification-dispatcher";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -29,12 +30,36 @@ export default function Arrears() {
   const [letterTargets, setLetterTargets] = useState<LetterTarget[]>([]);
   const [letterLabel, setLetterLabel] = useState<string>("");
   const [letterOpen, setLetterOpen] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   const openLetters = (targets: LetterTarget[], label: string) => {
     if (targets.length === 0) return;
     setLetterTargets(targets);
     setLetterLabel(label);
     setLetterOpen(true);
+  };
+
+  /** Reminders for everything due soon or already late, honouring each
+      recipient's channel choices, digest frequency and quiet hours. */
+  const handleScheduleReminders = async () => {
+    if (!orgId || !schoolId) return;
+    setScheduling(true);
+    try {
+      const result = await sendInvoiceReminders({ orgId, schoolId, scope: "both", daysAhead: 7 });
+      if (result.candidates === 0) {
+        toast.info("Nothing to remind on — no invoices are due soon or overdue.");
+      } else {
+        toast.success(
+          `${result.candidates} invoice(s): ${result.sent} in-app alert(s), ${result.queued} email/SMS scheduled` +
+            (result.skipped ? `, ${result.skipped} skipped by preference` : ""),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not schedule reminders");
+    } finally {
+      setScheduling(false);
+    }
   };
 
   type OverdueInvoice = NonNullable<NonNullable<typeof data>["overdueInvoices"]>[number];
@@ -114,7 +139,12 @@ export default function Arrears() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Arrears & Controls" description="Monitor overdue balances and manage exceptions." />
+      <PageHeader title="Arrears & Controls" description="Monitor overdue balances and manage exceptions.">
+        <Button variant="outline" size="sm" className="gap-1.5" disabled={scheduling} onClick={handleScheduleReminders}>
+          {scheduling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+          Schedule fee reminders
+        </Button>
+      </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard title="Total Outstanding" value={formatMoney(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />

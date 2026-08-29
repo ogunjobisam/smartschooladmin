@@ -25,7 +25,6 @@ import { summariseStudent } from "@/lib/performance";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
-import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
 import { ChildAchievements } from "@/components/achievements/ChildAchievements";
 import { StatementDialog } from "@/components/finance/StatementDialog";
