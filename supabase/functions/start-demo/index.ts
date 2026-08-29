@@ -40,6 +40,31 @@ async function purgeExpired(admin: AdminClient) {
   for (const org of expired ?? []) {
     await destroyDemoOrg(admin, org.id as string);
   }
+
+  await purgeOrphanDemoUsers(admin);
+}
+
+const DEMO_EMAIL_DOMAIN = "@demo.smartschooladmin.app";
+
+/**
+ * Throwaway demo logins whose sandbox is already gone (e.g. a start that
+ * failed halfway). Only the reserved demo email domain is ever touched.
+ */
+async function purgeOrphanDemoUsers(admin: AdminClient) {
+  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (error) return;
+
+  for (const user of data?.users ?? []) {
+    if (!user.email?.endsWith(DEMO_EMAIL_DOMAIN)) continue;
+    const { count } = await admin
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if ((count ?? 0) > 0) continue;
+    await admin.from("profiles").delete().eq("user_id", user.id);
+    const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
+    if (delErr) console.error("Could not delete orphan demo user", user.id, delErr.message);
+  }
 }
 
 /**
