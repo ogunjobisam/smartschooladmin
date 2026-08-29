@@ -1,4 +1,3 @@
-import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.71.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL = "claude-opus-5";
+const MODEL = "openai/gpt-5.6-sol";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/responses";
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -70,12 +70,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
-      return json(
-        { error: "AI analysis is not configured. Set the ANTHROPIC_API_KEY function secret." },
-        503
-      );
+      return json({ error: "AI analysis is not configured." }, 503);
     }
 
     const authHeader = req.headers.get("Authorization");
@@ -172,24 +169,13 @@ Deno.serve(async (req) => {
       return json({ error: "Too much data for one analysis. Narrow the class or term and try again." }, 413);
     }
 
-    const anthropic = new Anthropic({ apiKey });
     const isReportCard = analysisType === "report_card_comments";
 
     const userPrompt = isReportCard
       ? `School: ${org.name}\n\nStudent results and attendance:\n${summary}`
       : `School: ${org.name}\nCurrency: ${org.currency || "NGN"}\nAnalysis requested: ${analysisType.replace(/_/g, " ")}\n\nData:\n${summary}`;
 
-    let message;
-    try {
-      message = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: isReportCard ? 1024 : 4096,
-        thinking: { type: "adaptive" },
-        output_config: { effort: isReportCard ? "low" : "medium" },
-        system: isReportCard ? REPORT_CARD_SYSTEM : SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
-      });
-    } catch (err) {
+    const logFailure = async (messageText: string) => {
       await admin.from("ai_usage_events").insert({
         org_id: org.id,
         school_id: schoolId,
@@ -197,28 +183,63 @@ Deno.serve(async (req) => {
         analysis_type: analysisType,
         model: MODEL,
         status: "failed",
-        error_message: err instanceof Error ? err.message.slice(0, 500) : "Unknown error",
+        error_message: messageText.slice(0, 500),
       });
-      throw err;
+    };
+
+    let response: Response;
+    try {
+      response = await fetch(AI_GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Lovable-API-Key": apiKey,
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          instructions: isReportCard ? REPORT_CARD_SYSTEM : SYSTEM_PROMPT,
+          input: [{ role: "user", content: userPrompt }],
+          max_output_tokens: isReportCard ? 2048 : 6144,
+          reasoning: { effort: isReportCard ? "low" : "medium" },
+        }),
+      });
+    } catch (err) {
+      const messageText = err instanceof Error ? err.message : "Unknown error";
+      await logFailure(messageText);
+      return json({ error: "Could not reach the AI service. Please try again." }, 502);
     }
 
-    if (message.stop_reason === "refusal") {
-      await admin.from("ai_usage_events").insert({
-        org_id: org.id,
-        school_id: schoolId,
-        user_id: user.id,
-        analysis_type: analysisType,
-        model: MODEL,
-        status: "refused",
-      });
-      return json({ error: "The model declined to answer this request." }, 422);
+    if (!response.ok) {
+      const detail = await response.text();
+      await logFailure(`${response.status}: ${detail}`);
+      if (response.status === 429) {
+        return json({ error: "The AI service is busy. Please try again in a moment." }, 429);
+      }
+      if (response.status === 402) {
+        return json({ error: "AI credits have run out. Please top up to continue." }, 402);
+      }
+      if (response.status === 403) {
+        return json({ error: "AI access is currently blocked for this workspace." }, 403);
+      }
+      return json({ error: "AI analysis failed. Please try again." }, 502);
     }
 
-    const text = message.content
-      .filter((block): block is { type: "text"; text: string } => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+    const payload = await response.json();
+
+    const text: string = (payload.output_text as string | undefined)?.trim() ||
+      (Array.isArray(payload.output)
+        ? payload.output
+            .flatMap((item: { content?: { type?: string; text?: string }[] }) => item.content ?? [])
+            .filter((block: { type?: string }) => block.type === "output_text")
+            .map((block: { text?: string }) => block.text ?? "")
+            .join("\n")
+            .trim()
+        : "");
+
+    if (!text) {
+      await logFailure("Empty response from model");
+      return json({ error: "The AI service returned an empty result. Please try again." }, 502);
+    }
 
     await admin.from("ai_usage_events").insert({
       org_id: org.id,
@@ -226,8 +247,8 @@ Deno.serve(async (req) => {
       user_id: user.id,
       analysis_type: analysisType,
       model: MODEL,
-      input_tokens: message.usage?.input_tokens ?? 0,
-      output_tokens: message.usage?.output_tokens ?? 0,
+      input_tokens: payload.usage?.input_tokens ?? 0,
+      output_tokens: payload.usage?.output_tokens ?? 0,
       status: "succeeded",
     });
 
