@@ -27,6 +27,8 @@ import { NoticeBoard } from "@/components/notices/NoticeBoard";
 import { TransportRiderCard } from "@/components/transport/TransportRiderCard";
 import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
+import { ChildAchievements } from "@/components/achievements/ChildAchievements";
+import { StatementDialog } from "@/components/finance/StatementDialog";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -41,6 +43,7 @@ function ChildPerformance({ studentId }: { studentId: string }) {
 export default function ParentDashboard() {
   const { user } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const [statementOpen, setStatementOpen] = useState(false);
 
   // Find guardian record linked to this user
   const { data: guardian, isLoading: guardianLoading } = useQuery({
@@ -180,7 +183,17 @@ export default function ParentDashboard() {
       <PageHeader
         title={`Welcome, ${displayName.split(" ")[0]}`}
         description="View your children's invoices and payment history."
-      />
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={!children?.length}
+          onClick={() => setStatementOpen(true)}
+        >
+          <FileText className="h-3.5 w-3.5" /> Statement of account
+        </Button>
+      </PageHeader>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -280,15 +293,13 @@ export default function ParentDashboard() {
         <AchievementHighlights limit={4} title="School achievements" />
       </div>
 
-      {/* Awards and appointments the school has published for each child. */}
-      {children?.map((child) => (
-        <div key={`awards-${child.id}`} className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            {child.first_name} {child.last_name}
-          </p>
-          <RecognitionsPanel subjectType="student" personId={child.id!} />
-        </div>
-      ))}
+      {/* Awards and appointments the school has published for each child, with
+          category filters and a route through to the full wall. */}
+      {children && children.length > 0 && (
+        <ChildAchievements
+          children={children.map((c) => ({ id: c.id!, name: `${c.first_name} ${c.last_name}` }))}
+        />
+      )}
 
       {/* Each child's academic performance — the same analysis staff see, for
           their own children only. */}
@@ -379,6 +390,20 @@ export default function ParentDashboard() {
         </CardContent>
       </Card>
 
+      {children && children.length > 0 && (
+        <StatementDialog
+          open={statementOpen}
+          onOpenChange={setStatementOpen}
+          guardianName={`${guardian.first_name} ${guardian.last_name}`}
+          students={children.map((c) => ({
+            id: c.id!,
+            schoolId: c.school_id!,
+            name: `${c.first_name} ${c.last_name}`,
+            idNumber: c.student_id_number,
+            className: c.enrolments?.[0]?.classes?.name ?? null,
+          }))}
+        />
+      )}
     </div>
   );
 }
