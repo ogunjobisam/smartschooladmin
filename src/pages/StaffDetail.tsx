@@ -311,8 +311,8 @@ export default function StaffDetail() {
           onOpenChange={setPayrollProfileOpen}
           staffId={staff.id}
           staffName={`${staff.first_name} ${staff.last_name}`}
-          profile={pp}
-          bankDetails={bankDetails}
+          profile={pp ?? null}
+          bankDetails={bankDetails ?? null}
         />
       )}
       {staff && schoolId && (

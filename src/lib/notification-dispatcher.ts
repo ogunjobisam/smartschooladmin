@@ -164,8 +164,8 @@ export async function sendPaymentConfirmation(params: {
       message,
       entityType: "payment",
       entityId: params.paymentId,
-      recipientEmail: guardian.email,
-      recipientPhone: guardian.phone,
+      recipientEmail: guardian.email ?? undefined,
+      recipientPhone: guardian.phone ?? undefined,
       channels: ["in_app"],
     });
   }

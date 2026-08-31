@@ -47,7 +47,7 @@ export default function Staff() {
 
   const getPosition = (s: StaffRow) => {
     const pos = s.staff_positions?.find((p) => p.is_current);
-    return pos ? { title: pos.title, department: pos.department } : { title: "—", department: "—" };
+    return pos ? { title: pos.title, department: pos.department ?? "—" } : { title: "—", department: "—" };
   };
 
   return (

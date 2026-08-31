@@ -199,4 +199,34 @@ BEGIN
     'the most recently granted role did not win, so a new school is unreachable');
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- Seniority must beat recency in role resolution
+-- ---------------------------------------------------------------------------
+-- The ranked and unranked definitions of primary_user_role agree on most
+-- accounts, which is exactly why the divergence between replay order and
+-- wall-clock order went unnoticed. They disagree on one shape: a senior role
+-- granted BEFORE a junior one in the same organisation. Ranked resolves to the
+-- senior role; unranked resolves to the newest row — so a proprietor later
+-- given a teacher role would be gated as a teacher everywhere.
+INSERT INTO auth.users (id, email)
+  VALUES ('eaaaaaaa-0000-0000-0000-00000000000e', 'ranked@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id, created_at) VALUES
+  ('eaaaaaaa-0000-0000-0000-00000000000e', 'proprietor',
+   'cccccccc-0000-0000-0000-00000000000c', 'cccccccc-0000-0000-0000-00000000000d',
+   now() - interval '2 days'),
+  ('eaaaaaaa-0000-0000-0000-00000000000e', 'teacher',
+   'cccccccc-0000-0000-0000-00000000000c', 'cccccccc-0000-0000-0000-00000000000d',
+   now());
+
+DO $$
+DECLARE resolved app_role;
+BEGIN
+  SELECT role INTO resolved
+    FROM public.primary_user_role('eaaaaaaa-0000-0000-0000-00000000000e');
+  PERFORM public.assert(resolved = 'proprietor',
+    'a senior role granted earlier lost to a junior role granted later — '
+    'primary_user_role is not ranking by seniority, so replay has diverged '
+    'from the live definition');
+END $$;
+
 SELECT 'rls behaviour tests passed' AS result;

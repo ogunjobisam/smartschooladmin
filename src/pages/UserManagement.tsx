@@ -185,19 +185,24 @@ export default function UserManagement() {
 
   const callerRank = ROLE_RANK[userRole || ""] ?? 99;
 
-  if (!ADMIN_ROLES.includes(userRole || "")) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   // Can only assign/see roles strictly below their own rank
   const availableRoles = ROLES.filter((r) => (ROLE_RANK[r.value] ?? 99) > callerRank);
 
   // Roles that may be added to the selected user without clashing with what they hold.
+  //
+  // Declared before the early return below: a hook after a conditional return
+  // changes the hook count when the condition flips (the role resolving after
+  // first render is enough), and React throws. The parent dashboard was once
+  // a blank page for every parent for exactly this reason.
   const addableRoles = useMemo(() => {
     if (!addRoleUser) return [];
     const held = addRoleUser.roles.map((r) => r.role);
     return availableRoles.filter((r) => roleAllowedAlongside(r.value, held));
   }, [addRoleUser, availableRoles]);
+
+  if (!ADMIN_ROLES.includes(userRole || "")) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleInvite = async () => {
     if (!email.trim() || !role || !orgId) {

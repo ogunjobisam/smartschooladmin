@@ -163,7 +163,7 @@ export default function Reports() {
       <div className="rounded-lg border bg-card px-3 py-2 shadow-lg">
         <p className="text-xs font-medium text-card-foreground">{label}</p>
         {payload.map((p, i) => (
-          <p key={i} className="text-xs tabular-nums" style={{ color: p.color }}>{p.name}: {formatMoney(p.value)}</p>
+          <p key={i} className="text-xs tabular-nums" style={{ color: p.color }}>{p.name}: {formatMoney(p.value ?? 0)}</p>
         ))}
       </div>
     );

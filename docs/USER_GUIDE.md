@@ -245,6 +245,16 @@ already have an invoice for the period are skipped, so running it twice is safe.
 
 Invoice numbers are assigned automatically (`INV-00001`).
 
+**If any of those students ride the bus**, the dialog says so before you commit:
+how many of them, and what transport would add in total. Leave the tick in and
+each rider's fare goes on their invoice as its own line — so a parent sees what
+the bus costs rather than finding the term's fee mysteriously larger than the
+published one. Untick it if you bill transport separately.
+
+A rider with a negotiated fare is charged that rather than the route's standard
+fare, and a fare of zero is treated as a free ride and left off the invoice
+entirely.
+
 ### Working with an invoice
 
 Open any invoice to see its line items, payments against it, and its balance.
@@ -591,9 +601,51 @@ Salary and bank details are visible only to proprietors, bursars, finance
 officers and HR admins. Applications are school-office work: teachers, parents
 and students cannot read other families' applications at all.
 
+**Editing the school's own profile** — its name, email, phone and address — is
+open to proprietors, group admins, school admins and principals. *Creating* and
+*deleting* a school stays with the proprietor. Branding (colours, logo, tagline)
+is proprietor and group admin only.
+
 ---
 
 ## When something looks wrong
+
+### "We couldn't load your account" after signing in
+
+Your password was accepted. What failed is the step straight after it, where the
+app asks the database which school you belong to.
+
+The screen carries a short code. Read it out to whoever supports your system —
+it tells them which of three quite different things went wrong, and they will
+not be able to guess without it. **Try again** repeats the lookup without making
+you sign in from scratch, which is worth one attempt before you report it.
+
+This screen exists because the failure used to be silent: you were sent to the
+"create your organisation" wizard instead, as though you were a brand-new user
+who had never set a school up.
+
+### "Your account isn't attached to a school"
+
+Different problem, and nothing you can fix yourself. Your login works and your
+role is set, but the role was never linked to a school. Whoever administers your
+school needs to reissue your access from **Users**.
+
+Do not set up a new school to get past this. It will appear to work and will
+leave you in a second, empty organisation that nothing else can reach.
+
+### A save says it could not save
+
+If a Save button reports *"Could not save … your role may not have permission to
+change it"*, that is the honest answer: the database refused the change.
+
+Usually it is a permissions boundary — not every role can edit every setting.
+Ask someone with a more senior role to make the change.
+
+This message is newer than the behaviour behind it. These saves used to show a
+green "saved" message whether or not anything had been written, so a school name
+could be typed, confirmed, and never stored. If something you changed weeks ago
+has quietly reverted, that is the likely reason, and it is worth re-checking your
+school profile and branding.
 
 ### "No students in this class" when marking attendance
 
@@ -624,9 +676,22 @@ the dialog**, or send them to **Forgot password** on the sign-in page.
 
 ### Announcements and reminders are not arriving
 
-Check **Settings → Notifications**. If messages are *waiting*, no email provider
-is configured — your administrator needs to set one up. In-app notifications work
-regardless. SMS is not delivered yet.
+Check **Settings → Notifications**. In-app notifications work regardless; this is
+about email and text.
+
+If messages sit as *waiting*, the sending address is not set up yet. Email goes
+out from one address belonging to whoever runs the platform, not from each
+school's own domain — so this is their job, not yours, and it is one piece of
+setup for every school rather than one each. Replies still reach your school,
+because the reply address on every message is the one on your school profile:
+worth checking that **Settings → General → Email** is right.
+
+If messages show as *not configured*, that is the same thing said more plainly —
+they are held, not lost, and they send once the address is verified.
+
+SMS is not delivered yet. It queues and is reported as undelivered rather than
+quietly dropped, so nothing disappears, but do not rely on text for anything
+urgent.
 
 ### "No current academic period set" when adding a student
 

@@ -82,13 +82,15 @@ export default function Arrears() {
       return;
     }
 
-    // Create notifications for each guardian with a user_id
+    // Create notifications for each guardian with a user_id. flatMap rather
+    // than filter().map(): the filter doesn't narrow user_id past null for the
+    // type checker, and the column is NOT NULL in the database.
     const notifications = guardians
-      .filter((g) => g.user_id)
-      .map((g) => ({
+      .flatMap((g) => (g.user_id == null ? [] : [g.user_id]))
+      .map((userId) => ({
         org_id: orgId,
         school_id: schoolId,
-        user_id: g.user_id,
+        user_id: userId,
         type: "overdue_reminder" as const,
         title: "Overdue Payment Reminder",
         message: `Invoice ${inv.invoice_number} for ${inv.studentName} has an outstanding balance of ${formatMoney(inv.balance)}. Please make payment at your earliest convenience.`,

@@ -412,6 +412,13 @@ export default function ExamDetail() {
   // Show report card view
   if (reportCardStudent) {
     const student = students.find((s) => s.id === reportCardStudent);
+    // A stale id (the student was withdrawn while the grid was open) finds
+    // nobody; fall back to the grid rather than rendering a report card for
+    // no one.
+    if (!student) {
+      setReportCardStudent(null);
+      return null;
+    }
     const studentScores = Array.from(scores.values()).filter(
       (s) => s.studentId === reportCardStudent && s.score !== ""
     );
