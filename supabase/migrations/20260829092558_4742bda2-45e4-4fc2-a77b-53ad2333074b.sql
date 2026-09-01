@@ -110,14 +110,33 @@ $$;
 
 REVOKE ALL ON FUNCTION public.sweep_expired_demo_orgs() FROM PUBLIC, anon, authenticated;
 
-CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+-- Schedule the sweep every 15 minutes: an abandoned sandbox should not outlive
+-- its window by long.
+--
+-- Guarded on pg_cron actually being available. It is on Supabase; it is not on a
+-- stock postgres:16, which is what CI replays every migration against and what
+-- anyone bringing up a local copy will have. Unguarded, `CREATE EXTENSION` fails
+-- outright and takes the whole replay down with it.
+--
+-- Skipping the schedule is safe rather than merely tolerable: expiry is also
+-- swept opportunistically when someone visits the landing page or starts a new
+-- demo, so cron is the belt to that pair of braces. A database without it still
+-- reclaims sandboxes, just on visitor traffic rather than on a timer.
+DO $do$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron') THEN
+    RAISE NOTICE 'pg_cron unavailable — demo sweep left to the opportunistic path';
+    RETURN;
+  END IF;
 
--- Runs every 15 minutes: an abandoned sandbox should not outlive its window by long.
-SELECT cron.unschedule('sweep-expired-demo-orgs')
-WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'sweep-expired-demo-orgs');
+  CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
-SELECT cron.schedule(
-  'sweep-expired-demo-orgs',
-  '*/15 * * * *',
-  $$SELECT public.sweep_expired_demo_orgs();$$
-);
+  PERFORM cron.unschedule('sweep-expired-demo-orgs')
+  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'sweep-expired-demo-orgs');
+
+  PERFORM cron.schedule(
+    'sweep-expired-demo-orgs',
+    '*/15 * * * *',
+    $job$SELECT public.sweep_expired_demo_orgs();$job$
+  );
+END $do$;
