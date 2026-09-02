@@ -12,34 +12,53 @@ structured workflows, role-based access, approvals and an audit trail instead.
 
 | Area | Capability |
 | --- | --- |
-| Admissions | Public application form per school, applicant pipeline, one-step conversion to a student |
-| Students & guardians | Enrolment, class assignment, guardian links, promotion between classes, CSV import |
-| Staff | Staff records, positions, bank details, document store |
-| Fees & billing | Fee categories and schedules, bulk invoice generation per class/term |
-| Payments | Record payments, allocate against invoices, receipts, arrears ageing and reminders |
-| Payroll | Payroll runs, payslips, bank batch export, salary-change approvals |
-| Academics | Attendance register, exams, score entry, report cards |
-| Communications | Announcements, notification templates, in-app notifications, events calendar, public notices |
-| Transport | Bus routes, ordered stops, per-term fees with per-student overrides |
-| Oversight | Approvals queue, audit log, cross-school reporting, proprietor dashboard |
+| Admissions | Public application form per school, applicant pipeline, one-step conversion to a student, per-school reference numbering |
+| Students & guardians | Enrolment, class assignment, guardian links, promotion between classes, CSV import, cropped photos, configurable ID formats, printable ID cards |
+| Staff | Staff records, positions, bank details, document store, photos and ID cards |
+| Fees & billing | Fee categories and schedules, bulk invoice generation per class/term, transport fares billed as their own invoice line |
+| Payments | Record payments, allocate against invoices, receipts, arrears ageing, printable statements of account and reminder/final-notice letters |
+| Payroll | Payroll runs, approval gate, payslips, bank batch export, salary-change approvals |
+| Academics | Attendance register, exams with per-exam rubrics and grade bands, score entry, report cards, transcripts |
 | Academic performance | Per-student trends, subject strengths, class rankings, at-risk flags |
-| Parent portal | Children, invoices, balances, payment history, results, bus route, events and notices |
-| Student portal | A student's own results, attendance, invoices, bus route, events and notices |
-| AI Analysis (paid add-on) | Written performance analysis, draft report card comments, finance and staffing insights |
+| Achievement wall | Awards, prizes and prefect appointments through draft → published, printable certificates, read-only `/wall` display view |
+| Communications | Announcements with pinned banner, notification templates, per-user channel/quiet-hour preferences, delivery console with retry, public notices |
+| Events | Audience-scoped events, RSVPs, `.ics` download and subscribable school calendar feed |
+| Transport | Bus routes, ordered stops, per-term fares with per-student overrides |
+| Oversight | Approvals queue, audit log, cross-school reporting, proprietor dashboard |
+| Parent portal | Children, invoices, balances, payment history, results, attendance, achievements, bus route, events |
+| Student portal | A student's own results, attendance, invoices, recognitions, bus route, events |
+| AI Analysis (paid add-on) | Written performance analysis, draft report card comments, finance and staffing insights; five free analyses a month |
+| Demo sandboxes | Self-serve persona demo from the landing page, seeded and self-deleting after four hours |
+| Everywhere | Ctrl+K command palette, installable as a phone/desktop app, CSV export on every list |
 
 Multi-tenancy runs on an `organisation_group → school → campus` hierarchy. Every
 table is isolated by organisation through PostgreSQL row-level security.
 
+[`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md) describes each module and the code
+behind it, and is explicit about the handful of places where the capability is
+narrower than its name suggests.
+
 ## Roles
 
 `super_admin`, `proprietor`, `group_admin`, `school_admin`, `principal`, `bursar`,
-`finance_officer`, `hr_admin`, `teacher`, `parent`, `student`.
+`finance_officer`, `hr_admin`, `teacher`, `parent`, `student` — ranked in that
+order by `role_rank()` in SQL, most senior first.
+
+**A user may hold several roles.** `get_my_roles()` returns all of them and the
+most senior drives navigation and gating. The database refuses incompatible
+combinations: `roles_compatible()` and the `enforce_role_compatibility` trigger
+stop a student account also holding a staff role, and student may combine only
+with parent. An administrator can only grant roles below their own rank.
+
+**An account spanning several organisations or schools picks one at sign-in**
+through the workspace picker; all scoping follows that choice.
 
 Student logins are opt-in per school: a student gets one only when someone
 presses **Invite to portal** on their record.
 
-Navigation, page access and database policies are all driven from the role on the
-user's `user_roles` row. [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) is the guide
+Navigation, page access and database policies all resolve from one place —
+`src/lib/access.ts` for routes, `primary_user_role()` for which organisation and
+school the caller is in. [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) is the guide
 for school staff; [`docs/USER_JOURNEYS.md`](docs/USER_JOURNEYS.md) maps what each
 role can do and what is still missing.
 
@@ -227,6 +246,22 @@ secrets and never reaches the browser.
   use the service role key and bypass RLS.
 - Role hierarchy is enforced server-side: a caller can only assign roles below their
   own rank, and school-level admins are further limited to school-level roles.
+- **One definition of the caller's organisation.** `get_my_role()`,
+  `get_user_org_id()` and `get_user_school_id()` all delegate to
+  `primary_user_role()`. They used to answer separately, two of them with a
+  `LIMIT 1` and no `ORDER BY` — for an account holding two role rows the app and
+  the policies could resolve to different organisations, leaving every read empty
+  and every write matching nothing. `supabase/tests/rls.sql` asserts they agree.
+- **Every view in `public` must run `security_invoker`.** A plain view executes
+  with its owner's privileges and reads past the policies on its base tables, and
+  Supabase grants new public views to signed-in users by default.
+  `scripts/check-migrations.sh` fails on any view without it.
+- **A blocked write reports failure.** RLS filtering a write out is not an error to
+  PostgREST — it is an update matching no rows, returned as
+  `{ data: [], error: null }`. `src/lib/writes.ts` requires a row to have actually
+  changed, so a save cannot show a green confirmation while storing nothing.
+- Student and staff documents and photos live in a private bucket behind
+  short-lived signed URLs; only branding logos are public.
 
 ## Project layout
 
