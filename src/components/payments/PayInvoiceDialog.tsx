@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Loader2, CreditCard, CheckCircle } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { generatePaymentReference } from "@/lib/payment-providers";
+import { sendReceiptAlert } from "@/lib/family-alerts";
+import { useQuery } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
 import type { Enums } from "@/integrations/supabase/types";
 
@@ -28,7 +30,7 @@ interface PayInvoiceDialogProps {
 }
 
 export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDialogProps) {
-  const { user } = useAuth();
+  const { user, orgId } = useAuth();
   const queryClient = useQueryClient();
   const { formatMoney } = useCurrency();
 
@@ -37,6 +39,21 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
   const [amount, setAmount] = useState(outstanding.toString());
   const [gateway, setGateway] = useState("mock");
   const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
+
+  // Only gateways the school has switched on are offered.
+  const { data: activeGateways = [] } = useQuery({
+    queryKey: ["active-gateways", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data } = await supabase
+        .from("payment_gateway_config")
+        .select("provider")
+        .eq("org_id", orgId)
+        .eq("is_active", true);
+      return (data || []).map((c) => c.provider as string);
+    },
+    enabled: !!orgId && open,
+  });
 
   const payAmount = paymentType === "full" ? outstanding : Math.min(parseInt(amount) || 0, outstanding);
 
@@ -111,6 +128,19 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
           amount: payAmount,
           issued_by: user.id,
         });
+
+        if (orgId) {
+          sendReceiptAlert({
+            orgId,
+            schoolId: invoice.school_id,
+            studentId: invoice.student_id,
+            amountLabel: formatMoney(payAmount),
+            receiptNumber: receiptNum,
+            invoiceNumber: invoice.invoice_number,
+            paymentId: payment.id,
+            balanceLabel: formatMoney(Math.max(0, invoice.total_amount - newPaid)),
+          }).catch(console.error);
+        }
       }
 
       setStatus("success");
@@ -197,14 +227,18 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
                   <RadioGroupItem value="mock" id="mock" />
                   <Label htmlFor="mock" className="font-normal">Demo Payment (Simulated)</Label>
                 </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="paystack" id="paystack" />
-                  <Label htmlFor="paystack" className="font-normal">Paystack</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="flutterwave" id="flutterwave" />
-                  <Label htmlFor="flutterwave" className="font-normal">Flutterwave</Label>
-                </div>
+                {activeGateways.includes("paystack") && (
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="paystack" id="paystack" />
+                    <Label htmlFor="paystack" className="font-normal">Card or bank transfer (Paystack)</Label>
+                  </div>
+                )}
+                {activeGateways.includes("flutterwave") && (
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="flutterwave" id="flutterwave" />
+                    <Label htmlFor="flutterwave" className="font-normal">Card or bank transfer (Flutterwave)</Label>
+                  </div>
+                )}
               </RadioGroup>
             </div>
 
