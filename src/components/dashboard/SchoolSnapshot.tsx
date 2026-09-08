@@ -119,6 +119,9 @@ export function SchoolSnapshot() {
           list.push(Number(s.score));
           byExam.set(s.exam_id, list);
         }
+        // A teacher only sees the classes and marks they hold, so an exam for
+        // another class arrives with no class name and no scores. Showing it as
+        // "— —" reads like a fault, so leave those rows out.
         examSummaries = exams.map((e) => {
           const list = byExam.get(e.id) || [];
           const max = Number(e.max_score) || 100;
