@@ -800,6 +800,50 @@ function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedOpen, setSeedOpen] = useState(false);
+
+  // Seeding is for a school with nothing in it yet. The function itself reuses
+  // any students and staff it finds rather than duplicating them, but it still
+  // adds guardians, fee schedules, invoices and applications — so on a school
+  // with real pupils it would mix invented records in among them, and there is
+  // no way to tell the two apart afterwards.
+  const { data: studentCount, isLoading: countingStudents } = useQuery({
+    queryKey: ["danger-zone-student-count", schoolId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId!);
+      return count ?? 0;
+    },
+    enabled: !!schoolId,
+  });
+
+  const hasStudents = (studentCount ?? 0) > 0;
+
+  const handleSeed = async () => {
+    if (!schoolId || !orgId) return;
+    setSeeding(true);
+    try {
+      const res = await supabase.functions.invoke("seed-demo-data", {
+        body: { school_id: schoolId, org_id: orgId },
+      });
+      if (res.error) throw new Error(res.error.message);
+      const counts = res.data?.counts;
+      toast.success(
+        counts
+          ? `Seeded ${counts.students} students, ${counts.staff} staff and ${counts.invoices} invoices`
+          : "Demo data seeded",
+      );
+      queryClient.invalidateQueries();
+      setSeedOpen(false);
+    } catch (err) {
+      toast.error("Could not seed demo data: " + getErrorMessage(err, "Unknown error"));
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!schoolId || !orgId) return;
@@ -829,7 +873,56 @@ function DangerZoneCard({ schoolId, orgId, schoolName, queryClient }: { schoolId
         </CardTitle>
         <CardDescription>Irreversible actions — proceed with caution</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Seed demo data</p>
+            <p className="text-xs text-muted-foreground">
+              {hasStudents
+                ? "Only available while the school is empty — this one already has students."
+                : "Fill this school with sample students, staff, fees, exams, payroll and a bus route, so you can see it populated."}
+            </p>
+          </div>
+          <AlertDialog open={seedOpen} onOpenChange={setSeedOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={countingStudents || hasStudents || !schoolId}>
+                {countingStudents ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+                Seed Demo Data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Fill {schoolName} with sample data?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-left">
+                    <p>This creates invented records so you can see the app populated:</p>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      <li>Students, with guardians linked to them</li>
+                      <li>Staff, with salaries, bank details and a payroll run</li>
+                      <li>Subjects, exams and scores, and a term of attendance</li>
+                      <li>Fee schedules, invoices and payments</li>
+                      <li>A bus route with riders, and admission enquiries</li>
+                    </ul>
+                    <p>
+                      Every one of them is made up. Use <strong>Delete All Data</strong> below to
+                      clear them again before the school takes on real pupils.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={seeding}>Cancel</AlertDialogCancel>
+                <Button onClick={handleSeed} disabled={seeding}>
+                  {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {seeding ? "Seeding…" : "Seed demo data"}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        <Separator />
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Delete all school data</p>
