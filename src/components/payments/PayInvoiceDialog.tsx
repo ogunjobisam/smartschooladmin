@@ -46,32 +46,27 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
 
     const reference = generatePaymentReference();
 
-    // Create payment transaction record
-    // The database knows three gateways: paystack, flutterwave and manual.
-    // The simulated demo payment is a manual one.
-    const gatewayValue: Enums<"payment_gateway"> =
-      gateway === "mock" ? "manual" : (gateway as Enums<"payment_gateway">);
-
-    const { error: txError } = await supabase.from("payment_transactions").insert({
-      school_id: invoice.school_id,
-      student_id: invoice.student_id,
-      invoice_id: invoice.id,
-      amount: payAmount,
-      gateway: gatewayValue,
-      gateway_reference: reference,
-      status: "initiated",
-      payer_name: user.user_metadata?.full_name || user.email,
-      payer_email: user.email,
-    });
-
-    if (txError) {
-      toast.error(getErrorMessage(txError) || "Failed to initiate payment");
-      setStatus("idle");
-      return;
-    }
-
-    // Mock mode: simulate successful payment after delay
+    // Mock mode: simulate a successful payment end to end, for demos and training.
     if (gateway === "mock") {
+      const gatewayValue: Enums<"payment_gateway"> = "manual";
+      const { error: txError } = await supabase.from("payment_transactions").insert({
+        school_id: invoice.school_id,
+        student_id: invoice.student_id,
+        invoice_id: invoice.id,
+        amount: payAmount,
+        gateway: gatewayValue,
+        gateway_reference: reference,
+        status: "initiated",
+        payer_name: user.user_metadata?.full_name || user.email,
+        payer_email: user.email,
+      });
+
+      if (txError) {
+        toast.error(getErrorMessage(txError) || "Failed to initiate payment");
+        setStatus("idle");
+        return;
+      }
+
       await new Promise((r) => setTimeout(r, 2000));
 
       // Update transaction to successful
