@@ -127,10 +127,25 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
         setStatus("idle");
       }, 1500);
     } else {
-      // For real gateways, redirect to checkout URL
-      toast.info("Redirecting to payment gateway...");
-      setStatus("idle");
-      onOpenChange(false);
+      // Real gateway: the server holds the secret keys and hands back a hosted
+      // checkout link. The payer comes back to this page, where the payment is
+      // re-checked with the gateway before any receipt is issued.
+      const { data, error } = await supabase.functions.invoke("initiate-payment", {
+        body: {
+          invoice_id: invoice.id,
+          provider: gateway,
+          amount: payAmount,
+          return_url: `${window.location.origin}${window.location.pathname}?provider=${gateway}`,
+        },
+      });
+
+      if (error || data?.error || !data?.checkout_url) {
+        toast.error(data?.error || getErrorMessage(error) || "Could not start this payment");
+        setStatus("idle");
+        return;
+      }
+
+      window.location.href = data.checkout_url as string;
     }
   };
 
