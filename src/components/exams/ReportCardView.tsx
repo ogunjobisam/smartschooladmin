@@ -44,34 +44,52 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
     if (!content) return;
     const win = window.open("", "_blank");
     if (!win) return;
+    const theme = documentTheme({
+      name: branding.name,
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    });
+    const crest = branding.logoUrl
+      ? `<img src="${branding.logoUrl}" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:12px;margin:0 auto 8px;display:block" />`
+      : "";
     win.document.write(`
       <html><head><title>Report Card - ${student?.first_name} ${student?.last_name}</title>
       <style>
-        body { font-family: 'Inter', system-ui, sans-serif; padding: 32px; color: #1e293b; max-width: 800px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px double #1e293b; }
-        .header h1 { font-size: 22px; margin: 0 0 4px; }
+        @page { size: A4; margin: 14mm; }
+        :root { --brand: ${theme.primary}; --brand-accent: ${theme.accent}; --on-brand: ${theme.onPrimary}; --brand-soft: ${theme.soft}; --brand-border: ${theme.border}; }
+        html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 28px 26px; color: #0f172a; max-width: 840px; margin: 0 auto; }
+        .brand-bar { height: 5px; border-radius: 4px; margin-bottom: 18px;
+          background: linear-gradient(90deg, var(--brand) 0%, var(--brand) 58%, var(--brand-accent) 58%, var(--brand-accent) 100%); }
+        .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--brand-border); }
+        .header h1 { font-size: 23px; margin: 0 0 4px; color: var(--brand); }
         .header p { font-size: 12px; color: #64748b; margin: 2px 0; }
         .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: 13px; }
         .student-info .label { color: #64748b; }
         .student-info .value { font-weight: 600; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; }
-        td { padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; }
+        th { background: var(--brand-soft); color: var(--brand); padding: 9px 12px; text-align: left; font-size: 11px;
+             font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--brand-border); }
+        td { padding: 8px 12px; border: 1px solid #e6ebf1; font-size: 13px; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
-        .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .summary { background: var(--brand-soft); border: 1px solid var(--brand-border); padding: 18px; border-radius: 12px; margin-bottom: 20px; }
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; text-align: center; }
-        .summary-value { font-size: 24px; font-weight: 700; }
-        .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+        .summary-value { font-size: 26px; font-weight: 800; color: var(--brand); }
+        .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
         .grade-key { margin-top: 16px; font-size: 11px; color: #64748b; }
         .grade-key table td, .grade-key table th { padding: 4px 8px; font-size: 11px; }
         .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 12px; }
-        .footer .sign-line { border-top: 1px solid #1e293b; padding-top: 4px; margin-top: 40px; }
-        @media print { body { padding: 16px; } }
+        .footer .sign-line { border-top: 1px solid #0f172a; padding-top: 4px; margin-top: 40px; }
+        @media print { body { padding: 0; } }
       </style></head><body>
+      <div class="brand-bar"></div>
+      ${crest}
       ${content.innerHTML}
       </body></html>
     `);
+
     win.document.close();
     win.print();
   };
