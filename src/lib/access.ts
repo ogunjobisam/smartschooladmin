@@ -39,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "students", title: "Students", url: "/students", group: "overview" },
   { key: "guardians", title: "Guardians", url: "/guardians", group: "overview" },
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
+  { key: "staff-portal", title: "My Teaching", url: "/staff-portal", group: "overview" },
   { key: "attendance", title: "Attendance", url: "/attendance", group: "overview" },
   { key: "exams", title: "Exams", url: "/exams", group: "overview" },
   { key: "performance", title: "Performance", url: "/performance", group: "overview" },
@@ -87,14 +88,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
     "settings", "users",
   ],
   principal: [
-    "dashboard", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
@@ -123,7 +124,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "users",
   ],
   teacher: [
-    "dashboard", "wall", "students", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "students", "attendance", "exams", "performance", "achievements",
     "announcements", "events", "preferences", "my-pay",
   ],
   parent: [
@@ -155,6 +156,7 @@ export function navItemsForRole(role: string | null): NavItem[] {
 export function portalPathForRole(role: string | null): string | null {
   if (role === "parent") return "/parent";
   if (role === "student") return "/student";
+  if (role === "teacher") return "/staff-portal";
   return null;
 }
 

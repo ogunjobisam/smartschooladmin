@@ -51,6 +51,7 @@ const StudentPortal = lazy(() => import("./pages/StudentPortal"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 const MessageDelivery = lazy(() => import("./pages/MessageDelivery"));
+const StaffPortal = lazy(() => import("./pages/StaffPortal"));
 const ProprietorDashboard = lazy(() => import("./pages/ProprietorDashboard"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Exams = lazy(() => import("./pages/Exams"));
@@ -155,6 +156,7 @@ function AppRoutes() {
           <Route path="/notification-settings" element={withLayout(<NotificationSettings />)} />
           <Route path="/notification-templates" element={withLayout(<NotificationTemplates />)} />
           <Route path="/message-delivery" element={withLayout(<MessageDelivery />)} />
+          <Route path="/staff-portal" element={withLayout(<StaffPortal />)} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
