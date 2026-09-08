@@ -47,6 +47,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
 const RolesAccess = lazy(() => import("./pages/RolesAccess"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
 const StudentPortal = lazy(() => import("./pages/StudentPortal"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -143,6 +144,7 @@ function AppRoutes() {
           <Route path="/approvals" element={withLayout(<Approvals />)} />
           <Route path="/reports" element={withLayout(<Reports />)} />
           <Route path="/audit-log" element={withLayout(<AuditLog />)} />
+          <Route path="/school-profile" element={withLayout(<SchoolProfile />)} />
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />
           <Route path="/roles" element={withLayout(<RolesAccess />)} />

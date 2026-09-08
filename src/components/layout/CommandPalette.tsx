@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/command";
 import {
   LayoutDashboard, GraduationCap, Users, UserCog, Receipt, FileText, CreditCard,
-  Calculator, Settings, CalendarCheck, BookOpen, Megaphone, ClipboardList, Shield,
+  Building2, Calculator, Settings, CalendarCheck, BookOpen, Megaphone, ClipboardList, Shield,
   CheckSquare, AlertTriangle, BarChart3, Bell, UserPlus,
 } from "lucide-react";
 
@@ -28,6 +28,7 @@ const pages = [
   { title: "Reports", url: "/reports", icon: ClipboardList },
   { title: "Audit Log", url: "/audit-log", icon: Shield },
   { title: "Group Overview", url: "/group-overview", icon: BarChart3 },
+  { title: "School Profile", url: "/school-profile", icon: Building2 },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Users", url: "/users", icon: UserPlus },
   { title: "Notification Settings", url: "/notification-settings", icon: Bell },
