@@ -2,17 +2,8 @@
 
 import * as React from 'npm:react@18.3.1'
 
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Text,
-} from 'npm:@react-email/components@0.0.22'
+import { Button, Link, Text } from 'npm:@react-email/components@0.0.22'
+import { EmailShell, button, footer, link, text } from './theme.tsx'
 
 interface EmailChangeEmailProps {
   siteName: string
@@ -32,72 +23,32 @@ export const EmailChangeEmail = ({
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head>
-      <style>{darkModeCss}</style>
-    </Head>
-    <Preview>Confirm your email change for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
-        <Text style={text}>
-          You requested to change your email address for {siteName} from{' '}
-          <Link href={`mailto:${oldEmail}`} style={link}>
-            {oldEmail}
-          </Link>{' '}
-          to{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
-        </Text>
-        <Text style={text}>
-          Click the button below to confirm this change:
-        </Text>
-        <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Confirm Email Change
-        </Button>
-        <Text style={footer}>
-          If you didn't request this change, please secure your account
-          immediately.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+  <EmailShell
+    siteName={siteName}
+    preview={`Confirm your email change for ${siteName}`}
+    kickerText="Security"
+    heading="Confirm your email change"
+    note={
+      <Text style={footer}>
+        If you didn&apos;t request this change, please secure your account immediately.
+      </Text>
+    }
+  >
+    <Text style={text}>
+      You asked to change the email address on your {siteName} account from{' '}
+      <Link href={`mailto:${oldEmail}`} style={link}>
+        {oldEmail}
+      </Link>{' '}
+      to{' '}
+      <Link href={`mailto:${newEmail}`} style={link}>
+        {newEmail}
+      </Link>
+      .
+    </Text>
+    <Button className="dm-btn" style={button} href={confirmationUrl}>
+      Confirm the change
+    </Button>
+  </EmailShell>
 )
 
 export default EmailChangeEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(220, 30%, 10%)',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: 'hsl(215, 15%, 48%)',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: 'hsl(220, 60%, 20%)',
-  color: 'hsl(210, 40%, 98%)',
-  fontSize: '14px',
-  border: '1px solid hsl(220, 60%, 20%)',
-  borderRadius: '10px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
-// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
-const darkModeCss = `
-  @media (prefers-color-scheme: dark) {
-    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  }
-  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
-`
