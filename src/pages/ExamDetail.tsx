@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
 import { canManageStudents } from "@/lib/access";
+import { notifySchoolAdmins } from "@/lib/school-updates";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
@@ -32,7 +33,7 @@ interface ScoreEntry {
 export default function ExamDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { schoolId, user, userRole } = useAuth();
+  const { schoolId, orgId, user, userRole } = useAuth();
   const queryClient = useQueryClient();
   const [scores, setScores] = useState<Map<string, ScoreEntry>>(new Map());
   const [saving, setSaving] = useState(false);
@@ -364,6 +365,18 @@ export default function ExamDetail() {
     else {
       toast.success(`Saved scores for ${entries.length} entries`);
       setDirty(false);
+      if (orgId && schoolId) {
+        notifySchoolAdmins({
+          orgId,
+          schoolId,
+          area: "exam_results",
+          summary: `${entries.length} results were entered for ${exam?.name ?? "an exam"}.`,
+          link: `/exams/${id}`,
+          entityType: "exam",
+          entityId: id,
+          excludeUserId: user.id,
+        }).catch(console.error);
+      }
       queryClient.invalidateQueries({ queryKey: ["exam-scores", id] });
     }
   };
