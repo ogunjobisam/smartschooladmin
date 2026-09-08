@@ -238,7 +238,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [orgId, userId, roleRows]);
 
   const activeRoles = useMemo(() => rolesForOrg(roleRows, orgId), [roleRows, orgId]);
-  const userRoles = useMemo(() => activeRoles.map((r) => r.role), [activeRoles]);
+  const realRoles = useMemo(() => activeRoles.map((r) => r.role), [activeRoles]);
+  const realRole = realRoles[0] ?? null;
+
+  // Previewing another role changes what the interface offers, never what the
+  // database will hand over: row-level security still answers to the real
+  // account. Only a role more junior than your own may be previewed.
+  const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) { setViewAsRoleState(null); return; }
+    const stored = readStored(viewAsKey(userId));
+    setViewAsRoleState(stored && previewableRoles(realRole).includes(stored) ? stored : null);
+  }, [userId, realRole]);
+
+  const setViewAsRole = useCallback((role: string | null) => {
+    const next = role && previewableRoles(realRole).includes(role) ? role : null;
+    setViewAsRoleState(next);
+    if (userId) writeStored(viewAsKey(userId), next);
+  }, [userId, realRole]);
+
+  const userRoles = useMemo(() => (viewAsRole ? [viewAsRole] : realRoles), [viewAsRole, realRoles]);
   const userRole = userRoles[0] ?? null;
 
   const setSchoolId = useCallback((id: string) => {
