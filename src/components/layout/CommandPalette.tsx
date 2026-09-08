@@ -15,6 +15,8 @@ const pages = [
   { title: "Guardians", url: "/guardians", icon: Users },
   { title: "Staff", url: "/staff", icon: UserCog },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
+  { title: "Timetable", url: "/timetable", icon: CalendarCheck },
+  { title: "My Timetable", url: "/student/timetable", icon: CalendarCheck },
   { title: "Exams", url: "/exams", icon: BookOpen },
   { title: "Fee Schedules", url: "/fees", icon: Receipt },
   { title: "Invoices", url: "/invoices", icon: FileText },

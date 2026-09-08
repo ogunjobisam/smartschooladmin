@@ -41,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
   { key: "staff-portal", title: "My Teaching", url: "/staff-portal", group: "overview" },
   { key: "attendance", title: "Attendance", url: "/attendance", group: "overview" },
+  { key: "timetable", title: "Timetable", url: "/timetable", group: "overview" },
   { key: "exams", title: "Exams", url: "/exams", group: "overview" },
   { key: "performance", title: "Performance", url: "/performance", group: "overview" },
   { key: "achievements", title: "Achievements", url: "/achievements", group: "overview" },
@@ -48,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   // A student's own record, from their portal out to the detail behind it.
   { key: "my-results", title: "My Results", url: "/student/results", group: "overview" },
   { key: "my-attendance", title: "My Attendance", url: "/student/attendance", group: "overview" },
+  { key: "my-timetable", title: "My Timetable", url: "/student/timetable", group: "overview" },
 
   { key: "fees", title: "Fee Schedules", url: "/fees", group: "finance" },
   { key: "invoices", title: "Invoices", url: "/invoices", group: "finance" },
@@ -92,14 +94,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
     "settings", "users", "roles",
   ],
   principal: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
@@ -128,7 +130,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "users",
   ],
   teacher: [
-    "dashboard", "staff-portal", "wall", "students", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "students", "attendance", "timetable", "exams", "performance", "achievements",
     "announcements", "events", "preferences", "my-pay",
   ],
   parent: [
@@ -138,7 +140,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   // A student sees their own portal and their own notification preferences.
   // Everything else on the dashboard is the school's, not theirs.
   student: [
-    "dashboard", "wall", "my-results", "my-attendance",
+    "dashboard", "wall", "my-results", "my-attendance", "my-timetable",
     "events", "preferences",
   ],
 };

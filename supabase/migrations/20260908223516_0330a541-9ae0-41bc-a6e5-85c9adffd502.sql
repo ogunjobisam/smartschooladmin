@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.class_is_mine_or_my_childs(uuid) FROM anon;

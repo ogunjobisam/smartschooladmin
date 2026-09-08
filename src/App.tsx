@@ -69,6 +69,8 @@ const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
 const MyResults = lazy(() => import("./pages/student/MyResults"));
 const MyAttendance = lazy(() => import("./pages/student/MyAttendance"));
+const MyTimetable = lazy(() => import("./pages/student/MyTimetable"));
+const Timetable = lazy(() => import("./pages/Timetable"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -148,6 +150,8 @@ function AppRoutes() {
           <Route path="/student" element={withLayout(<StudentPortal />)} />
           <Route path="/student/results" element={withLayout(<MyResults />)} />
           <Route path="/student/attendance" element={withLayout(<MyAttendance />)} />
+          <Route path="/student/timetable" element={withLayout(<MyTimetable />)} />
+          <Route path="/timetable" element={withLayout(<Timetable />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />
