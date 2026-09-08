@@ -391,6 +391,7 @@ export default function ParentDashboard() {
                 <TabsContent key={child.id} value={child.id} className="mt-4 space-y-4">
                   {/* The register and the marks themselves, then the analysis
                       staff see for the same child. */}
+                  <ChildDocumentsAndTeachers studentId={child.id} />
                   <ChildRecords studentId={child.id} />
                   <ChildPerformance studentId={child.id} />
                 </TabsContent>
