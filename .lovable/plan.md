@@ -18,6 +18,36 @@ For African private schools, flat tiered plans punish small schools and undercha
 - **Currency per market** — NGN first, then GHS/KES etc., matching each school's configured currency.
 - **Free tier over free trial** — trials expire and churn schools that are slow to onboard; a 50-student free tier lets small schools adopt permanently and upgrade as they grow. (Trial vs free tier is still open — flagged below.)
 
+## Cost & margin: does it cover costs with profit?
+
+**Short answer: yes for the software/platform costs at the recommended prices, but SMS messaging is the one cost that can eat your margin — so charge it as a paid add-on, not included.**
+
+Paystack fees on the subscription itself: **1.5% + ₦100 per local card transaction, capped at ₦2,000** [1](https://paystack.com/pricing). Flutterwave is comparable. International cards cost more (3.9% + ₦100) [1](https://paystack.com/pricing).
+
+Worked example — a 200-student Standard school:
+
+| Line | Per term | Per month (÷4) |
+|------|----------|----------------|
+| Revenue: 200 × ₦150 | ₦30,000 | ₦7,500 |
+| Paystack fee on that payment (1.5% + ₦100) | ~₦550 | ~₦140 |
+| Lovable Cloud (amortised across schools) | — | ~₦500–1,000 |
+| AI Gateway (beyond 4 free credits/mo) | — | ~₦200–800 |
+| Managed email (receipts, absence, results alerts) | — | ~₦300–1,000 |
+| SMS **if included** (200 students × ~4 SMS × ₦3) | — | ~₦2,400 |
+| **Gross margin (no SMS)** | — | **~₦4,400–6,400** |
+| **Gross margin (SMS included)** | — | **~₦2,000–4,000** |
+
+Key takeaways:
+
+- **Software/platform costs are well covered** at ₦150/student/term for a typical school; margin grows with student count.
+- **SMS is the danger** — bulk SMS in Nigeria (~₦2–4/message) scales with student × parent × messages and can exceed revenue for small schools. **Recommendation: SMS is a paid add-on.** Schools buy SMS bundles (e.g. ₦5,000 for 2,000 SMS) and usage deducts from their balance; email stays included. This keeps your margin predictable.
+- **Small schools (<50 students) are free** — that's fine because their costs (a few emails, minimal Cloud share) are near zero.
+- **AI insights** already sit behind an entitlement pattern — map Premium plan to it so AI Gateway spend is only incurred by paying Premium schools.
+
+**Profit sensitivity:** the biggest lever is student count per school. At 200 students Standard you clear roughly ₦4–6k/month/school before support costs. Support is mostly self-serve (in-app, docs) — keep it that way; "priority support" on Premium is the only human-time line item.
+
+Recommendation stands: per-student, per-term, free tier up to 50, SMS as a paid add-on. This covers costs with profit and scales.
+
 ## Feature gating suggestion
 
 - **Free**: students, staff, attendance, fees/invoices, basic announcements
