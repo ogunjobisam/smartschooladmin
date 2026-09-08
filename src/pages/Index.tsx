@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
+import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
 import { NAV_ITEMS } from "@/lib/access";
 
 function greeting() {
