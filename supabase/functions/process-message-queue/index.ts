@@ -299,6 +299,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Every message carries a one-click unsubscribe, and the token has to be the
+    // same one each time for a given address, so it is stored rather than made
+    // up per send. One round trip for the whole batch.
+    const recipients = [...new Set(pending.filter((r) => r.channel === "email").map((r) => r.recipient.toLowerCase()))];
+    const tokens = new Map<string, string>();
+    if (recipients.length > 0) {
+      await admin
+        .from("email_unsubscribe_tokens")
+        .upsert(recipients.map((email) => ({ email })), { onConflict: "email", ignoreDuplicates: true });
+      const { data: tokenRows } = await admin
+        .from("email_unsubscribe_tokens")
+        .select("email, token")
+        .in("email", recipients);
+      for (const t of tokenRows || []) tokens.set(t.email, t.token);
+    }
+
+
+
     let sent = 0;
     let failed = 0;
     let deferred = 0;
