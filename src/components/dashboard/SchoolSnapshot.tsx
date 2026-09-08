@@ -136,7 +136,7 @@ export function SchoolSnapshot() {
             average,
             entries: list.length,
           };
-        });
+        }).filter((e) => e.className !== "—" || e.entries > 0);
       }
 
       const invoices = invoicesRes.data || [];
