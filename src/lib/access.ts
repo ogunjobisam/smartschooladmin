@@ -70,6 +70,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   { key: "settings", title: "Settings", url: "/settings", group: "system" },
   { key: "users", title: "Users", url: "/users", group: "system" },
+  { key: "roles", title: "Roles & Access", url: "/roles", group: "system" },
 ];
 
 /**
@@ -92,7 +93,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "settings", "users",
+    "settings", "users", "roles",
   ],
   principal: [
     "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
@@ -101,7 +102,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "transport", "approvals", "reports", "my-pay",
     // A principal runs their own school's profile, classes, terms and ID
     // numbering without needing the group owner to do it for them.
-    "settings", "users",
+    "settings", "users", "roles",
   ],
   bursar: [
     "dashboard", "wall", "admissions", "students", "guardians",

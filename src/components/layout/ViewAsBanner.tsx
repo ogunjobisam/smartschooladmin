@@ -1,5 +1,4 @@
 import { Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { roleLabel } from "@/lib/roles";
 
@@ -19,9 +18,6 @@ export function ViewAsBanner() {
         <span className="hidden sm:inline"> — you are still signed in as {roleLabel(realRole || "")}, so the records shown are your own.</span>
       </span>
       <div className="ml-auto flex items-center gap-3">
-        <Link to="/roles" className="text-xs font-medium text-accent underline-offset-2 hover:underline">
-          Roles
-        </Link>
         <button
           onClick={() => setViewAsRole(null)}
           className="inline-flex items-center gap-1 rounded border border-accent/30 px-2 py-1 text-xs font-medium text-accent hover:bg-accent/10"
