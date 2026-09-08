@@ -95,7 +95,7 @@ export default function TermsOfService() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">12. Contact Us</h2>
-            <p>If you have questions about these Terms, please contact us at <strong className="text-foreground">legal@smartschooladmin.com</strong>.</p>
+            <p>If you have questions about these Terms, please contact us at <strong className="text-foreground">legal@smartschooladmin.app</strong>.</p>
           </section>
         </div>
       </main>
