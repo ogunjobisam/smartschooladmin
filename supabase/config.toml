@@ -1,15 +1,13 @@
 project_id = "guxldhjlujwafmxwjkae"
 
-[functions.invite-user]
-verify_jwt = false
-
-[functions.delete-demo-data]
-verify_jwt = false
-
-# The public application form is used by people who are not signed in.
-[functions.admissions]
-verify_jwt = false
-
-# Visitors start a demo before they have any account.
-[functions.start-demo]
-verify_jwt = false
+[functions]
+  [functions.admissions]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.delete-demo-data]
+    verify_jwt = false
+  [functions.invite-user]
+    verify_jwt = false
+  [functions.start-demo]
+    verify_jwt = false
