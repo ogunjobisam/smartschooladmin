@@ -48,7 +48,7 @@ export function AchievementHighlights({ limit = 4, title = "Recent achievements"
       let query = supabase
         .from("recognitions")
         .select(
-          "id, title, category, award_date, photo_path, subject_type, students(first_name, last_name), staff(first_name, last_name), classes(name)"
+          "id, title, category, award_date, photo_path, subject_type, student_id, staff_id, students(first_name, last_name), staff(first_name, last_name), classes(name)"
         )
         .eq("status", "published")
         .order("award_date", { ascending: false })
