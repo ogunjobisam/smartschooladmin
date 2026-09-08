@@ -98,7 +98,9 @@ async function sendManaged(
         html: textToHtml(row.body),
         purpose: "transactional",
         label: "school-alert",
-        idempotency_key: `queue-${row.id}`,
+        // The attempt number is part of the key: a retry after a failed send is a
+        // genuinely new send, and reusing the key would be refused outright.
+        idempotency_key: `queue-${row.id}-${row.attempts}`,
         // Required for every send: it is what makes the one-click unsubscribe
         // in the message header work, and the provider rejects sends without it.
         unsubscribe_token: unsubscribeToken,
