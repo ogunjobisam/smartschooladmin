@@ -1,3 +1,4 @@
+import { Seo } from "@/components/seo/Seo";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -64,6 +65,8 @@ export default function Landing() {
   };
 
   return (
+    <>
+      <Seo title={"Smart School Admin — School Management Software for Private Schools"} description={"Run fees, invoicing, payments, payroll, attendance, exams and reports for your private school or school group in one place."} path="/" />
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-50">
@@ -255,5 +258,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

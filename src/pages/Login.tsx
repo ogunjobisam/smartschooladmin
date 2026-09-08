@@ -1,3 +1,4 @@
+import { Seo } from "@/components/seo/Seo";
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,8 @@ export default function Login() {
   };
 
   return (
+    <>
+      <Seo title={"Sign in"} description={"Sign in to Smart School Admin to manage fees, attendance, results and payroll for your school."} path="/login" noIndex />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
@@ -135,5 +138,6 @@ export default function Login() {
         </p>
       </div>
     </div>
+    </>
   );
 }

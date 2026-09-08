@@ -1,3 +1,4 @@
+import { Seo } from "@/components/seo/Seo";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,8 @@ export default function Signup() {
   };
 
   return (
+    <>
+      <Seo title={"Create your school account"} description={"Create a Smart School Admin account and set up your school in minutes — fees, invoicing, attendance and results."} path="/signup" />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
@@ -70,5 +73,6 @@ export default function Signup() {
         </p>
       </div>
     </div>
+    </>
   );
 }
