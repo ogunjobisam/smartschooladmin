@@ -16,7 +16,7 @@ export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailP
     siteName={siteName}
     preview={`You've been invited to join ${siteName}`}
     kickerText="Invitation"
-    heading="You&apos;ve been invited"
+    heading="You’ve been invited"
     note={
       <Text style={footer}>
         If you weren&apos;t expecting this invitation, you can safely ignore this email.

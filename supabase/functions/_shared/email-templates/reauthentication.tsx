@@ -14,7 +14,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
     siteName="SmartSchool Admin"
     preview="Your verification code"
     kickerText="Security"
-    heading="Confirm it&apos;s you"
+    heading="Confirm it’s you"
     note={
       <Text style={footer}>
         This code expires shortly. If you didn&apos;t request it, you can safely ignore this email.
