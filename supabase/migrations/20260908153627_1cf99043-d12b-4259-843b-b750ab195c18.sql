@@ -1,0 +1,3 @@
+ALTER TABLE public.payroll_run_items
+  ADD COLUMN IF NOT EXISTS pension bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tax bigint NOT NULL DEFAULT 0;
