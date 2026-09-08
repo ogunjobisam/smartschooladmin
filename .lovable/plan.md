@@ -10,6 +10,8 @@
 5. Teachers cannot see guardian contact details at all. This is blocked in the database, not just the screen: the guardian rule explicitly excludes teachers. They can see which guardian is linked, but not the name, phone or email.
 6. Teachers get only an exam average per exam. No pass rate, no subject strengths/weaknesses, no per-student breakdown.
 7. Teachers cannot see or nominate achievements for their own students from My Teaching.
+8. Parents get attendance totals and finance, but no per-exam subject breakdown, no printable report card or transcript from the parent portal, and no easy view of each child's teachers.
+9. Transcripts and report cards exist as printable documents, but neither students nor parents can actually reach or download them — only staff screens expose them today.
 
 ### B. Communications
 8. SMS is queued but never sent — no SMS provider is connected, so SMS messages sit in the queue forever.
