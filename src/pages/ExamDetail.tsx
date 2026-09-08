@@ -522,6 +522,13 @@ export default function ExamDetail() {
               <FileDown className="mr-2 h-3.5 w-3.5" /> Print All Reports
             </Button>
           )}
+          {canManageStudents(userRole) && students.length > 0 && exam.status !== "published" && (
+            <Button variant="secondary" size="sm" onClick={handlePublishResults} disabled={publishing || dirty}>
+              {publishing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
+              Publish Results
+            </Button>
+          )}
+          {exam.status === "published" && <Badge variant="secondary">Results published</Badge>}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
