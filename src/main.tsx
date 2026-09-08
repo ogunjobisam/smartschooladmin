@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { registerServiceWorker } from "./lib/pwa";
@@ -11,6 +12,8 @@ registerServiceWorker();
 
 createRoot(container).render(
   <ErrorBoundary>
-    <App />
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
   </ErrorBoundary>
 );
