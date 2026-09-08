@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/Logo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ChevronRight, ChevronLeft, Check, Loader2, Database, Plus, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, Loader2, Database, Plus, X } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
