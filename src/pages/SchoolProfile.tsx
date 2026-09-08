@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Loader2, Upload, Eye } from "lucide-react";
+import { Loader2, Upload, Eye } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -188,7 +188,6 @@ export default function SchoolProfile() {
       <PageHeader
         title="School profile"
         description="Your school's name, contact details, logo and colours — used on every page and every document you print or email."
-        icon={Building2}
       />
 
       {!canEdit && (
