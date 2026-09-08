@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { rosterForPeriod } from "@/lib/roster";
 import { sortBySection } from "@/lib/sections";
+import { notifySchoolAdmins } from "@/lib/school-updates";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
@@ -191,6 +192,20 @@ export default function Attendance() {
     } else {
       toast.success(`Attendance saved for ${rows.length} students`);
       setDirty(false);
+      if (orgId) {
+        const className = classes.find((c) => c.id === selectedClassId)?.name ?? "a class";
+        const absent = rows.filter((r) => r.status === "absent").length;
+        notifySchoolAdmins({
+          orgId,
+          schoolId,
+          area: "attendance",
+          summary: `The register for ${className} on ${format(date, "d MMM yyyy")} was marked: ${rows.length} pupils, ${absent} absent.`,
+          link: "/attendance",
+          entityType: "attendance",
+          entityId: selectedClassId,
+          excludeUserId: user.id,
+        }).catch(console.error);
+      }
       queryClient.invalidateQueries({ queryKey: ["attendance-students"] });
     }
   };

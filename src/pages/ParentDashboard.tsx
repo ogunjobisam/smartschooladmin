@@ -20,6 +20,7 @@ import {
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PerformanceSummary } from "@/components/performance/PerformanceSummary";
+import { ChildRecords } from "@/components/performance/ChildRecords";
 import { useStudentPerformanceData } from "@/hooks/use-performance-data";
 import { summariseStudent } from "@/lib/performance";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
@@ -181,7 +182,7 @@ export default function ParentDashboard() {
     <div className="space-y-6">
       <PageHeader
         title={`Welcome, ${displayName.split(" ")[0]}`}
-        description="View your children's invoices and payment history."
+        description="Your children's attendance, exam results, invoices and payments."
       >
         <Button
           variant="outline"
@@ -306,7 +307,7 @@ export default function ParentDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <GraduationCap className="h-4 w-4 text-accent" /> Academic performance
+              <GraduationCap className="h-4 w-4 text-accent" /> Attendance, results and performance
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -317,7 +318,10 @@ export default function ParentDashboard() {
                 ))}
               </TabsList>
               {children.map((child) => (
-                <TabsContent key={child.id} value={child.id} className="mt-4">
+                <TabsContent key={child.id} value={child.id} className="mt-4 space-y-4">
+                  {/* The register and the marks themselves, then the analysis
+                      staff see for the same child. */}
+                  <ChildRecords studentId={child.id} />
                   <ChildPerformance studentId={child.id} />
                 </TabsContent>
               ))}

@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { notifySchoolAdmins } from "@/lib/school-updates";
+import { useCurrency } from "@/hooks/use-currency";
 import { sendPaymentConfirmation } from "@/lib/notification-dispatcher";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -12,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCurrency } from "@/hooks/use-currency";
 import { toast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -74,7 +75,8 @@ export default function RecordPayment() {
   const recordPayment = useMutation({
     mutationFn: async () => {
       if (!schoolId || !selectedStudentId || !amount || !method) throw new Error("Missing fields");
-      const amountKobo = Math.round(parseFloat(amount) * 100);
+      // Amounts are stored and displayed in whole currency units.
+      const amountValue = Math.round(parseFloat(amount));
 
       // Insert payment
       const { data: payment, error: payError } = await supabase
@@ -82,7 +84,7 @@ export default function RecordPayment() {
         .insert({
           school_id: schoolId,
           student_id: selectedStudentId,
-          amount: amountKobo,
+          amount: amountValue,
           payment_method: method as Enums<"payment_method">,
           reference_number: reference || null,
           payment_date: paymentDate,
@@ -96,8 +98,8 @@ export default function RecordPayment() {
 
       // Allocate to invoice if selected
       if (selectedInvoiceId && payment) {
-        const invoiceBalance = selectedInvoice ? (selectedInvoice.total_amount - selectedInvoice.amount_paid) : amountKobo;
-        const allocateAmount = Math.min(amountKobo, invoiceBalance);
+        const invoiceBalance = selectedInvoice ? (selectedInvoice.total_amount - selectedInvoice.amount_paid) : amountValue;
+        const allocateAmount = Math.min(amountValue, invoiceBalance);
 
         await supabase.from("payment_allocations").insert({
           payment_id: payment.id,
@@ -126,9 +128,22 @@ export default function RecordPayment() {
           orgId,
           schoolId,
           studentId: selectedStudentId,
-          amount: Math.round(parseFloat(amount) * 100),
+          amount: Math.round(parseFloat(amount)),
           paymentId: payment.id,
           invoiceNumber: selectedInvoice?.invoice_number,
+        }).catch(console.error);
+
+        // Keep the people who run the school in the loop by email, so they see
+        // money arriving without having to sign in and look.
+        notifySchoolAdmins({
+          orgId,
+          schoolId,
+          area: "fees",
+          summary: `A payment of ${formatMoney(Math.round(parseFloat(amount)))} was recorded for ${selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : "a student"}${selectedInvoice?.invoice_number ? ` against invoice ${selectedInvoice.invoice_number}` : ""}.`,
+          link: "/payments",
+          entityType: "payment",
+          entityId: payment.id,
+          excludeUserId: user?.id,
         }).catch(console.error);
       }
       navigate("/payments");
