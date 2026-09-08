@@ -137,9 +137,18 @@ function textToHtml(body: string): string {
  * schools need no provider account of their own. Resend stays as a fallback for
  * deployments that were wired to it before.
  */
-async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
+async function sendEmail(
+  row: QueueRow,
+  sender: Sender,
+  unsubscribeToken: string | null,
+): Promise<SendResult> {
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) return await sendManaged(row, sender, lovableKey);
+  if (lovableKey) {
+    if (!unsubscribeToken) {
+      return { status: "retry", error: "Could not prepare the unsubscribe link for this recipient." };
+    }
+    return await sendManaged(row, sender, lovableKey, unsubscribeToken);
+  }
 
   const apiKey = Deno.env.get("RESEND_API_KEY");
   // A missing sender is no longer a blocker: without this default, setting only
