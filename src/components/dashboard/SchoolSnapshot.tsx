@@ -162,7 +162,11 @@ export function SchoolSnapshot() {
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Your school at a glance</CardTitle>
-        <CardDescription>Attendance, results and fees — the same figures the group owner sees.</CardDescription>
+        <CardDescription>
+          {canSeeFinance
+            ? "Attendance, results and fees — the same figures the group owner sees."
+            : "Attendance and results for the classes you hold, read from the same records as the school view."}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {isLoading ? (
