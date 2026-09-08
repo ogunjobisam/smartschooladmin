@@ -39,6 +39,12 @@ interface Sender {
   name: string | null;
   /** Where a reply should go, or null to omit the header. */
   replyTo: string | null;
+  /** School branding, so the email looks like it came from the school. */
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  address?: string | null;
+  phone?: string | null;
 }
 
 /**
@@ -95,7 +101,7 @@ async function sendManaged(
         sender_domain: SENDER_DOMAIN,
         subject,
         text: row.body,
-        html: textToHtml(row.body),
+        html: brandedEmailHtml(row.body, subject, sender),
         purpose: "transactional",
         label: "school-alert",
         // The attempt number is part of the key: a retry after a failed send is a
@@ -121,15 +127,79 @@ async function sendManaged(
   }
 }
 
-/** Plain queued text turned into a readable HTML body. */
-function textToHtml(body: string): string {
-  const escaped = body
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return `<div style="font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937">${
-    escaped.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("")
-  }</div>`;
+const HEX = /^#[0-9a-f]{6}$/i;
+
+function brandColor(value: string | null | undefined, fallback: string): string {
+  const raw = String(value ?? "").trim();
+  return HEX.test(raw) ? raw : fallback;
+}
+
+function readableOn(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#0f172a" : "#ffffff";
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Queued alerts are plain text, but the email a parent opens should still look
+ * like it came from their school: the school's logo or monogram, its own colour
+ * on the header band, and its contact details in the footer.
+ */
+function brandedEmailHtml(body: string, subject: string, sender: Sender): string {
+  const brand = brandColor(sender.primaryColor, "#0f172a");
+  const accent = brandColor(sender.accentColor, "#3b82f6");
+  const onBrand = readableOn(brand);
+  const name = sender.name || PLATFORM_NAME;
+
+  const paragraphs = escapeHtml(body)
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map(
+      (p) =>
+        `<p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#1f2937">${p.replace(/\n/g, "<br/>")}</p>`,
+    )
+    .join("");
+
+  const crest = sender.logoUrl
+    ? `<img src="${escapeHtml(sender.logoUrl)}" alt="" width="44" height="44" style="display:block;border-radius:10px;background:#fff;border:0" />`
+    : `<div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.18);color:${onBrand};font:700 20px/44px Helvetica,Arial,sans-serif;text-align:center">${escapeHtml(
+        name.charAt(0).toUpperCase(),
+      )}</div>`;
+
+  const footerBits = [sender.address, sender.phone, sender.replyTo].filter(Boolean).map((v) => escapeHtml(String(v)));
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>${escapeHtml(
+    subject,
+  )}</title></head>
+<body style="margin:0;padding:24px 12px;background:#f4f6fa;font-family:'Segoe UI',Helvetica,Arial,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.06)">
+    <tr><td style="padding:20px 26px;background:${brand}">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td style="padding-right:12px">${crest}</td>
+        <td style="color:${onBrand};font-size:17px;font-weight:700;letter-spacing:.01em">${escapeHtml(name)}</td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="height:4px;background:${accent}"></td></tr>
+    <tr><td style="padding:26px">
+      <p style="margin:0 0 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8">School update</p>
+      <h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;color:#0f172a">${escapeHtml(subject)}</h1>
+      ${paragraphs}
+    </td></tr>
+    <tr><td style="padding:16px 26px 24px;border-top:1px solid #e6ebf1">
+      <p style="margin:0;font-size:12px;line-height:1.6;color:#7c8798">${escapeHtml(name)}${
+        footerBits.length ? ` &middot; ${footerBits.join(" &middot; ")}` : ""
+      }</p>
+      <p style="margin:6px 0 0;font-size:11px;color:#a3adbb">You are receiving this because your contact details are on record with the school.</p>
+    </td></tr>
+  </table>
+</body></html>`;
 }
 
 /**
@@ -175,6 +245,7 @@ async function sendEmail(
       to: [row.recipient],
       subject: row.subject || "A message from your school",
       text: row.body,
+      html: brandedEmailHtml(row.body, row.subject || "A message from your school", sender),
       ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
@@ -296,14 +367,33 @@ Deno.serve(async (req) => {
     // a query per message. Names go on the From line; the school's own address
     // is the fallback reply-to for rows queued before reply_to was resolved.
     const schoolIds = [...new Set(pending.map((r) => r.school_id).filter((id): id is string => !!id))];
-    const schools = new Map<string, { name: string; email: string | null }>();
+    const schools = new Map<
+      string,
+      {
+        name: string;
+        email: string | null;
+        logo_url: string | null;
+        primary_color: string | null;
+        accent_color: string | null;
+        address: string | null;
+        phone: string | null;
+      }
+    >();
     if (schoolIds.length > 0) {
       const { data: schoolRows } = await admin
         .from("schools")
-        .select("id, name, email")
+        .select("id, name, email, logo_url, primary_color, accent_color, address, phone")
         .in("id", schoolIds);
       for (const school of schoolRows || []) {
-        schools.set(school.id, { name: school.name, email: school.email });
+        schools.set(school.id, {
+          name: school.name,
+          email: school.email,
+          logo_url: school.logo_url,
+          primary_color: school.primary_color,
+          accent_color: school.accent_color,
+          address: school.address,
+          phone: school.phone,
+        });
       }
     }
 
@@ -334,6 +424,11 @@ Deno.serve(async (req) => {
       const sender: Sender = {
         name: school?.name ?? null,
         replyTo: row.reply_to ?? school?.email ?? null,
+        logoUrl: school?.logo_url ?? null,
+        primaryColor: school?.primary_color ?? null,
+        accentColor: school?.accent_color ?? null,
+        address: school?.address ?? null,
+        phone: school?.phone ?? null,
       };
       const result = row.channel === "email"
         ? await sendEmail(row, sender, tokens.get(row.recipient.toLowerCase()) ?? null)

@@ -1,4 +1,13 @@
 import { formatCurrency } from "@/lib/format";
+import {
+  documentShell,
+  footerHtml,
+  letterheadHtml,
+  openDocument,
+  printButtonHtml,
+  statusChipHtml,
+} from "@/lib/document-theme";
+
 
 /**
  * Printable payslip.
@@ -106,28 +115,20 @@ export function buildPayslipHtml(data: PayslipData, opts: PayslipRenderOptions =
   const hasSplit = pension > 0 || tax > 0;
   const other = Math.max(0, data.deductions - pension - tax);
 
-  const logo = data.school.logoUrl
-    ? `<img src="${esc(data.school.logoUrl)}" alt="" style="height:52px;width:52px;object-fit:contain;border-radius:8px" />`
-    : `<div style="height:52px;width:52px;border-radius:8px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700">${esc(
-        (data.school.name || "S").charAt(0)
-      )}</div>`;
-
   const field = (label: string, value: string) => `
     <div>
-      <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#64748b">${esc(label)}</p>
-      <p style="margin:3px 0 0;font-weight:600">${esc(value)}</p>
+      <p class="label">${esc(label)}</p>
+      <p class="value">${esc(value)}</p>
     </div>`;
 
   const masked = maskAccount(data.accountNumber);
   const bankLine =
-    data.bankName || masked
-      ? field("Paid into", [data.bankName, masked].filter(Boolean).join(" "))
-      : "";
+    data.bankName || masked ? field("Paid into", [data.bankName, masked].filter(Boolean).join(" ")) : "";
 
   const row = (label: string, amount: string, style = "") =>
     `<tr>
-      <td style="padding:9px 12px;border-bottom:1px solid #e6ebf1;${style}">${esc(label)}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #e6ebf1;text-align:right;font-family:monospace;${style}">${amount}</td>
+      <td style="${style}">${esc(label)}</td>
+      <td class="num" style="${style}">${amount}</td>
     </tr>`;
 
   const deductionRows = hasSplit
@@ -139,43 +140,17 @@ export function buildPayslipHtml(data: PayslipData, opts: PayslipRenderOptions =
     : row("Total deductions", `−${money(data.deductions)}`, "color:#b91c1c");
 
   const statusChip =
-    data.status && data.status !== "paid"
-      ? `<span style="display:inline-block;margin-left:8px;padding:1px 8px;border-radius:10px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:#f1f5f9;color:#475569">${esc(
-          data.status
-        )}</span>`
-      : "";
+    data.status && data.status !== "paid" ? `<p style="margin-top:6px">${statusChipHtml(data.status)}</p>` : "";
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Payslip — ${esc(data.staffName)} — ${esc(data.periodLabel)}</title>
-<style>
-  @page { margin: 16mm; }
-  @media print { .no-print { display: none; } }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#0f172a; max-width: 820px; margin: 0 auto; padding: 32px 24px; font-size: 13px; }
-  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; padding: 8px 12px; border-bottom: 2px solid #cbd5e1; }
-</style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
-    <div style="display:flex;gap:12px;align-items:center">
-      ${logo}
-      <div>
-        <h1 style="margin:0;font-size:18px">${esc(data.school.name)}</h1>
-        ${data.school.address ? `<p style="margin:2px 0;font-size:11px;color:#64748b">${esc(data.school.address)}</p>` : ""}
-        ${
-          data.school.email || data.school.phone
-            ? `<p style="margin:2px 0;font-size:11px;color:#64748b">${esc(data.school.email || "")}${
-                data.school.email && data.school.phone ? " • " : ""
-              }${esc(data.school.phone || "")}</p>`
-            : ""
-        }
-      </div>
-    </div>
-    <div style="text-align:right">
-      <p style="margin:0;font-size:16px;font-weight:700;letter-spacing:.02em">PAYSLIP${statusChip}</p>
-      <p style="margin:4px 0 0;font-size:11px;color:#64748b">${esc(data.periodLabel)}</p>
-      <p style="margin:2px 0 0;font-size:11px;color:#64748b">Pay date ${shortDate(data.runDate)}</p>
-    </div>
-  </div>
+  const body = `
+  ${letterheadHtml(data.school, {
+    kicker: "Payslip",
+    title: data.periodLabel,
+    meta: [`Pay date ${shortDate(data.runDate)}`],
+    extra: statusChip,
+  })}
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 16px;padding:14px;border:1px solid #e6ebf1;border-radius:10px;background:#f8fafc">
+  <div class="card grid-2">
     ${field("Employee", data.staffName)}
     ${field("Staff ID", data.staffId || "—")}
     ${field("Position", data.position || "—")}
@@ -183,48 +158,39 @@ export function buildPayslipHtml(data: PayslipData, opts: PayslipRenderOptions =
     ${bankLine}
   </div>
 
-  <table style="width:100%;border-collapse:collapse">
+  <p class="section-title">Earnings &amp; deductions</p>
+  <table class="doc">
     <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
     <tbody>
       ${row("Basic salary", money(data.basic))}
       ${row("Allowances", money(data.allowances))}
-      ${row("Gross pay", money(gross), "font-weight:600")}
+      ${row("Gross pay", money(gross), "font-weight:700")}
       ${deductionRows}
     </tbody>
   </table>
 
-  <div style="margin-top:18px;display:flex;justify-content:flex-end">
-    <table style="font-size:13px;border-collapse:collapse;min-width:300px">
-      <tr>
-        <td style="padding:10px 12px;font-weight:700;border-top:2px solid #cbd5e1">Net pay</td>
-        <td style="padding:10px 12px;text-align:right;font-family:monospace;font-weight:700;font-size:15px;border-top:2px solid #cbd5e1">${money(
-          data.netPay
-        )}</td>
-      </tr>
-    </table>
+  <div class="total-box">
+    <div class="row"><span>Gross pay</span><span class="mono">${money(gross)}</span></div>
+    <div class="row"><span>Total deductions</span><span class="mono" style="color:#b91c1c">−${money(
+      data.deductions
+    )}</span></div>
+    <div class="row headline"><span>Net pay</span><span class="mono">${money(data.netPay)}</span></div>
   </div>
 
-  <p style="margin-top:28px;font-size:11px;color:#64748b;border-top:1px solid #e6ebf1;padding-top:10px">
-    This is a computer-generated payslip and does not require a signature.
-    If anything looks wrong, please contact the school office${
-      data.school.phone ? ` on ${esc(data.school.phone)}` : ""
-    }.
-  </p>
-${
-  preview
-    ? ""
-    : `
-  <div class="no-print" style="margin-top:24px;text-align:center">
-    <button onclick="window.print()" style="padding:10px 22px;background:#0f172a;color:#fff;border:0;border-radius:8px;font-size:13px;cursor:pointer">Print / Save as PDF</button>
-  </div>`
-}
-</body></html>`;
+  ${footerHtml(
+    data.school,
+    "This is a computer-generated payslip and does not require a signature. If anything looks wrong, please contact the school office."
+  )}
+  ${preview ? "" : printButtonHtml()}`;
+
+  return documentShell(data.school, {
+    title: `Payslip — ${data.staffName} — ${data.periodLabel}`,
+    body,
+    maxWidth: 820,
+  });
 }
 
 export function printPayslip(data: PayslipData): boolean {
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(buildPayslipHtml(data));
-  win.document.close();
-  return true;
+  return openDocument(buildPayslipHtml(data));
 }
+
