@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendReceiptAlert } from "@/lib/family-alerts";
 import { notifySchoolAdmins } from "@/lib/school-updates";
 import { useCurrency } from "@/hooks/use-currency";
 import { sendPaymentConfirmation } from "@/lib/notification-dispatcher";
@@ -131,6 +132,26 @@ export default function RecordPayment() {
           amount: Math.round(parseFloat(amount)),
           paymentId: payment.id,
           invoiceNumber: selectedInvoice?.invoice_number,
+        }).catch(console.error);
+
+        // The family gets an email confirming the money landed.
+        sendReceiptAlert({
+          orgId,
+          schoolId,
+          studentId: selectedStudentId,
+          amountLabel: formatMoney(Math.round(parseFloat(amount))),
+          invoiceNumber: selectedInvoice?.invoice_number,
+          paymentId: payment.id,
+          balanceLabel: selectedInvoice
+            ? formatMoney(
+                Math.max(
+                  0,
+                  selectedInvoice.total_amount -
+                    selectedInvoice.amount_paid -
+                    Math.round(parseFloat(amount)),
+                ),
+              )
+            : null,
         }).catch(console.error);
 
         // Keep the people who run the school in the loop by email, so they see

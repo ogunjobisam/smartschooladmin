@@ -5,9 +5,10 @@ import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
 import { canManageStudents } from "@/lib/access";
 import { notifySchoolAdmins } from "@/lib/school-updates";
+import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
+import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown, Send } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export default function ExamDetail() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [reportCardStudent, setReportCardStudent] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const { branding } = useSchoolBranding();
 
   const handlePrintAllReportCards = () => {
@@ -254,7 +256,7 @@ export default function ExamDetail() {
       if (!exam?.class_id) return [];
       let q = supabase
         .from("enrolments")
-        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status)")
+        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status, user_id)")
         .eq("class_id", exam.class_id);
       if (exam.academic_period_id) q = q.eq("academic_period_id", exam.academic_period_id);
       const { data } = await q;
@@ -439,6 +441,39 @@ export default function ExamDetail() {
     />
   );
 
+  // Releasing results: the exam is marked published and every family is told.
+  const handlePublishResults = async () => {
+    if (!exam || !id || !orgId || !schoolId) return;
+    setPublishing(true);
+    const { error } = await supabase.from("exams").update({ status: "published" }).eq("id", id);
+    if (error) {
+      setPublishing(false);
+      toast.error("Could not publish results: " + error.message);
+      return;
+    }
+    try {
+      const result = await sendResultsPublishedAlerts({
+        orgId,
+        schoolId,
+        examId: id,
+        examName: exam.name,
+        className: displayClassName(exam.classes?.name) || "your class",
+        termName: exam.academic_periods?.name ?? null,
+        students: students.map((s) => ({ id: s.id, userId: s.user_id ?? null })),
+      });
+      toast.success(
+        result.queued > 0
+          ? `Results published — ${result.queued} email${result.queued === 1 ? "" : "s"} sent to families`
+          : "Results published",
+      );
+    } catch (alertError) {
+      console.error(alertError);
+      toast.success("Results published, but some alerts could not be sent");
+    }
+    setPublishing(false);
+    queryClient.invalidateQueries({ queryKey: ["exam", id] });
+  };
+
   // Show report card view
   if (reportCardStudent) {
     const student = students.find((s) => s.id === reportCardStudent);
@@ -487,6 +522,13 @@ export default function ExamDetail() {
               <FileDown className="mr-2 h-3.5 w-3.5" /> Print All Reports
             </Button>
           )}
+          {canManageStudents(userRole) && students.length > 0 && exam.status !== "published" && (
+            <Button variant="secondary" size="sm" onClick={handlePublishResults} disabled={publishing || dirty}>
+              {publishing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
+              Publish Results
+            </Button>
+          )}
+          {exam.status === "published" && <Badge variant="secondary">Results published</Badge>}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
