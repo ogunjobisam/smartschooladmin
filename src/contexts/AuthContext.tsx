@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { diagnoseError, type ErrorDiagnosis } from "@/lib/errors";
+import { previewableRoles } from "@/lib/roles";
 
 interface SchoolOption {
   id: string;
