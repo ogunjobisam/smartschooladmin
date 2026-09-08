@@ -29,6 +29,14 @@ interface AuthContextType {
    * `userRole` is the most senior of these and drives navigation and gating.
    */
   userRoles: string[];
+  /** The role actually granted to this account, ignoring any preview. */
+  realRole: string | null;
+  /** Every granted role in this organisation, ignoring any preview. */
+  realRoles: string[];
+  /** The role currently being previewed, or null when working as yourself. */
+  viewAsRole: string | null;
+  /** Start or stop previewing the app as a more junior role. */
+  setViewAsRole: (role: string | null) => void;
   orgId: string | null;
   schoolId: string | null;
   currency: string;
