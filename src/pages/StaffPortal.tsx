@@ -60,15 +60,39 @@ export default function StaffPortal() {
 
   const classIds = useMemo(() => myClasses.map((c) => c.id), [myClasses]);
 
-  const { data: enrolments = [] } = useQuery({
-    queryKey: ["my-class-enrolments", classIds],
+  // A pupil is enrolled once per term, so without pinning to the current term
+  // the same child is counted again for every past term.
+  const { data: currentPeriodId } = useQuery({
+    queryKey: ["staff-current-period", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, academic_years!inner(org_id)")
+        .eq("is_current", true)
+        .eq("academic_years.org_id", orgId!)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: enrolments = [] } = useQuery({
+    queryKey: ["my-class-enrolments", classIds, currentPeriodId],
+    queryFn: async () => {
+      let query = supabase
         .from("enrolments")
         .select("id, class_id, student_id, students(first_name, last_name, student_id_number, status)")
         .in("class_id", classIds);
+      if (currentPeriodId) query = query.eq("academic_period_id", currentPeriodId);
+      const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((row) => {
+        const key = `${row.class_id}|${row.student_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
     enabled: classIds.length > 0,
   });
