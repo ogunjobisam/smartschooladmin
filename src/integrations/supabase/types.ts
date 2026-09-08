@@ -3375,6 +3375,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      school_admin_contacts: {
+        Args: { _school_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
