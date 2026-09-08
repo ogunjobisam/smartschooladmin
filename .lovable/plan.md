@@ -33,7 +33,7 @@
 ## Part 2: What I propose to build now (your selections)
 
 ### Student portal — "everything about me"
-- **My results**: a new results section listing every exam the student sat, each subject's score, grade and class position, plus a printable report card using the existing branded report-card design.
+- **My results**: a new results section listing every exam the student sat, each subject's score, grade and class position, plus **downloadable report card and full transcript** using the existing branded documents.
 - **My attendance**: a dated attendance log for the current term with the four status totals kept on top, filterable by term.
 - **My subjects**: the subject list for the student's class (from the existing class-subject setup), shown as "My subjects". A true weekly timetable is called out as separate future work since no timetable data exists yet — I will not fake one.
 - **My fees, events, awards**: keep the current fees widget, statements, events and awards, and add the missing links so nothing is a dead end.
