@@ -3482,6 +3482,8 @@ export type Database = {
         | "school_announcement"
         | "school_event"
         | "recognition_published"
+        | "attendance_alert"
+        | "results_published"
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
@@ -3677,6 +3679,8 @@ export const Constants = {
         "school_announcement",
         "school_event",
         "recognition_published",
+        "attendance_alert",
+        "results_published",
       ],
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],
