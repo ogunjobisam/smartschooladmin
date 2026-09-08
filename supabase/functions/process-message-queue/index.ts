@@ -327,7 +327,9 @@ Deno.serve(async (req) => {
         name: school?.name ?? null,
         replyTo: row.reply_to ?? school?.email ?? null,
       };
-      const result = row.channel === "email" ? await sendEmail(row, sender) : sendSms();
+      const result = row.channel === "email"
+        ? await sendEmail(row, sender, tokens.get(row.recipient.toLowerCase()) ?? null)
+        : sendSms();
       const now = new Date().toISOString();
 
       if (result.status === "sent") {
