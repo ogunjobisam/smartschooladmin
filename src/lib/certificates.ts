@@ -1,3 +1,4 @@
+import { documentTheme, type DocumentSchool } from "@/lib/document-theme";
 /**
  * Printable output for the achievement wall.
  *
@@ -249,10 +250,10 @@ function letterHtml(r: CertificateRecipient, opts: CertificateOptions, school: C
 
   return `
   <section class="sheet letter">
-    <header style="border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:24px;display:flex;gap:14px;align-items:center">
-      ${school.logoUrl ? `<img src="${esc(school.logoUrl)}" alt="" style="height:46px" />` : ""}
+    <header style="border-bottom:3px solid var(--brand);padding-bottom:12px;margin-bottom:24px;display:flex;gap:14px;align-items:center">
+      ${school.logoUrl ? `<img src="${esc(school.logoUrl)}" alt="" style="height:48px;border-radius:8px" />` : ""}
       <div>
-        <div style="font-size:18px;font-weight:700">${esc(school.name)}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--brand)">${esc(school.name)}</div>
         <div style="font-size:11px;color:#64748b">${[school.address, school.phone, school.email].filter(Boolean).map(esc).join(" · ")}</div>
       </div>
     </header>
@@ -285,9 +286,12 @@ export function buildCertificatesDocument(
     .map((r) => (opts.kind === "certificate" ? certificateHtml(r, opts, school) : letterHtml(r, opts, school)))
     .join("");
 
+  const t = documentTheme(school as unknown as DocumentSchool);
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(`${school.name} — ${label}s`)}</title>
 <style>
+  :root { --brand: ${t.primary}; --brand-accent: ${t.accent}; --on-brand: ${t.onPrimary}; --brand-soft: ${t.soft}; --brand-border: ${t.border}; }
   @page { size: ${opts.kind === "certificate" ? "A4 landscape" : "A4"}; margin: ${opts.kind === "certificate" ? "0" : "18mm"}; }
   @media print {
     .no-print { display: none; }
@@ -310,6 +314,13 @@ export function buildCertificatesDocument(
       radial-gradient(circle at 88% 88%, rgba(176,141,63,.10), transparent 46%),
       #fffdf8;
   }
+  .certificate .frame::before, .certificate .frame::after {
+    content: ''; position: absolute; left: 0; right: 0; height: 5mm;
+    background: linear-gradient(90deg, var(--brand) 0%, var(--brand) 62%, var(--brand-accent) 62%, var(--brand-accent) 100%);
+    opacity: .92;
+  }
+  .certificate .frame::before { top: 0; }
+  .certificate .frame::after { bottom: 0; }
   .certificate .inner { position: relative; height: 100%; box-sizing: border-box; padding: 16mm 22mm 12mm; text-align: center; display: flex; flex-direction: column; }
   .certificate .corner { position: absolute; width: 22px; height: 22px; border: 2px solid #b08d3f; }
   .certificate .corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
@@ -319,7 +330,7 @@ export function buildCertificatesDocument(
 
   .certificate .crest { display: flex; gap: 12px; align-items: center; justify-content: center; }
   .certificate .logo { height: 52px; }
-  .certificate .school { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #0f172a; }
+  .certificate .school { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); }
   .certificate .tagline { font-size: 11px; color: #8a7a52; font-style: italic; letter-spacing: .04em; }
   .certificate .kicker { margin-top: 14px; font-family: Georgia, serif; font-size: 15px; letter-spacing: .34em; text-transform: uppercase; color: #b08d3f; }
   .certificate .rule { display: flex; align-items: center; justify-content: center; gap: 10px; color: #b08d3f; font-size: 12px; margin: 8px 0 6px; }
@@ -330,9 +341,9 @@ export function buildCertificatesDocument(
   .certificate .body-text { max-width: 700px; }
   .certificate .photo { width: 34mm; height: 34mm; object-fit: cover; border-radius: 4px; border: 2px solid #e4d7b4; box-shadow: 0 2px 6px rgba(15,23,42,.12); }
   .certificate .awarded { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #8a7a52; }
-  .certificate .name { font-family: Georgia, 'Times New Roman', serif; font-size: 40px; font-weight: 700; line-height: 1.15; margin: 6px 0 2px; color: #0f172a; }
+  .certificate .name { font-family: Georgia, 'Times New Roman', serif; font-size: 40px; font-weight: 700; line-height: 1.15; margin: 6px 0 2px; color: var(--brand); }
   .certificate .context { font-size: 12px; color: #64748b; }
-  .certificate .title { margin: 14px 0 4px; font-size: 19px; font-weight: 600; letter-spacing: .02em; color: #0f172a; }
+  .certificate .title { margin: 14px 0 4px; font-size: 19px; font-weight: 600; letter-spacing: .02em; color: var(--brand); }
   .certificate .citation { font-size: 13px; line-height: 1.6; color: #475569; font-style: italic; }
   .certificate .note { font-size: 12px; color: #64748b; margin-top: 8px; }
 
@@ -343,7 +354,7 @@ export function buildCertificatesDocument(
   .certificate .ref { position: absolute; bottom: 6mm; right: 10mm; font-size: 9px; color: #94a3b8; }
 </style></head><body>
   <div class="no-print" style="text-align:center;margin:0 0 20px">
-    <button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">
+    <button onclick="window.print()" style="padding:10px 24px;background:var(--brand);color:var(--on-brand);border:none;border-radius:8px;font-size:14px;cursor:pointer">
       Print ${recipients.length} ${label}${recipients.length === 1 ? "" : "s"}
     </button>
   </div>

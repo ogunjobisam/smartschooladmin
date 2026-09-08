@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { setDocumentPalette } from "@/lib/document-theme";
 
 interface SchoolBranding {
   name: string;
@@ -95,6 +96,9 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.style.setProperty("--school-primary", hexToHsl(branding.primaryColor));
     root.style.setProperty("--school-accent", hexToHsl(branding.accentColor));
+    // Printed and emailed documents are generated outside React, so they read the
+    // palette from this module-level publisher rather than from context.
+    setDocumentPalette({ primaryColor: branding.primaryColor, accentColor: branding.accentColor });
     return () => {
       root.style.removeProperty("--school-primary");
       root.style.removeProperty("--school-accent");
