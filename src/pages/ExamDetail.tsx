@@ -8,7 +8,7 @@ import { notifySchoolAdmins } from "@/lib/school-updates";
 import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
+import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown, Send } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
