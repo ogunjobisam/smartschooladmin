@@ -221,7 +221,7 @@ export default function Announcements() {
     if (notifyNow) {
       toast.success(`Announcement published to ${result.sent} recipient(s)`, {
         description: result.queuedEmails
-          ? `${result.queuedEmails} email${result.queuedEmails === 1 ? "" : "s"} queued — send them from Settings → Notifications.`
+          ? `${result.queuedEmails} email${result.queuedEmails === 1 ? "" : "s"} queued — send them from the Email Status page.`
           : undefined,
       });
     } else {
