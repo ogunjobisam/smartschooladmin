@@ -5,6 +5,7 @@ import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
 import { canManageStudents } from "@/lib/access";
 import { notifySchoolAdmins } from "@/lib/school-updates";
+import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
@@ -40,6 +41,7 @@ export default function ExamDetail() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [reportCardStudent, setReportCardStudent] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const { branding } = useSchoolBranding();
 
   const handlePrintAllReportCards = () => {
@@ -254,7 +256,7 @@ export default function ExamDetail() {
       if (!exam?.class_id) return [];
       let q = supabase
         .from("enrolments")
-        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status)")
+        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status, user_id)")
         .eq("class_id", exam.class_id);
       if (exam.academic_period_id) q = q.eq("academic_period_id", exam.academic_period_id);
       const { data } = await q;
