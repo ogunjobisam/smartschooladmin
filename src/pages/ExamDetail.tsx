@@ -439,6 +439,39 @@ export default function ExamDetail() {
     />
   );
 
+  // Releasing results: the exam is marked published and every family is told.
+  const handlePublishResults = async () => {
+    if (!exam || !id || !orgId || !schoolId) return;
+    setPublishing(true);
+    const { error } = await supabase.from("exams").update({ status: "published" }).eq("id", id);
+    if (error) {
+      setPublishing(false);
+      toast.error("Could not publish results: " + error.message);
+      return;
+    }
+    try {
+      const result = await sendResultsPublishedAlerts({
+        orgId,
+        schoolId,
+        examId: id,
+        examName: exam.name,
+        className: displayClassName(exam.classes?.name) || "your class",
+        termName: exam.academic_periods?.name ?? null,
+        students: students.map((s) => ({ id: s.id, userId: s.user_id ?? null })),
+      });
+      toast.success(
+        result.queued > 0
+          ? `Results published — ${result.queued} email${result.queued === 1 ? "" : "s"} sent to families`
+          : "Results published",
+      );
+    } catch (alertError) {
+      console.error(alertError);
+      toast.success("Results published, but some alerts could not be sent");
+    }
+    setPublishing(false);
+    queryClient.invalidateQueries({ queryKey: ["exam", id] });
+  };
+
   // Show report card view
   if (reportCardStudent) {
     const student = students.find((s) => s.id === reportCardStudent);
