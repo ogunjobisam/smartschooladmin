@@ -4,9 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { portalPathForRole } from "@/lib/access";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, ChevronRight, ChevronLeft, Check, Loader2, Database, Plus, X } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, Loader2, Database, Plus, X } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -114,7 +115,7 @@ export default function Onboarding() {
         }
       }
 
-      toast.success("Setup complete! Welcome to Smart School Admin.");
+      toast.success("Setup complete! Welcome to SmartSchoolAdmin.");
       window.location.href = "/dashboard";
     } catch (err) {
       toast.error(getErrorMessage(err, "Setup failed. Please try again."));
@@ -133,10 +134,8 @@ export default function Onboarding() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-lg space-y-8">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Set up Smart School Admin</h1>
+          <Logo variant="full" className="h-9 w-auto" />
+          <h1 className="text-2xl font-bold tracking-tight">Set up SmartSchoolAdmin</h1>
           <p className="text-sm text-muted-foreground">Let's get your school management platform ready</p>
         </div>
 

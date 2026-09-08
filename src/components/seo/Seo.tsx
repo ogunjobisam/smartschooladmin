@@ -1,7 +1,8 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_URL = "https://smartschooladmin.app";
-const SITE_NAME = "Smart School Admin";
+const SITE_NAME = "SmartSchoolAdmin";
+const SOCIAL_IMAGE = `${SITE_URL}/brand/og-image-1200x630.png`;
 
 interface SeoProps {
   /** Page title without the brand suffix. */
@@ -36,10 +37,12 @@ export function Seo({ title, description, path, noIndex, jsonLd }: SeoProps) {
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
+      <meta property="og:image" content={SOCIAL_IMAGE} />
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={SOCIAL_IMAGE} />
 
       {blocks.map((block, i) => (
         <script type="application/ld+json" key={i}>

@@ -84,7 +84,7 @@ export default function ResetPassword() {
 
   return (
     <>
-      <Seo title={"Choose a new password"} description={"Set a new password for your Smart School Admin account."} path="/reset-password" noIndex />
+      <Seo title={"Choose a new password"} description={"Set a new password for your SmartSchoolAdmin account."} path="/reset-password" noIndex />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">

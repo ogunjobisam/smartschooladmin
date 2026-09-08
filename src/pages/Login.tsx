@@ -4,9 +4,10 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -69,7 +70,7 @@ export default function Login() {
 
   return (
     <>
-      <Seo title={"Sign in"} description={"Sign in to Smart School Admin to manage fees, attendance, results and payroll for your school."} path="/login" noIndex />
+      <Seo title={"Sign in"} description={"Sign in to SmartSchoolAdmin to manage fees, attendance, results and payroll for your school."} path="/login" noIndex />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
@@ -79,14 +80,9 @@ export default function Login() {
               <AvatarFallback className="rounded-xl bg-primary text-primary-foreground">{schoolBrand.name[0]}</AvatarFallback>
             </Avatar>
           ) : (
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary"
-              style={schoolBrand?.primary_color ? { backgroundColor: schoolBrand.primary_color } : undefined}
-            >
-              <Building2 className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <Logo variant="mark" className="h-12 w-12" alt="SmartSchoolAdmin" />
           )}
-          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "Smart School Admin"}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "SmartSchoolAdmin"}</h1>
           <p className="text-sm text-muted-foreground">Sign in to manage your schools</p>
         </div>
 

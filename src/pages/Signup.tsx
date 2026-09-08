@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Signup() {
@@ -37,15 +38,13 @@ export default function Signup() {
 
   return (
     <>
-      <Seo title={"Create your school account"} description={"Create a Smart School Admin account and set up your school in minutes — fees, invoicing, attendance and results."} path="/signup" />
+      <Seo title={"Create your school account"} description={"Create a SmartSchoolAdmin account and set up your school in minutes — fees, invoicing, attendance and results."} path="/signup" />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <Logo variant="full" className="h-9 w-auto" />
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-          <p className="text-sm text-muted-foreground">Start managing your schools with Smart School Admin</p>
+          <p className="text-sm text-muted-foreground">Start managing your schools with SmartSchoolAdmin</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
