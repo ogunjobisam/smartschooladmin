@@ -222,9 +222,15 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
 
-    // Two callers: a scheduler holding the service role key, which drains every
-    // organisation, and a signed-in admin draining their own.
-    const isScheduler = token === serviceKey;
+    // Two callers: the scheduler, which drains every organisation, and a
+    // signed-in admin draining their own. The scheduler runs inside the database
+    // and holds a token kept in the vault, checked here — the service role key
+    // is also accepted so a manual admin call still works.
+    let isScheduler = token === serviceKey;
+    if (!isScheduler && token && !token.includes(".")) {
+      const { data: valid } = await admin.rpc("verify_queue_drain_token", { t: token });
+      isScheduler = valid === true;
+    }
     let orgFilter: string | null = null;
 
     if (!isScheduler) {
