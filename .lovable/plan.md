@@ -45,6 +45,12 @@
 - **Class performance**: per-class subject averages, pass rate, highest/lowest, and a per-student score table for each of their exams.
 - Add an achievements panel so a teacher can see and nominate recognitions for their own students.
 
+### Parent portal — "everything about my children"
+- Per-exam subject-by-subject results for each child, not just attendance totals.
+- **Download report card and transcript** per child, using the existing branded documents, with a term filter.
+- A "their teachers" panel showing who teaches each child's class.
+- All of it stays read-only and strictly scoped to the parent's own children, as today.
+
 ## Technical notes
 - Access rules live in `src/lib/access.ts` (`NAV_KEY_BY_ROLE`); add `attendance`-style keys for student with own-record-only pages rather than opening the existing management screens.
 - New pages: `src/pages/student/MyResults.tsx`, `MyAttendance.tsx`; new panels `ClassPerformancePanel.tsx`, `GuardianContactsPanel.tsx`.
