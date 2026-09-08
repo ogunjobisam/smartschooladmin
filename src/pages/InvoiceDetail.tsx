@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
+import { usePaymentReturn } from "@/hooks/use-payment-return";
 import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 import { LetterDialog } from "@/components/letters/LetterDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/table";
 
 export default function InvoiceDetail() {
+  usePaymentReturn();
   const { id } = useParams<{ id: string }>();
   const { schoolId, orgId } = useAuth();
   const { formatMoney, currency } = useCurrency();
