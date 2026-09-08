@@ -79,7 +79,12 @@ const PLATFORM_FROM = `notifications@${SENDER_DOMAIN}`;
 const PLATFORM_NAME = "SmartSchoolAdmin";
 
 /** Delivery through the managed platform email service. */
-async function sendManaged(row: QueueRow, sender: Sender, apiKey: string): Promise<SendResult> {
+async function sendManaged(
+  row: QueueRow,
+  sender: Sender,
+  apiKey: string,
+  unsubscribeToken: string,
+): Promise<SendResult> {
   const replyTo = replyToAddress(sender.replyTo);
   const subject = row.subject || "A message from your school";
   try {
@@ -94,6 +99,9 @@ async function sendManaged(row: QueueRow, sender: Sender, apiKey: string): Promi
         purpose: "transactional",
         label: "school-alert",
         idempotency_key: `queue-${row.id}`,
+        // Required for every send: it is what makes the one-click unsubscribe
+        // in the message header work, and the provider rejects sends without it.
+        unsubscribe_token: unsubscribeToken,
         ...(replyTo ? { reply_to: replyTo } : {}),
       },
       { apiKey },
