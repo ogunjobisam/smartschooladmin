@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import heroIllustration from "@/assets/hero-illustration.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { portalPathForRole } from "@/lib/access";
 import {
   DEMO_PERSONAS, DEMO_DURATION_HOURS, startDemoSession, requestDemoCleanup, clearDemoSession,
   type DemoRole,
@@ -24,6 +26,7 @@ const features = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { user, loading, userRole } = useAuth();
   const [params] = useSearchParams();
   const [starting, setStarting] = useState<DemoRole | null>(null);
   const demoState = params.get("demo");
@@ -35,6 +38,14 @@ export default function Landing() {
     clearDemoSession();
     void requestDemoCleanup();
   }, []);
+
+  // A full-page Google OAuth flow returns to the public site root. Once the
+  // restored session and role are ready, continue into the account instead of
+  // leaving the signed-in user on the marketing page with no visible result.
+  useEffect(() => {
+    if (loading || !user) return;
+    navigate(portalPathForRole(userRole) ?? "/dashboard", { replace: true });
+  }, [loading, navigate, user, userRole]);
 
   /**
    * One click, no sign-up: the server builds a private sandbox school, signs
