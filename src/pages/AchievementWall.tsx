@@ -120,9 +120,27 @@ export default function AchievementWall() {
     ...appointments.flatMap((a) => [a.students?.photo_url, a.staff?.photo_url]),
   ]);
 
-  const nameOf = (row: { students: Person | null; staff: Person | null }) => {
+  // Parents and pupils cannot read other families' records, so the joined name
+  // comes back empty for them. Published wall items are public inside the
+  // school, so we look those names up through a dedicated, school-scoped call.
+  const { data: recipientNames } = useQuery({
+    queryKey: ["wall-recipient-names", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return {} as Record<string, string>;
+      const { data, error } = await supabase.rpc("wall_recipient_names", { _school_id: schoolId });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of data || []) map[row.person_id as string] = row.full_name as string;
+      return map;
+    },
+    enabled: !!schoolId,
+  });
+
+  const nameOf = (row: { students: Person | null; staff: Person | null; student_id?: string | null; staff_id?: string | null }) => {
     const p = row.students ?? row.staff;
-    return p ? `${p.first_name} ${p.last_name}` : "Unknown";
+    if (p) return `${p.first_name} ${p.last_name}`;
+    const id = row.student_id ?? row.staff_id;
+    return (id && recipientNames?.[id]) || "A member of the school";
   };
 
   const initialsOf = (row: { students: Person | null; staff: Person | null }) =>
