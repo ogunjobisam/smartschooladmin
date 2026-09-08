@@ -260,7 +260,8 @@ export function documentCss(school: DocumentSchool | null | undefined, opts: Doc
 `;
 }
 
-export function logoHtml(school: DocumentSchool, size = 58): string {
+export function logoHtml(input: DocumentSchool, size = 58): string {
+  const school = withSchoolDefaults(input);
   const style = size === 58 ? "" : ` style="height:${size}px;width:${size}px;font-size:${Math.round(size * 0.4)}px"`;
   if (school.logoUrl) {
     return `<img class="doc-logo" src="${esc(school.logoUrl)}" alt=""${style} />`;
@@ -282,7 +283,8 @@ export interface LetterheadOptions {
 }
 
 /** Branded letterhead plus the two-tone rule that sits under it. */
-export function letterheadHtml(school: DocumentSchool, opts: LetterheadOptions = {}): string {
+export function letterheadHtml(input: DocumentSchool, opts: LetterheadOptions = {}): string {
+  const school = withSchoolDefaults(input);
   const contact = [school.email, school.phone].filter(Boolean).join(" • ");
   const meta = (opts.meta || []).filter(Boolean) as string[];
   return `
@@ -306,7 +308,8 @@ export function letterheadHtml(school: DocumentSchool, opts: LetterheadOptions =
   <div class="doc-rule"></div>`;
 }
 
-export function footerHtml(school: DocumentSchool, note?: string): string {
+export function footerHtml(input: DocumentSchool, note?: string): string {
+  const school = withSchoolDefaults(input);
   const right = school.phone ? `Questions? Call ${esc(school.phone)}` : esc(school.email || "");
   return `<div class="doc-foot"><span>${esc(note || "Computer-generated document — no signature required.")}</span><span>${right}</span></div>`;
 }
