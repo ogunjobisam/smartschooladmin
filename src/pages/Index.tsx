@@ -194,6 +194,8 @@ export default function Dashboard() {
         </div>
       )}
 
+      <SchoolSnapshot />
+
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
         <UpcomingEvents limit={3} />
         <AchievementHighlights limit={4} />
