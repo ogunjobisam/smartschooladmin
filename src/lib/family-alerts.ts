@@ -64,7 +64,7 @@ export async function familyContactsFor(studentIds: string[]): Promise<FamilyCon
 }
 
 /** User ids that have switched this kind of email off. */
-async function emailOptOuts(userIds: string[], type: string): Promise<Set<string>> {
+async function emailOptOuts(userIds: string[], type: NotificationType): Promise<Set<string>> {
   const off = new Set<string>();
   if (userIds.length === 0) return off;
 
