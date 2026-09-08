@@ -133,6 +133,26 @@ export default function RecordPayment() {
           invoiceNumber: selectedInvoice?.invoice_number,
         }).catch(console.error);
 
+        // The family gets an email confirming the money landed.
+        sendReceiptAlert({
+          orgId,
+          schoolId,
+          studentId: selectedStudentId,
+          amountLabel: formatMoney(Math.round(parseFloat(amount))),
+          invoiceNumber: selectedInvoice?.invoice_number,
+          paymentId: payment.id,
+          balanceLabel: selectedInvoice
+            ? formatMoney(
+                Math.max(
+                  0,
+                  selectedInvoice.total_amount -
+                    selectedInvoice.amount_paid -
+                    Math.round(parseFloat(amount)),
+                ),
+              )
+            : null,
+        }).catch(console.error);
+
         // Keep the people who run the school in the loop by email, so they see
         // money arriving without having to sign in and look.
         notifySchoolAdmins({
