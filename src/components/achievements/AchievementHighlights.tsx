@@ -62,9 +62,26 @@ export function AchievementHighlights({ limit = 4, title = "Recent achievements"
 
   const photoUrls = usePhotoUrls(rows.map((r) => r.photo_path));
 
+  // Parents and pupils can read published awards but not other families'
+  // records, so names for those rows come from a school-scoped lookup.
+  const { data: recipientNames } = useQuery({
+    queryKey: ["wall-recipient-names", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return {} as Record<string, string>;
+      const { data, error } = await supabase.rpc("wall_recipient_names", { _school_id: schoolId });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of data || []) map[row.person_id as string] = row.full_name as string;
+      return map;
+    },
+    enabled: !!schoolId,
+  });
+
   const nameOf = (r: Row) => {
     const p = r.students ?? r.staff;
-    return p ? `${p.first_name} ${p.last_name}` : "Unknown";
+    if (p) return `${p.first_name} ${p.last_name}`;
+    const id = r.student_id ?? r.staff_id;
+    return (id && recipientNames?.[id]) || "A member of the school";
   };
 
   return (
