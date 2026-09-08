@@ -95,7 +95,7 @@ export default function StaffPortal() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exams")
-        .select("id, name, class_id, exam_date, status")
+        .select("id, name, class_id, exam_date, status, max_score")
         .in("class_id", classIds)
         .order("exam_date", { ascending: false })
         .limit(10);
@@ -112,7 +112,7 @@ export default function StaffPortal() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("student_scores")
-        .select("id, exam_id, score, max_score")
+        .select("id, exam_id, score")
         .in("exam_id", examIds);
       if (error) throw error;
       return data || [];
@@ -149,7 +149,7 @@ export default function StaffPortal() {
         const own = scores.filter((s) => s.exam_id === exam.id);
         const totals = own.reduce(
           (acc, s) => {
-            const max = s.max_score || 100;
+            const max = exam.max_score || 100;
             if (s.score === null || s.score === undefined) return acc;
             acc.sum += (Number(s.score) / max) * 100;
             acc.count += 1;
