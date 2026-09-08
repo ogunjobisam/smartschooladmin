@@ -67,13 +67,71 @@ type SendResult =
 const DEFAULT_FROM = "onboarding@resend.dev";
 
 /**
+ * The platform's own verified sending domain.
+ *
+ * Set up once for the whole platform, so no school does DNS work: mail goes out
+ * as `Grace Academy <notifications@notify.smartschooladmin.app>` with the
+ * school's own address as Reply-To.
+ */
+const SENDER_DOMAIN = "notify.smartschooladmin.app";
+const PLATFORM_FROM = `notifications@${SENDER_DOMAIN}`;
+const PLATFORM_NAME = "SmartSchoolAdmin";
+
+/** Delivery through the managed platform email service. */
+async function sendManaged(row: QueueRow, sender: Sender, apiKey: string): Promise<SendResult> {
+  const replyTo = replyToAddress(sender.replyTo);
+  const subject = row.subject || "A message from your school";
+  try {
+    await sendLovableEmail(
+      {
+        to: row.recipient,
+        from: { name: sender.name || PLATFORM_NAME, address: PLATFORM_FROM },
+        sender_domain: SENDER_DOMAIN,
+        subject,
+        text: row.body,
+        html: textToHtml(row.body),
+        purpose: "transactional",
+        label: "school-alert",
+        idempotency_key: `queue-${row.id}`,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      },
+      { apiKey },
+    );
+    return { status: "sent" };
+  } catch (err) {
+    if (err instanceof EmailAPIError) {
+      const error = `Email API ${err.status}: ${err.message}`.slice(0, 400);
+      if (err.code === "recipient_suppressed") {
+        return { status: "failed", error: `${error} — recipient has unsubscribed or bounced.` };
+      }
+      return { status: err.retryable ? "retry" : "failed", error };
+    }
+    return { status: "retry", error: err instanceof Error ? err.message : "Send failed" };
+  }
+}
+
+/** Plain queued text turned into a readable HTML body. */
+function textToHtml(body: string): string {
+  const escaped = body
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<div style="font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937">${
+    escaped.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("")
+  }</div>`;
+}
+
+/**
  * Email delivery.
  *
- * Resend is the default because it needs nothing but an API key. Swapping
- * providers means replacing this one function — everything else works off the
- * queue table.
+ * The platform's managed sending domain is used whenever it is available, so
+ * schools need no provider account of their own. Resend stays as a fallback for
+ * deployments that were wired to it before.
  */
 async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) return await sendManaged(row, sender, lovableKey);
+
   const apiKey = Deno.env.get("RESEND_API_KEY");
   // A missing sender is no longer a blocker: without this default, setting only
   // RESEND_API_KEY left the whole queue "unconfigured" with nothing to say why.
@@ -82,7 +140,7 @@ async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
   if (!apiKey) {
     return {
       status: "unconfigured",
-      error: "No email provider configured. Set RESEND_API_KEY.",
+      error: "No email provider configured.",
     };
   }
 
@@ -114,8 +172,7 @@ async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
       status: "unconfigured",
       error:
         `${error} — this is a sender problem, not a problem with the message. ` +
-        `Verify a domain in Resend and set NOTIFICATIONS_FROM_EMAIL to an address on it. ` +
-        `Messages stay queued until then.`,
+        `Messages stay queued until the sender is fixed.`,
     };
   }
   return { status: outcome, error };
