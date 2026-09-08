@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">8. Contact Us</h2>
-            <p>If you have questions about this Privacy Policy, please contact us at <strong className="text-foreground">privacy@smartschooladmin.com</strong>.</p>
+            <p>If you have questions about this Privacy Policy, please contact us at <strong className="text-foreground">privacy@smartschooladmin.app</strong>.</p>
           </section>
         </div>
       </main>
