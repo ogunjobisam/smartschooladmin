@@ -417,7 +417,7 @@ export default function SettingsPage() {
           {!canEditBranding ? (
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
-                Only proprietors and group admins can manage school branding.
+                Only school leadership and group owners can manage school branding.
               </CardContent>
             </Card>
           ) : (
