@@ -14,7 +14,16 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', "Inter", "system-ui", "sans-serif"],
+      },
       colors: {
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          ice: "hsl(var(--brand-ice))",
+          mint: "hsl(var(--brand-mint))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -85,6 +94,7 @@ export default {
         },
       },
       borderRadius: {
+        brand: "14px",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

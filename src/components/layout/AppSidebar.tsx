@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { navItemsForRole, portalPathForRole, profileLinkForRole, type NavGroup, type NavItem } from "@/lib/access";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { Logo } from "@/components/brand/Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -136,9 +137,7 @@ export function AppSidebar() {
               </AvatarFallback>
             </Avatar>
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Building2 className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
+            <Logo variant="mark" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
           )}
           {!collapsed && (
             <div className="flex min-w-0 flex-col">

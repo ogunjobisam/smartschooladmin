@@ -15,7 +15,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 
 /**
- * One look for every account email SmartSchool Admin sends.
+ * One look for every account email SmartSchoolAdmin sends.
  *
  * Sign-in, invitation and password emails all arrive in the same inbox as the
  * school's own alerts, so they share the same shape: a coloured header band with
@@ -23,8 +23,8 @@ import {
  * inline constants because email clients ignore stylesheets.
  */
 
-export const BRAND = '#0f172a'
-export const ACCENT = '#3b82f6'
+export const BRAND = '#0F766E'
+export const ACCENT = '#14B8A6'
 
 export const main = {
   margin: '0',
@@ -71,7 +71,7 @@ export const h1 = {
   fontSize: '22px',
   lineHeight: '1.3',
   fontWeight: 700 as const,
-  color: '#0f172a',
+  color: '#0B2B2A',
   margin: '0 0 16px',
 }
 
@@ -103,7 +103,7 @@ export const codeStyle = {
   fontSize: '30px',
   fontWeight: 700 as const,
   letterSpacing: '.22em',
-  color: '#0f172a',
+  color: '#0B2B2A',
   backgroundColor: '#f4f6fa',
   border: '1px solid #e6ebf1',
   borderRadius: '12px',

@@ -38,7 +38,7 @@ export function buildIcs(events: IcsEvent[], calendarName = "School Events"): st
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SmartSchool Admin//Events//EN",
+    "PRODID:-//SmartSchoolAdmin//Events//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(calendarName)}`,

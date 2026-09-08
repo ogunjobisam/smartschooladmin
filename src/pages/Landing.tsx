@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/Logo";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import heroIllustration from "@/assets/hero-illustration.png";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,14 +91,14 @@ export default function Landing() {
   return (
     <>
       <Seo
-        title={"Smart School Admin — School Management Software for Private Schools"}
+        title={"SmartSchoolAdmin — School Management Software for Private Schools"}
         description={"Run fees, invoicing, payments, payroll, attendance, exams and reports for your private school or school group in one place."}
         path="/"
         jsonLd={[
           {
             "@context": "https://schema.org",
             "@type": "SoftwareApplication",
-            name: "Smart School Admin",
+            name: "SmartSchoolAdmin",
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
             url: "https://smartschooladmin.app/",
@@ -108,7 +109,7 @@ export default function Landing() {
           {
             "@context": "https://schema.org",
             "@type": "Organization",
-            name: "Smart School Admin",
+            name: "SmartSchoolAdmin",
             url: "https://smartschooladmin.app/",
             legalName: "Smartever Ltd",
           },
@@ -117,12 +118,9 @@ export default function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-              <GraduationCap className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold text-foreground">SmartSchool</span>
-          </div>
+          <Link to="/" className="flex items-center" aria-label="SmartSchoolAdmin home">
+            <Logo variant="full" className="h-8 w-auto" />
+          </Link>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild><Link to="/login">Log in</Link></Button>
             <Button size="sm" asChild><Link to="/signup">Get started</Link></Button>
@@ -299,7 +297,7 @@ export default function Landing() {
       <footer className="border-t border-border/60 py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <span>© {new Date().getFullYear()} SmartSchool. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} SmartSchoolAdmin. All rights reserved.</span>
             <p className="mt-1 text-[11px] text-muted-foreground/70">SmartSchoolAdmin is a trading name of Smartever Ltd. Registered in England &amp; Wales. Company No: 15038603</p>
           </div>
           <div className="flex flex-wrap gap-4">

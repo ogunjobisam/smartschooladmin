@@ -29,7 +29,7 @@ export default function ForgotPassword() {
 
   return (
     <>
-      <Seo title={"Reset your password"} description={"Request a password reset link for your Smart School Admin account."} path="/forgot-password" noIndex />
+      <Seo title={"Reset your password"} description={"Request a password reset link for your SmartSchoolAdmin account."} path="/forgot-password" noIndex />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">

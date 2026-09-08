@@ -15,10 +15,10 @@ interface SchoolBranding {
 }
 
 const defaultBranding: SchoolBranding = {
-  name: "Smart School Admin",
+  name: "SmartSchoolAdmin",
   logoUrl: null,
-  primaryColor: "#1e293b",
-  accentColor: "#3b82f6",
+  primaryColor: "#0F766E",
+  accentColor: "#14B8A6",
   tagline: null,
   address: null,
   phone: null,

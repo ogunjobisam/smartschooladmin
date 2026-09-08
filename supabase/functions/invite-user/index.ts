@@ -71,7 +71,7 @@ async function createInviteLink(
     recipient: email,
     subject: `Your account${where} is ready`,
     body:
-      `You have been invited to Smart School Admin${where}.\n\n` +
+      `You have been invited to SmartSchoolAdmin${where}.\n\n` +
       `Set your password to get started:\n${link}\n\n` +
       `If you were not expecting this, you can ignore this message.`,
   });

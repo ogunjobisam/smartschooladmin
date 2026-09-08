@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 
 const SITE_URL = "https://smartschooladmin.app";
-const SITE_NAME = "Smart School Admin";
+const SITE_NAME = "SmartSchoolAdmin";
 
 interface SeoProps {
   /** Page title without the brand suffix. */

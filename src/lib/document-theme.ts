@@ -24,8 +24,8 @@ export interface DocumentSchool {
   tagline?: string | null;
 }
 
-const FALLBACK_PRIMARY = "#0f172a";
-const FALLBACK_ACCENT = "#3b82f6";
+const FALLBACK_PRIMARY = "#0F766E";
+const FALLBACK_ACCENT = "#14B8A6";
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 let palette: { primaryColor: string; accentColor: string } = {
