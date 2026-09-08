@@ -47,15 +47,16 @@ export default function StaffPortal() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("class_teachers")
-        .select("class_id, classes(id, name, level, school_id)")
+        .select("class_id, classes(id, name, school_id)")
         .eq("staff_id", staffId!);
       if (error) throw error;
       return (data || [])
         .map((row) => row.classes)
-        .filter((c): c is { id: string; name: string; level: number | null; school_id: string } => !!c);
+        .filter((c): c is { id: string; name: string; school_id: string } => !!c);
     },
     enabled: !!staffId,
   });
+
 
   const classIds = useMemo(() => myClasses.map((c) => c.id), [myClasses]);
 
