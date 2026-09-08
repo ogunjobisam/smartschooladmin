@@ -3389,6 +3389,14 @@ export type Database = {
       sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
+      wall_recipient_names: {
+        Args: { _school_id: string }
+        Returns: {
+          full_name: string
+          person_id: string
+          subject_type: string
+        }[]
+      }
     }
     Enums: {
       app_role:
