@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js";
 import { classifyEmailFailure } from "../_shared/email-result.ts";
 import { formatSender, replyToAddress } from "../_shared/sender.ts";
 
@@ -67,13 +68,90 @@ type SendResult =
 const DEFAULT_FROM = "onboarding@resend.dev";
 
 /**
+ * The platform's own verified sending domain.
+ *
+ * Set up once for the whole platform, so no school does DNS work: mail goes out
+ * as `Grace Academy <notifications@notify.smartschooladmin.app>` with the
+ * school's own address as Reply-To.
+ */
+const SENDER_DOMAIN = "notify.smartschooladmin.app";
+const PLATFORM_FROM = `notifications@${SENDER_DOMAIN}`;
+const PLATFORM_NAME = "SmartSchoolAdmin";
+
+/** Delivery through the managed platform email service. */
+async function sendManaged(
+  row: QueueRow,
+  sender: Sender,
+  apiKey: string,
+  unsubscribeToken: string,
+): Promise<SendResult> {
+  const replyTo = replyToAddress(sender.replyTo);
+  const subject = row.subject || "A message from your school";
+  try {
+    await sendLovableEmail(
+      {
+        to: row.recipient,
+        from: { name: sender.name || PLATFORM_NAME, address: PLATFORM_FROM },
+        sender_domain: SENDER_DOMAIN,
+        subject,
+        text: row.body,
+        html: textToHtml(row.body),
+        purpose: "transactional",
+        label: "school-alert",
+        // The attempt number is part of the key: a retry after a failed send is a
+        // genuinely new send, and reusing the key would be refused outright.
+        idempotency_key: `queue-${row.id}-${row.attempts}`,
+        // Required for every send: it is what makes the one-click unsubscribe
+        // in the message header work, and the provider rejects sends without it.
+        unsubscribe_token: unsubscribeToken,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      },
+      { apiKey },
+    );
+    return { status: "sent" };
+  } catch (err) {
+    if (err instanceof EmailAPIError) {
+      const error = `Email API ${err.status}: ${err.message}`.slice(0, 400);
+      if (err.code === "recipient_suppressed") {
+        return { status: "failed", error: `${error} — recipient has unsubscribed or bounced.` };
+      }
+      return { status: err.retryable ? "retry" : "failed", error };
+    }
+    return { status: "retry", error: err instanceof Error ? err.message : "Send failed" };
+  }
+}
+
+/** Plain queued text turned into a readable HTML body. */
+function textToHtml(body: string): string {
+  const escaped = body
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<div style="font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937">${
+    escaped.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`).join("")
+  }</div>`;
+}
+
+/**
  * Email delivery.
  *
- * Resend is the default because it needs nothing but an API key. Swapping
- * providers means replacing this one function — everything else works off the
- * queue table.
+ * The platform's managed sending domain is used whenever it is available, so
+ * schools need no provider account of their own. Resend stays as a fallback for
+ * deployments that were wired to it before.
  */
-async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
+async function sendEmail(
+  row: QueueRow,
+  sender: Sender,
+  unsubscribeToken: string | null,
+): Promise<SendResult> {
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    if (!unsubscribeToken) {
+      return { status: "retry", error: "Could not prepare the unsubscribe link for this recipient." };
+    }
+    return await sendManaged(row, sender, lovableKey, unsubscribeToken);
+  }
+
   const apiKey = Deno.env.get("RESEND_API_KEY");
   // A missing sender is no longer a blocker: without this default, setting only
   // RESEND_API_KEY left the whole queue "unconfigured" with nothing to say why.
@@ -82,7 +160,7 @@ async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
   if (!apiKey) {
     return {
       status: "unconfigured",
-      error: "No email provider configured. Set RESEND_API_KEY.",
+      error: "No email provider configured.",
     };
   }
 
@@ -114,8 +192,7 @@ async function sendEmail(row: QueueRow, sender: Sender): Promise<SendResult> {
       status: "unconfigured",
       error:
         `${error} — this is a sender problem, not a problem with the message. ` +
-        `Verify a domain in Resend and set NOTIFICATIONS_FROM_EMAIL to an address on it. ` +
-        `Messages stay queued until then.`,
+        `Messages stay queued until the sender is fixed.`,
     };
   }
   return { status: outcome, error };
@@ -147,9 +224,15 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
 
-    // Two callers: a scheduler holding the service role key, which drains every
-    // organisation, and a signed-in admin draining their own.
-    const isScheduler = token === serviceKey;
+    // Two callers: the scheduler, which drains every organisation, and a
+    // signed-in admin draining their own. The scheduler runs inside the database
+    // and holds a token kept in the vault, checked here — the service role key
+    // is also accepted so a manual admin call still works.
+    let isScheduler = token === serviceKey;
+    if (!isScheduler && token && !token.includes(".")) {
+      const { data: valid } = await admin.rpc("verify_queue_drain_token", { t: token });
+      isScheduler = valid === true;
+    }
     let orgFilter: string | null = null;
 
     if (!isScheduler) {
@@ -224,6 +307,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Every message carries a one-click unsubscribe, and the token has to be the
+    // same one each time for a given address, so it is stored rather than made
+    // up per send. One round trip for the whole batch.
+    const recipients = [...new Set(pending.filter((r) => r.channel === "email").map((r) => r.recipient.toLowerCase()))];
+    const tokens = new Map<string, string>();
+    if (recipients.length > 0) {
+      await admin
+        .from("email_unsubscribe_tokens")
+        .upsert(recipients.map((email) => ({ email })), { onConflict: "email", ignoreDuplicates: true });
+      const { data: tokenRows } = await admin
+        .from("email_unsubscribe_tokens")
+        .select("email, token")
+        .in("email", recipients);
+      for (const t of tokenRows || []) tokens.set(t.email, t.token);
+    }
+
+
+
     let sent = 0;
     let failed = 0;
     let deferred = 0;
@@ -234,7 +335,9 @@ Deno.serve(async (req) => {
         name: school?.name ?? null,
         replyTo: row.reply_to ?? school?.email ?? null,
       };
-      const result = row.channel === "email" ? await sendEmail(row, sender) : sendSms();
+      const result = row.channel === "email"
+        ? await sendEmail(row, sender, tokens.get(row.recipient.toLowerCase()) ?? null)
+        : sendSms();
       const now = new Date().toISOString();
 
       if (result.status === "sent") {
@@ -281,11 +384,12 @@ Deno.serve(async (req) => {
       sent,
       failed,
       deferred,
-      email_configured: !!Deno.env.get("RESEND_API_KEY"),
-      // So the settings screen can say which sender is in use, and warn when it
-      // is the test one that only reaches the Resend account holder.
-      sender: Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM,
-      sender_is_default: !Deno.env.get("NOTIFICATIONS_FROM_EMAIL"),
+      email_configured: !!(Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("RESEND_API_KEY")),
+      // So the settings screen can say which sender is in use.
+      sender: Deno.env.get("LOVABLE_API_KEY")
+        ? PLATFORM_FROM
+        : Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM,
+      sender_is_default: !Deno.env.get("LOVABLE_API_KEY") && !Deno.env.get("NOTIFICATIONS_FROM_EMAIL"),
     });
   } catch (err) {
     console.error("process-message-queue error:", err);
