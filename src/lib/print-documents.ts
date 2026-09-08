@@ -247,6 +247,9 @@ export interface TranscriptData {
   attendancePresent: number;
   awards: TranscriptAward[];
   generatedAt?: string;
+  /** Overrides the default "Student Transcript" heading, e.g. a term report card. */
+  documentTitle?: string;
+  documentKicker?: string;
 }
 
 export function printTranscript(data: TranscriptData) {
@@ -317,8 +320,8 @@ export function printTranscript(data: TranscriptData) {
 
   const body = `
   ${letterheadHtml(school, {
-    kicker: "Official record",
-    title: "Student Transcript",
+    kicker: data.documentKicker || "Official record",
+    title: data.documentTitle || "Student Transcript",
     meta: [`Generated ${generated}`],
   })}
 
@@ -351,7 +354,7 @@ export function printTranscript(data: TranscriptData) {
   ${footerHtml(school, `This transcript is issued by ${school.name}.`)}
   ${printButtonHtml("Print transcript")}`;
 
-  openDocument(documentShell(school, { title: `Student Transcript — ${data.studentName}`, body }));
+  openDocument(documentShell(school, { title: `${data.documentTitle || "Student Transcript"} — ${data.studentName}`, body }));
 }
 
 export type { IdCardData, IdCardRenderOptions } from "./id-card";

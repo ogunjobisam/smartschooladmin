@@ -3304,6 +3304,12 @@ export type Database = {
         Returns: boolean
       }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      class_teacher_names: {
+        Args: { _class_id: string }
+        Returns: {
+          full_name: string
+        }[]
+      }
       create_demo_org: {
         Args: { _hours?: number; _label?: string }
         Returns: Json

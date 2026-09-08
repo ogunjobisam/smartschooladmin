@@ -45,6 +45,9 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "performance", title: "Performance", url: "/performance", group: "overview" },
   { key: "achievements", title: "Achievements", url: "/achievements", group: "overview" },
   { key: "wall", title: "Achievement Wall", url: "/wall", group: "overview" },
+  // A student's own record, from their portal out to the detail behind it.
+  { key: "my-results", title: "My Results", url: "/student/results", group: "overview" },
+  { key: "my-attendance", title: "My Attendance", url: "/student/attendance", group: "overview" },
 
   { key: "fees", title: "Fee Schedules", url: "/fees", group: "finance" },
   { key: "invoices", title: "Invoices", url: "/invoices", group: "finance" },
@@ -135,7 +138,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   // A student sees their own portal and their own notification preferences.
   // Everything else on the dashboard is the school's, not theirs.
   student: [
-    "dashboard", "wall",
+    "dashboard", "wall", "my-results", "my-attendance",
     "events", "preferences",
   ],
 };
