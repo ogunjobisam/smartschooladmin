@@ -2,9 +2,9 @@ import { Seo } from "@/components/seo/Seo";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  GraduationCap, CreditCard, Users, BarChart3, ShieldCheck, Zap, ArrowRight,
+  GraduationCap, CreditCard, Users, Zap, ArrowRight,
   FlaskConical, Loader2, Clock, Trash2, Check, CalendarDays, BellRing,
-  FileText, Bus, Award, UserRoundCheck, Building2, Smartphone, CircleCheck,
+  FileText, Bus, Award, UserRoundCheck, CircleCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
