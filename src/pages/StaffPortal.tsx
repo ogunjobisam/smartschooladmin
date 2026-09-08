@@ -239,8 +239,17 @@ export default function StaffPortal() {
           subtitle="Present or late"
           icon={CalendarCheck}
         />
-        <StatCard title="Recent exams" value={String(exams.length)} icon={ClipboardList} />
+        <StatCard
+          title="Recent exams"
+          value={String(exams.length)}
+          subtitle={`${scores.length} result${scores.length === 1 ? "" : "s"} entered`}
+          icon={ClipboardList}
+        />
       </div>
+
+      {/* The same attendance and results figures the school dashboard shows,
+          narrowed by row-level security to the classes this teacher holds. */}
+      <SchoolSnapshot />
 
       {myClasses.length === 0 ? (
         <EmptyState
