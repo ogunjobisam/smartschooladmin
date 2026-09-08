@@ -66,7 +66,31 @@ export default function Landing() {
 
   return (
     <>
-      <Seo title={"Smart School Admin — School Management Software for Private Schools"} description={"Run fees, invoicing, payments, payroll, attendance, exams and reports for your private school or school group in one place."} path="/" />
+      <Seo
+        title={"Smart School Admin — School Management Software for Private Schools"}
+        description={"Run fees, invoicing, payments, payroll, attendance, exams and reports for your private school or school group in one place."}
+        path="/"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "Smart School Admin",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            url: "https://smartschooladmin.app/",
+            description:
+              "School management software for private schools and school groups: student records, fees and invoicing, payments, payroll, attendance, exams and reporting.",
+            featureList: features.map((f) => f.title),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Smart School Admin",
+            url: "https://smartschooladmin.app/",
+            legalName: "Smartever Ltd",
+          },
+        ]}
+      />
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-50">
