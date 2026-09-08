@@ -83,3 +83,36 @@ export const roleBadgeClass: Record<string, string> = {
   parent: "bg-muted text-muted-foreground",
   student: "bg-muted text-muted-foreground",
 };
+
+/**
+ * What each role is for, in the words a school would use. Shown on the Roles &
+ * Access page so an owner can see who should hold what without reading code.
+ */
+export const ROLE_DESCRIPTIONS: Record<string, string> = {
+  super_admin: "Platform owner. Full access to every organisation, school and setting.",
+  proprietor: "Owns the school group. Sees every school, all finances and all reports.",
+  group_admin: "Runs the group day to day on the proprietor's behalf, with the same reach.",
+  school_admin: "Runs one school: its people, records, fees, settings and user accounts.",
+  principal: "Heads one school: academics, staff, students, approvals and school settings.",
+  bursar: "Owns fees and money in: schedules, invoices, payments, arrears and payroll.",
+  finance_officer: "Handles day-to-day money work — invoices, payments and arrears only.",
+  hr_admin: "Handles staff records, payroll and staff recognition.",
+  teacher: "Sees only their own classes: attendance, exams, results and their own pay.",
+  parent: "Sees only their own children: attendance, results, fees and invoices.",
+  student: "Sees only their own records: results, attendance, fees and achievements.",
+};
+
+/** Roles senior enough to preview the app as a more junior role. */
+export function canPreviewRoles(role: string | null): boolean {
+  return (ROLE_RANK[role || ""] ?? 99) <= 4;
+}
+
+/**
+ * Which roles a person may preview: strictly more junior than their own, mirroring
+ * the rule that nobody may act above their own rank.
+ */
+export function previewableRoles(role: string | null): string[] {
+  if (!canPreviewRoles(role)) return [];
+  const mine = ROLE_RANK[role || ""] ?? 99;
+  return ROLES.filter((r) => (ROLE_RANK[r.value] ?? 99) > mine).map((r) => r.value);
+}
