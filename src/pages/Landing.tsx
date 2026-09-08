@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   GraduationCap, CreditCard, Users, Zap, ArrowRight,
-  FlaskConical, Loader2, Clock, Trash2, Check, CalendarDays, BellRing,
+  FlaskConical, Loader2, Clock, Trash2, CalendarDays, BellRing,
   FileText, Bus, Award, UserRoundCheck, CircleCheck,
 } from "lucide-react";
 import { toast } from "sonner";
