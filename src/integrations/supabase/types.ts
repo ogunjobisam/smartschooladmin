@@ -834,6 +834,27 @@ export type Database = {
           },
         ]
       }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          token?: string
+        }
+        Relationships: []
+      }
       enrolments: {
         Row: {
           academic_period_id: string
