@@ -1,4 +1,4 @@
-# Outstanding gaps — full list, then the student/teacher fix
+# Outstanding gaps — full list, then the student/teacher/parent fix
 
 ## Part 1: The complete gap list (pick what you want built)
 
