@@ -299,7 +299,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, session, loading, userRole, userRoles, orgId, schoolId, currency, schools, orgs,
+        user, session, loading, userRole, userRoles, realRole, realRoles, viewAsRole, setViewAsRole,
+        orgId, schoolId, currency, schools, orgs,
         needsWorkspaceChoice, roleError, retryRole, setSchoolId, setOrgId, confirmWorkspace, signOut,
       }}
     >
