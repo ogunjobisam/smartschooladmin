@@ -371,20 +371,20 @@ export default function SettingsPage() {
                 <>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>School Name</Label>
-                      <Input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} disabled={!canManage} />
+                      <Label htmlFor="school-name">School Name</Label>
+                      <Input id="school-name" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} disabled={!canManage} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input type="email" value={schoolEmail} onChange={(e) => setSchoolEmail(e.target.value)} placeholder="info@school.ng" disabled={!canManage} />
+                      <Label htmlFor="school-email">Email</Label>
+                      <Input id="school-email" type="email" value={schoolEmail} onChange={(e) => setSchoolEmail(e.target.value)} placeholder="info@school.ng" disabled={!canManage} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <Input value={schoolPhone} onChange={(e) => setSchoolPhone(e.target.value)} placeholder="+234..." disabled={!canManage} />
+                      <Label htmlFor="school-phone">Phone</Label>
+                      <Input id="school-phone" value={schoolPhone} onChange={(e) => setSchoolPhone(e.target.value)} placeholder="+234..." disabled={!canManage} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Address</Label>
-                      <Input value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} disabled={!canManage} />
+                      <Label htmlFor="school-address">Address</Label>
+                      <Input id="school-address" value={schoolAddress} onChange={(e) => setSchoolAddress(e.target.value)} disabled={!canManage} />
                     </div>
                   </div>
                   {canManage && (
