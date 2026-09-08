@@ -96,7 +96,8 @@ Unknown routes fall through to `NotFound`.
 `src/pages/Onboarding.tsx` → `supabase/functions/setup-organisation`. A wizard
 creating the organisation, first school, campus, age-banded sections, classes and
 academic year with terms. Country choice prefills currency and class presets.
-Optionally seeds demo data.
+Optionally seeds demo data; the same seeding is available afterwards from
+Settings → General → Danger Zone while the school is still empty.
 
 Re-running it is refused: an account that already holds any role row cannot create
 a second organisation, because the interface has a school switcher and no

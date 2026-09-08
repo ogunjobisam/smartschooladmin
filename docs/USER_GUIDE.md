@@ -64,6 +64,11 @@ Sign up, then the onboarding wizard walks you through four steps:
 Tick **seed demo data** if you want a populated system to explore first. You can
 clear it later from **Settings → General → Danger Zone**.
 
+If you skipped it, or cleared it and want it back, the same Danger Zone has
+**Seed Demo Data**. It only offers itself while the school is still empty — once
+there are real pupils on the roll it is disabled, because the invented records
+would sit among them with no way to tell which were which.
+
 ### Then, before anyone else logs in
 
 Work through **Settings**:

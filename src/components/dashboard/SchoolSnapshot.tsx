@@ -1,5 +1,25 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+
+/**
+ * The shapes the two optional selects return. A role that cannot see exams or
+ * finance skips the query, and the empty stand-in has to carry the same type or
+ * the reducers below lose theirs.
+ */
+interface ExamRow {
+  id: string;
+  name: string;
+  exam_date: string | null;
+  max_score: number;
+  status: string;
+  class_id: string | null;
+}
+
+interface InvoiceRow {
+  total_amount: number | null;
+  amount_paid: number | null;
+  status: string | null;
+}
 import { ArrowRight, CalendarCheck, GraduationCap, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,10 +73,10 @@ export function SchoolSnapshot() {
               .eq("school_id", schoolId)
               .order("exam_date", { ascending: false })
               .limit(5)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as ExamRow[] }),
         canSeeFinance
           ? supabase.from("invoices").select("total_amount, amount_paid, status").eq("school_id", schoolId)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as InvoiceRow[] }),
         supabase.from("classes").select("id, name").eq("school_id", schoolId),
       ]);
 
@@ -108,7 +128,7 @@ export function SchoolSnapshot() {
           return {
             id: e.id,
             name: e.name,
-            className: classNames.get(e.class_id) || "—",
+            className: (e.class_id ? classNames.get(e.class_id) : null) || "—",
             date: e.exam_date,
             average,
             entries: list.length,
