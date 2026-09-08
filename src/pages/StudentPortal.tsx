@@ -255,10 +255,15 @@ export default function StudentPortal() {
               <BookOpen className="h-4 w-4 text-accent" /> My subjects
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {mySubjects.map((name) => (
-              <span key={name} className="rounded-full border px-3 py-1 text-sm">{name}</span>
-            ))}
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {mySubjects.map((name) => (
+                <span key={name} className="rounded-full border px-3 py-1 text-sm">{name}</span>
+              ))}
+            </div>
+            <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
+              <Link to="/student/timetable">My weekly timetable <ArrowRight className="h-3 w-3" /></Link>
+            </Button>
           </CardContent>
         </Card>
       )}
