@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { rosterForPeriod } from "@/lib/roster";
+import { displayClassName } from "@/lib/sections";
+import { sendAbsenceAlerts } from "@/lib/family-alerts";
 import { sortBySection } from "@/lib/sections";
 import { notifySchoolAdmins } from "@/lib/school-updates";
 
