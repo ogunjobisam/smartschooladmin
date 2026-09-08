@@ -374,6 +374,10 @@ export default function NotificationSettings() {
         </CardContent>
       </Card>
 
+      {/* Sign-in methods: password and Google on one account */}
+      <SignInMethods accountEmail={user?.email} />
+
+
       {/* Delivery frequency and quiet hours */}
       <Card>
         <CardHeader>
