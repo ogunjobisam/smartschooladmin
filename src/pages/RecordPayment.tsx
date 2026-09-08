@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { notifySchoolAdmins } from "@/lib/school-updates";
+import { useCurrency } from "@/hooks/use-currency";
 import { sendPaymentConfirmation } from "@/lib/notification-dispatcher";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -130,6 +132,19 @@ export default function RecordPayment() {
           amount: Math.round(parseFloat(amount)),
           paymentId: payment.id,
           invoiceNumber: selectedInvoice?.invoice_number,
+        }).catch(console.error);
+
+        // Keep the people who run the school in the loop by email, so they see
+        // money arriving without having to sign in and look.
+        notifySchoolAdmins({
+          orgId,
+          schoolId,
+          area: "fees",
+          summary: `A payment of ${formatMoney(Math.round(parseFloat(amount)))} was recorded for ${selectedStudent ? `${selectedStudent.first_name} ${selectedStudent.last_name}` : "a student"}${selectedInvoice?.invoice_number ? ` against invoice ${selectedInvoice.invoice_number}` : ""}.`,
+          link: "/payments",
+          entityType: "payment",
+          entityId: payment.id,
+          excludeUserId: user?.id,
         }).catch(console.error);
       }
       navigate("/payments");
