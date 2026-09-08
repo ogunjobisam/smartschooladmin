@@ -339,11 +339,12 @@ Deno.serve(async (req) => {
       sent,
       failed,
       deferred,
-      email_configured: !!Deno.env.get("RESEND_API_KEY"),
-      // So the settings screen can say which sender is in use, and warn when it
-      // is the test one that only reaches the Resend account holder.
-      sender: Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM,
-      sender_is_default: !Deno.env.get("NOTIFICATIONS_FROM_EMAIL"),
+      email_configured: !!(Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("RESEND_API_KEY")),
+      // So the settings screen can say which sender is in use.
+      sender: Deno.env.get("LOVABLE_API_KEY")
+        ? PLATFORM_FROM
+        : Deno.env.get("NOTIFICATIONS_FROM_EMAIL") || DEFAULT_FROM,
+      sender_is_default: !Deno.env.get("LOVABLE_API_KEY") && !Deno.env.get("NOTIFICATIONS_FROM_EMAIL"),
     });
   } catch (err) {
     console.error("process-message-queue error:", err);
