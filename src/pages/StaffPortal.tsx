@@ -7,6 +7,7 @@ import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from "lu
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
