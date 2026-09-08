@@ -54,7 +54,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "events", title: "Events", url: "/events", group: "communications" },
   { key: "announcements", title: "Announcements", url: "/announcements", group: "communications" },
   { key: "templates", title: "Templates", url: "/notification-templates", group: "communications" },
-  { key: "delivery", title: "Message Delivery", url: "/message-delivery", group: "communications" },
+  { key: "delivery", title: "Email Status", url: "/message-delivery", group: "communications" },
   { key: "preferences", title: "My Preferences", url: "/notification-settings", group: "communications" },
 
   { key: "transport", title: "Transport", url: "/transport", group: "operations" },

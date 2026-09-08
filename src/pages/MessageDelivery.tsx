@@ -166,7 +166,7 @@ export default function MessageDelivery() {
   if (!canManage) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Message delivery" description="Email and SMS delivery for your school." />
+        <PageHeader title="Email status" description="Email and SMS delivery for your school." />
         <EmptyState
           icon={AlertCircle}
           title="Not available for your role"
@@ -179,8 +179,8 @@ export default function MessageDelivery() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Message delivery"
-        description="Every email and SMS the school queues, and what happened to it."
+        title="Email status"
+        description="Every school alert queued by email or SMS — when it was queued, and whether it has been sent."
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -265,8 +265,9 @@ export default function MessageDelivery() {
                     <TableHead>Recipient</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Queued</TableHead>
-                    <TableHead>Scheduled</TableHead>
+                    <TableHead>Queued at</TableHead>
+                    <TableHead>Sent at</TableHead>
+                    <TableHead className="hidden lg:table-cell">Scheduled</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -299,6 +300,13 @@ export default function MessageDelivery() {
                         {format(parseISO(m.created_at), "d MMM, HH:mm")}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {m.status === "sent" && m.processed_at
+                          ? format(parseISO(m.processed_at), "d MMM, HH:mm")
+                          : m.status === "sent"
+                            ? "Sent"
+                            : "Not sent yet"}
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-xs text-muted-foreground lg:table-cell">
                         {m.scheduled_for ? format(parseISO(m.scheduled_for), "d MMM, HH:mm") : "—"}
                       </TableCell>
                       <TableCell className="text-right">
