@@ -72,8 +72,8 @@ function ChildDocumentsAndTeachers({ studentId }: { studentId: string }) {
         if (!e.class_id || seenClasses.has(e.class_id)) continue;
         seenClasses.add(e.class_id);
         const { data: names } = await supabase.rpc("class_teacher_names", { _class_id: e.class_id });
-        for (const name of names || []) {
-          out.push({ className: displayClassName(e.classes?.name) || "Class", teacher: name });
+        for (const row of names || []) {
+          out.push({ className: displayClassName(e.classes?.name) || "Class", teacher: row.full_name });
         }
       }
       return out;
