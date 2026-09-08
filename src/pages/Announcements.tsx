@@ -221,7 +221,7 @@ export default function Announcements() {
     if (notifyNow) {
       toast.success(`Announcement published to ${result.sent} recipient(s)`, {
         description: result.queuedEmails
-          ? `${result.queuedEmails} email${result.queuedEmails === 1 ? "" : "s"} queued — send them from Settings → Notifications.`
+          ? `${result.queuedEmails} email${result.queuedEmails === 1 ? "" : "s"} queued — send them from the Email Status page.`
           : undefined,
       });
     } else {
@@ -451,7 +451,7 @@ export default function Announcements() {
                 </div>
                 {channelEmail && (
                   <p className="text-xs text-muted-foreground">
-                    Emails are queued, then sent from Settings → Notifications.
+                    Emails are queued first — send and track them on the Email Status page.
                   </p>
                 )}
               </div>

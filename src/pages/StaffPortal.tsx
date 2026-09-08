@@ -7,6 +7,7 @@ import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from "lu
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ import { displayClassName } from "@/lib/sections";
  * built for the office.
  */
 export default function StaffPortal() {
-  const { user, schoolId } = useAuth();
+  const { user, schoolId, orgId } = useAuth();
 
   const { data: staff, isLoading: staffLoading } = useQuery({
     queryKey: ["my-staff-basic", user?.id],
@@ -60,15 +61,39 @@ export default function StaffPortal() {
 
   const classIds = useMemo(() => myClasses.map((c) => c.id), [myClasses]);
 
-  const { data: enrolments = [] } = useQuery({
-    queryKey: ["my-class-enrolments", classIds],
+  // A pupil is enrolled once per term, so without pinning to the current term
+  // the same child is counted again for every past term.
+  const { data: currentPeriodId } = useQuery({
+    queryKey: ["staff-current-period", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, academic_years!inner(org_id)")
+        .eq("is_current", true)
+        .eq("academic_years.org_id", orgId!)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: enrolments = [] } = useQuery({
+    queryKey: ["my-class-enrolments", classIds, currentPeriodId],
+    queryFn: async () => {
+      let query = supabase
         .from("enrolments")
         .select("id, class_id, student_id, students(first_name, last_name, student_id_number, status)")
         .in("class_id", classIds);
+      if (currentPeriodId) query = query.eq("academic_period_id", currentPeriodId);
+      const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((row) => {
+        const key = `${row.class_id}|${row.student_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
     enabled: classIds.length > 0,
   });
@@ -215,8 +240,17 @@ export default function StaffPortal() {
           subtitle="Present or late"
           icon={CalendarCheck}
         />
-        <StatCard title="Recent exams" value={String(exams.length)} icon={ClipboardList} />
+        <StatCard
+          title="Recent exams"
+          value={String(exams.length)}
+          subtitle={`${scores.length} result${scores.length === 1 ? "" : "s"} entered`}
+          icon={ClipboardList}
+        />
       </div>
+
+      {/* The same attendance and results figures the school dashboard shows,
+          narrowed by row-level security to the classes this teacher holds. */}
+      <SchoolSnapshot />
 
       {myClasses.length === 0 ? (
         <EmptyState
