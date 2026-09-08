@@ -121,7 +121,7 @@ async function finalisePayment(reference: string, provider: string) {
 
   const { data: invoice } = await service
     .from("invoices")
-    .select("id, invoice_number, total_amount, amount_paid, org_id, school_id, student_id")
+    .select("id, invoice_number, total_amount, amount_paid, school_id, student_id")
     .eq("id", tx.invoice_id!)
     .maybeSingle();
   if (!invoice) return { ok: false, reason: "invoice_missing" };
@@ -172,16 +172,20 @@ async function finalisePayment(reference: string, provider: string) {
 
   const [{ data: student }, { data: school }] = await Promise.all([
     service.from("students").select("first_name, last_name").eq("id", tx.student_id!).maybeSingle(),
-    service.from("schools").select("currency").eq("id", tx.school_id!).maybeSingle(),
+    service
+      .from("schools")
+      .select("org_id, organisation_groups(currency)")
+      .eq("id", tx.school_id!)
+      .maybeSingle(),
   ]);
 
   await emailReceipt({
-    orgId: invoice.org_id!,
+    orgId: school!.org_id,
     schoolId: tx.school_id!,
     studentId: tx.student_id!,
     studentName: student ? `${student.first_name} ${student.last_name}` : "your child",
     amount,
-    currency: (school?.currency as string) || "NGN",
+    currency: (school?.organisation_groups as { currency?: string } | null)?.currency || "NGN",
     receiptNumber,
     invoiceNumber: invoice.invoice_number,
     balance: Math.max(0, Number(invoice.total_amount) - newPaid),

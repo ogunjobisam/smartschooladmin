@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     // invoice, they may not pay it either.
     const { data: invoice } = await userClient
       .from("invoices")
-      .select("id, invoice_number, total_amount, amount_paid, student_id, school_id, org_id")
+      .select("id, invoice_number, total_amount, amount_paid, student_id, school_id")
       .eq("id", invoiceId)
       .maybeSingle();
 
@@ -65,11 +65,19 @@ Deno.serve(async (req) => {
 
     const service = createClient(SUPABASE_URL, SERVICE_KEY);
 
+    const { data: school } = await service
+      .from("schools")
+      .select("org_id, organisation_groups(currency)")
+      .eq("id", invoice.school_id)
+      .maybeSingle();
+    if (!school) return json({ error: "School not found" }, 404);
+    const currency = (school.organisation_groups as { currency?: string } | null)?.currency || "NGN";
+
     // The school must have switched this gateway on.
     const { data: config } = await service
       .from("payment_gateway_config")
       .select("provider, is_active")
-      .eq("org_id", invoice.org_id)
+      .eq("org_id", school.org_id)
       .eq("provider", provider)
       .eq("is_active", true)
       .maybeSingle();
@@ -79,13 +87,6 @@ Deno.serve(async (req) => {
       ? Deno.env.get("PAYSTACK_SECRET_KEY")
       : Deno.env.get("FLUTTERWAVE_SECRET_KEY");
     if (!secret) return json({ error: `${provider} is not configured yet` }, 400);
-
-    const { data: currencyRow } = await service
-      .from("schools")
-      .select("currency")
-      .eq("id", invoice.school_id)
-      .maybeSingle();
-    const currency = (currencyRow?.currency as string) || "NGN";
 
     const gatewayReference = reference();
     const email = user.email || "no-reply@example.com";
