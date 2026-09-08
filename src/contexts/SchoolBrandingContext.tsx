@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { setDocumentPalette } from "@/lib/document-theme";
+import { setDocumentSchoolProfile } from "@/lib/document-theme";
 
 interface SchoolBranding {
   name: string;
@@ -9,6 +9,9 @@ interface SchoolBranding {
   primaryColor: string;
   accentColor: string;
   tagline: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
 }
 
 const defaultBranding: SchoolBranding = {
@@ -17,6 +20,9 @@ const defaultBranding: SchoolBranding = {
   primaryColor: "#1e293b",
   accentColor: "#3b82f6",
   tagline: null,
+  address: null,
+  phone: null,
+  email: null,
 };
 
 interface SchoolBrandingContextType {
@@ -69,7 +75,7 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from("schools")
-      .select("name, logo_url, primary_color, accent_color, tagline")
+      .select("name, logo_url, primary_color, accent_color, tagline, address, phone, email")
       .eq("id", schoolId)
       .maybeSingle();
 
@@ -80,6 +86,9 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
         primaryColor: data.primary_color || defaultBranding.primaryColor,
         accentColor: data.accent_color || defaultBranding.accentColor,
         tagline: data.tagline,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
       });
     } else {
       setBranding(defaultBranding);
@@ -98,12 +107,21 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--school-accent", hexToHsl(branding.accentColor));
     // Printed and emailed documents are generated outside React, so they read the
     // palette from this module-level publisher rather than from context.
-    setDocumentPalette({ primaryColor: branding.primaryColor, accentColor: branding.accentColor });
+    setDocumentSchoolProfile({
+      name: branding.name,
+      address: branding.address,
+      phone: branding.phone,
+      email: branding.email,
+      logoUrl: branding.logoUrl,
+      tagline: branding.tagline,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    });
     return () => {
       root.style.removeProperty("--school-primary");
       root.style.removeProperty("--school-accent");
     };
-  }, [branding.primaryColor, branding.accentColor]);
+  }, [branding]);
 
   return (
     <SchoolBrandingContext.Provider value={{ branding, loading, refetch: fetchBranding }}>
