@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { UpcomingEvents } from "@/components/events/UpcomingEvents";
 import { AchievementHighlights } from "@/components/achievements/AchievementHighlights";
+import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
 import { NAV_ITEMS } from "@/lib/access";
 
 function greeting() {
@@ -193,6 +194,8 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      <SchoolSnapshot />
 
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
         <UpcomingEvents limit={3} />

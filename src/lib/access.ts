@@ -98,7 +98,9 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "users",
+    // A principal runs their own school's profile, classes, terms and ID
+    // numbering without needing the group owner to do it for them.
+    "settings", "users",
   ],
   bursar: [
     "dashboard", "wall", "admissions", "students", "guardians",
