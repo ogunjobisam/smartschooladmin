@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
+import { documentTheme } from "@/lib/document-theme";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { gradeForScore, remarkForGrade } from "@/lib/performance";
 
