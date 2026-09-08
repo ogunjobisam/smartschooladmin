@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:migrations": "bash scripts/check-migrations.sh",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "predev": "bunx tsx scripts/generate-sitemap.ts",
+    "prebuild": "bunx tsx scripts/generate-sitemap.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
