@@ -132,7 +132,7 @@ export default function Landing() {
       <section className="relative isolate min-h-[680px] overflow-hidden border-b border-border/60 lg:min-h-[720px]">
         <img
           src={heroIllustration}
-          alt="SmartSchool dashboard bringing student records, invoicing, payroll and reports together"
+          alt="SmartSchoolAdmin dashboard bringing student records, invoicing, payroll and reports together"
           className="absolute inset-x-0 bottom-0 -z-20 h-[46%] w-full object-cover object-center opacity-90 sm:h-[52%] lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:w-[58%] lg:object-cover"
         />
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-background to-background/15 lg:bg-gradient-to-r lg:from-background lg:via-background lg:to-background/10" />
@@ -145,7 +145,7 @@ export default function Landing() {
               Stop running your school from scattered spreadsheets.
             </h1>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              SmartSchool brings fees, attendance, results, payroll and parent communication into one reliable place—so your team spends less time chasing records and more time helping pupils thrive.
+              SmartSchoolAdmin brings fees, attendance, results, payroll and parent communication into one reliable place—so your team spends less time chasing records and more time helping pupils thrive.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" className="gap-2" asChild>
