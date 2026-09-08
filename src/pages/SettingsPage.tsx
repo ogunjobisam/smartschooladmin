@@ -789,7 +789,7 @@ export default function SettingsPage() {
 
         {/* -- Add-ons Tab -- */}
         <TabsContent value="addons" className="space-y-6 pt-4">
-          <AiAddonCard orgId={orgId} canManage={canEditBranding} />
+          <AiAddonCard orgId={orgId} canManage={canManageAddons} />
         </TabsContent>
       </Tabs>
     </div>
