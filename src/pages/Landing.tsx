@@ -2,8 +2,9 @@ import { Seo } from "@/components/seo/Seo";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  GraduationCap, CreditCard, Users, BarChart3, Shield, Zap, ArrowRight,
-  FlaskConical, Loader2, Clock, Trash2,
+  GraduationCap, CreditCard, Users, BarChart3, ShieldCheck, Zap, ArrowRight,
+  FlaskConical, Loader2, Clock, Trash2, Check, CalendarDays, BellRing,
+  FileText, Bus, Award, UserRoundCheck, Building2, Smartphone, CircleCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,12 +18,34 @@ import {
 } from "@/lib/demo";
 
 const features = [
-  { icon: GraduationCap, title: "Student Management", desc: "Enrol, track, and manage students with class assignments and guardian linking." },
-  { icon: CreditCard, title: "Fee & Invoice Engine", desc: "Create fee schedules, generate invoices in bulk, and record payments instantly." },
-  { icon: Users, title: "Staff & Payroll", desc: "Manage staff records, run payroll, and handle approvals — all in one place." },
-  { icon: BarChart3, title: "Reports & Insights", desc: "Real-time dashboards with revenue, arrears, and enrolment analytics." },
-  { icon: Shield, title: "Role-Based Access", desc: "Granular permissions for proprietors, principals, bursars, teachers, and parents." },
-  { icon: Zap, title: "Bulk Operations", desc: "CSV import for students and staff. Generate hundreds of invoices in seconds." },
+  { icon: GraduationCap, title: "Students & admissions", desc: "Move applicants from enquiry to enrolment, keep complete records, and link every child to the right class and guardian.", tone: "coral" },
+  { icon: CreditCard, title: "Fees & payments", desc: "Issue invoices in bulk, collect online payments, follow arrears, and generate branded receipts and statements.", tone: "teal" },
+  { icon: UserRoundCheck, title: "Attendance & alerts", desc: "Take the register quickly and keep families informed when a child is absent or late.", tone: "gold" },
+  { icon: FileText, title: "Exams & report cards", desc: "Enter scores, publish results, and give families polished report cards and transcripts they can download.", tone: "violet" },
+  { icon: Users, title: "Staff & payroll", desc: "Manage staff records, salaries, approvals and payslips without juggling disconnected files.", tone: "coral" },
+  { icon: CalendarDays, title: "Timetables & events", desc: "Schedule weekly lessons, manage changes, publish events and let families add dates to their calendars.", tone: "teal" },
+  { icon: BellRing, title: "Messages that arrive", desc: "Send announcements, reminders and account updates by email, SMS and in-app notification.", tone: "gold" },
+  { icon: Award, title: "Achievements that matter", desc: "Celebrate pupils on a public achievement wall and create branded certificates for every milestone.", tone: "violet" },
+  { icon: Bus, title: "Transport & operations", desc: "Track routes and riders alongside the rest of each pupil’s school record.", tone: "coral" },
+];
+
+const toneClasses: Record<string, string> = {
+  coral: "bg-coral/12 text-coral",
+  teal: "bg-teal/12 text-teal",
+  gold: "bg-gold/18 text-gold-foreground dark:text-gold",
+  violet: "bg-violet/12 text-violet",
+};
+
+const problems = [
+  "Fees scattered across bank alerts, notebooks and spreadsheets",
+  "Parents calling because results, balances and attendance are unclear",
+  "Staff repeating the same data entry across disconnected records",
+];
+
+const proofPoints = [
+  { value: "One record", label: "from admission to graduation" },
+  { value: "Every role", label: "gets the right view and access" },
+  { value: "Your school", label: "on every document and message" },
 ];
 
 export default function Landing() {
@@ -80,7 +103,7 @@ export default function Landing() {
             url: "https://smartschooladmin.app/",
             description:
               "School management software for private schools and school groups: student records, fees and invoicing, payments, payroll, attendance, exams and reporting.",
-            featureList: features.map((f) => f.title),
+            featureList: features.map((feature) => feature.title),
           },
           {
             "@context": "https://schema.org",
@@ -92,41 +115,55 @@ export default function Landing() {
         ]}
       />
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav */}
-      <header className="border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
               <GraduationCap className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-foreground">SmartSchool</span>
+            <span className="text-lg font-bold text-foreground">SmartSchool</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">Log in</Button>
-            </Link>
-            <Link to="/signup">
-              <Button size="sm">Get Started</Button>
-            </Link>
+            <Button variant="ghost" size="sm" asChild><Link to="/login">Log in</Link></Button>
+            <Button size="sm" asChild><Link to="/signup">Get started</Link></Button>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground mb-6">
-          <Zap className="h-3 w-3 text-accent" /> Built for African schools
+      <main>
+      <section className="relative isolate min-h-[680px] overflow-hidden border-b border-border/60 lg:min-h-[720px]">
+        <img
+          src={heroIllustration}
+          alt="SmartSchool dashboard bringing student records, invoicing, payroll and reports together"
+          className="absolute inset-x-0 bottom-0 -z-20 h-[46%] w-full object-cover object-center opacity-90 sm:h-[52%] lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:w-[58%] lg:object-cover"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-background to-background/15 lg:bg-gradient-to-r lg:from-background lg:via-background lg:to-background/10" />
+        <div className="mx-auto flex max-w-7xl px-4 pb-72 pt-16 sm:px-6 sm:pb-80 sm:pt-20 lg:min-h-[720px] lg:items-center lg:pb-24 lg:pt-12">
+          <div className="max-w-2xl lg:w-[54%]">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-teal/25 bg-teal/10 px-3 py-1.5 text-xs font-semibold text-teal">
+              <Zap className="h-3.5 w-3.5" /> Built for the way African schools work
+            </div>
+            <h1 className="text-4xl font-extrabold leading-[1.08] text-foreground sm:text-5xl lg:text-6xl">
+              Stop running your school from scattered spreadsheets.
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              SmartSchool brings fees, attendance, results, payroll and parent communication into one reliable place—so your team spends less time chasing records and more time helping pupils thrive.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button size="lg" className="gap-2" asChild>
+                <a href="#demo">Try a working school <ArrowRight className="h-4 w-4" /></a>
+              </Button>
+              <Button variant="outline" size="lg" asChild><Link to="/signup">Set up your school</Link></Button>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><CircleCheck className="h-4 w-4 text-teal" /> No card required</span>
+              <span className="inline-flex items-center gap-1.5"><CircleCheck className="h-4 w-4 text-teal" /> Private by design</span>
+              <span className="inline-flex items-center gap-1.5"><CircleCheck className="h-4 w-4 text-teal" /> Works on any device</span>
+            </div>
+          </div>
         </div>
-        <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-foreground leading-[1.1]">
-          School admin,
-          <br />
-          <span className="text-accent">simplified.</span>
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg leading-relaxed">
-          Fees, invoices, payroll, student records — one platform to run your entire school group. No spreadsheets. No paper trails.
-        </p>
         {demoExpired && (
-          <Alert className="mx-auto mt-8 max-w-xl text-left">
+          <Alert className="absolute bottom-6 left-1/2 z-10 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 text-left">
             <Trash2 className="h-4 w-4" />
             <AlertDescription>
               Your demo session has ended and the sample data has been deleted. Start a fresh one
@@ -135,67 +172,66 @@ export default function Landing() {
           </Alert>
         )}
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" className="gap-2 text-sm" asChild>
-            <a href="#demo">
-              Try the live demo <ArrowRight className="h-4 w-4" />
-            </a>
-          </Button>
-          <Link to="/signup">
-            <Button variant="outline" size="lg" className="text-sm">
-              Create an account
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button variant="ghost" size="lg" className="text-sm">
-              Log in
-            </Button>
-          </Link>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          No sign-up, no card. {DEMO_DURATION_HOURS}-hour sandbox, deleted automatically when it ends.
-        </p>
+      </section>
 
-        {/* Dashboard mockup */}
-        <div className="mx-auto mt-16 max-w-4xl">
-          <img
-            src={heroIllustration}
-            alt="SmartSchool platform showing student management, invoices, payroll, and analytics"
-            className="w-full h-auto rounded-2xl"
-            loading="lazy"
-          />
+      <section className="bg-primary py-8 text-primary-foreground">
+        <div className="mx-auto grid max-w-7xl gap-6 px-6 sm:grid-cols-3">
+          {proofPoints.map((item) => (
+            <div key={item.value} className="border-primary-foreground/20 sm:border-l sm:pl-6 first:border-l-0 first:pl-0">
+              <p className="text-lg font-bold">{item.value}</p>
+              <p className="mt-1 text-sm text-primary-foreground/70">{item.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Demo */}
-      <section id="demo" className="border-t border-border/60 bg-muted/30 py-20 scroll-mt-16">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-              <FlaskConical className="h-3 w-3 text-accent" /> Live demo
+      <section className="py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-sm font-bold uppercase text-coral">The daily reality</p>
+              <h2 className="mt-3 text-3xl font-bold leading-tight text-foreground sm:text-4xl">A growing school should not create growing confusion.</h2>
+              <p className="mt-5 text-base leading-relaxed text-muted-foreground">When information lives in too many places, payments get missed, families wait for answers and staff lose hours to avoidable admin.</p>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
-              Walk through a real school, as any role
+            <div className="grid gap-3">
+              {problems.map((problem, index) => (
+                <div key={problem} className="flex items-start gap-4 border-b border-border py-5 first:border-t">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-bold ${index === 0 ? "bg-coral/12 text-coral" : index === 1 ? "bg-gold/18 text-gold-foreground dark:text-gold" : "bg-violet/12 text-violet"}`}>{index + 1}</span>
+                  <p className="pt-1.5 text-base font-medium text-foreground">{problem}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="demo" className="scroll-mt-16 border-y border-border/60 bg-muted/40 py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-violet/25 bg-violet/10 px-3 py-1.5 text-xs font-semibold text-violet">
+              <FlaskConical className="h-3.5 w-3.5" /> Live, private demo
+            </div>
+            <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
+              Do not take our word for it. Run the school yourself.
             </h2>
-            <p className="mx-auto mt-3 text-sm text-muted-foreground">
-              Pick a persona and we will build you a private sandbox school — pupils, classes,
-              invoices, payments, exam results, payroll, a bus route and admission enquiries — then
-              sign you straight in. Change anything you like: it is yours alone.
+            <p className="mx-auto mt-4 text-base leading-relaxed text-muted-foreground">
+              Choose a role and step into a complete sample school with pupils, classes, invoices, payments, exam results, payroll, transport and admissions. Change anything you like.
             </p>
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-foreground">
-              <Clock className="h-3.5 w-3.5 text-accent" />
-              Sessions last {DEMO_DURATION_HOURS} hours, then the sandbox and all its data are permanently deleted
+            <p className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal">
+              <Clock className="h-3.5 w-3.5" />
+              Your private demo lasts {DEMO_DURATION_HOURS} hours, then deletes itself
             </p>
           </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {DEMO_PERSONAS.map((p) => (
-              <div key={p.role} className="flex flex-col rounded-xl border border-border bg-card p-5">
-                <h3 className="text-sm font-semibold text-card-foreground">{p.label}</h3>
+              <article key={p.role} className="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition-transform duration-200 hover:-translate-y-1">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary"><Users className="h-5 w-5" /></div>
+                <h3 className="text-base font-semibold text-card-foreground">{p.label}</h3>
                 <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
                 <Button
                   className="mt-4 w-full gap-2 text-sm"
-                  variant="outline"
+                    variant="secondary"
                   disabled={!!starting}
                   onClick={() => startDemo(p.role as DemoRole)}
                 >
@@ -209,66 +245,59 @@ export default function Landing() {
                     </>
                   )}
                 </Button>
-              </div>
+              </article>
             ))}
           </div>
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            The demo is separate from a paid account — nothing you do here affects a real school, and
-            no demo data is kept.
-          </p>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="border-t border-border/60 bg-muted/30 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
-            Everything you need to run your school
-          </h2>
-          <p className="mx-auto mt-3 max-w-lg text-center text-sm text-muted-foreground">
-            From student enrolment to payroll — purpose-built for school groups across Nigeria and beyond.
-          </p>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <div key={f.title} className="rounded-xl border border-border bg-card p-6 transition-shadow hover:shadow-md">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                  <f.icon className="h-5 w-5 text-accent" />
+      <section className="py-20 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase text-teal">One connected school</p>
+            <h2 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">Built around the work your team already does.</h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">No patchwork of apps. Every update flows to the people and records that need it.</p>
+          </div>
+          <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => (
+              <article key={feature.title} className="border-t border-border pt-6">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-md ${toneClasses[feature.tone]}`}>
+                  <feature.icon className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 text-sm font-semibold text-card-foreground">{f.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
-              </div>
+                <h3 className="mt-5 text-lg font-semibold text-foreground">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.desc}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-6 text-center">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
-            Ready to modernise your school?
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
-            Set up in minutes. No credit card required.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/signup">
-              <Button size="lg" className="gap-2 text-sm">
-                Get Started Free <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline" className="gap-2 text-sm" asChild>
-              <a href="#demo">
-                <FlaskConical className="h-4 w-4" /> Try the demo first
-              </a>
+      <section className="border-y border-border bg-primary py-20 text-primary-foreground">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="max-w-3xl">
+            <div className="mb-5 flex gap-3">
+              <span className="h-2 w-12 rounded-full bg-coral" />
+              <span className="h-2 w-12 rounded-full bg-gold" />
+              <span className="h-2 w-12 rounded-full bg-teal" />
+            </div>
+            <h2 className="text-3xl font-bold sm:text-4xl">Give your staff fewer things to chase—and your families fewer reasons to call.</h2>
+            <p className="mt-4 text-base text-primary-foreground/75">Bring the whole school together in one clear, secure system.</p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <Button size="lg" variant="secondary" className="gap-2" asChild>
+              <Link to="/signup">Get started <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+            <Button size="lg" className="border border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10" asChild>
+              <a href="#demo"><FlaskConical className="h-4 w-4" /> Try the demo</a>
             </Button>
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-border/60 py-8">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <span>© {new Date().getFullYear()} SmartSchool. All rights reserved.</span>
             <p className="mt-1 text-[11px] text-muted-foreground/70">SmartSchoolAdmin is a trading name of Smartever Ltd. Registered in England &amp; Wales. Company No: 15038603</p>

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,6 +33,15 @@
 
     --warning: 38 92% 50%;
     --warning-foreground: 38 92% 14%;
+
+    --coral: 8 78% 57%;
+    --coral-foreground: 0 0% 100%;
+    --teal: 174 64% 33%;
+    --teal-foreground: 0 0% 100%;
+    --gold: 42 92% 52%;
+    --gold-foreground: 30 80% 12%;
+    --violet: 270 62% 55%;
+    --violet-foreground: 0 0% 100%;
 
     --border: 214 20% 90%;
     --input: 214 20% 90%;
@@ -83,6 +90,15 @@
 
     --warning: 38 80% 45%;
     --warning-foreground: 0 0% 100%;
+
+    --coral: 8 72% 60%;
+    --coral-foreground: 0 0% 100%;
+    --teal: 174 58% 46%;
+    --teal-foreground: 174 80% 8%;
+    --gold: 42 88% 58%;
+    --gold-foreground: 30 80% 10%;
+    --violet: 270 66% 68%;
+    --violet-foreground: 270 70% 10%;
 
     --border: 220 20% 18%;
     --input: 220 20% 18%;
