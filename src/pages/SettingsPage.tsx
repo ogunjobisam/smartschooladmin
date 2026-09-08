@@ -35,11 +35,16 @@ export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
   const { branding, refetch } = useSchoolBranding();
   const queryClient = useQueryClient();
-  const canEditBranding = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin";
+  // Group-level only: buying add-ons spends the organisation's money.
+  const canManageAddons = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin";
   // school_admin is granted manage rights by row-level security on classes,
   // notices and applications, so leaving it out here locked the role out of
   // settings it was allowed to change.
   const canManage = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin" || userRole === "principal" || userRole === "school_admin";
+  // A school runs its own identity — name, logo, colours — without waiting on
+  // the group. Row-level security on `schools` and the school-assets bucket
+  // permits exactly these roles.
+  const canEditBranding = canManage;
 
   // ── Branding state ──
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);
