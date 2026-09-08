@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
+import { documentTheme } from "@/lib/document-theme";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 interface ScoreEntry {
@@ -71,7 +72,9 @@ export default function ExamDetail() {
 
       return `
         <div class="page">
+          <div class="brand-bar"></div>
           <div class="header">
+            ${branding.logoUrl ? `<img class="crest" src="${branding.logoUrl}" alt="" />` : ""}
             <h1>${branding.name}</h1>
             ${branding.tagline ? `<p>${branding.tagline}</p>` : ""}
             <p style="font-weight:600;margin-top:4px">STUDENT REPORT CARD</p>
@@ -93,26 +96,40 @@ export default function ExamDetail() {
         </div>`;
     }).join("");
 
+    const theme = documentTheme({
+      name: branding.name,
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    });
+
     win.document.write(`<html><head><title>Report Cards - ${exam.name}</title><style>
-      body { font-family: 'Inter', system-ui, sans-serif; color: #1e293b; margin: 0; }
-      .page { padding: 32px; max-width: 800px; margin: 0 auto; page-break-after: always; }
+      @page { size: A4; margin: 14mm; }
+      :root { --brand: ${theme.primary}; --brand-accent: ${theme.accent}; --brand-soft: ${theme.soft}; --brand-border: ${theme.border}; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: 'Segoe UI', system-ui, sans-serif; color: #0f172a; margin: 0; }
+      .page { padding: 30px 28px; max-width: 840px; margin: 0 auto; page-break-after: always; }
       .page:last-child { page-break-after: auto; }
-      .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px double #1e293b; }
-      .header h1 { font-size: 22px; margin: 0 0 4px; }
+      .brand-bar { height: 5px; border-radius: 4px; margin-bottom: 18px;
+        background: linear-gradient(90deg, var(--brand) 0%, var(--brand) 58%, var(--brand-accent) 58%, var(--brand-accent) 100%); }
+      .crest { height: 54px; width: 54px; object-fit: contain; border-radius: 12px; display: block; margin: 0 auto 8px; }
+      .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--brand-border); }
+      .header h1 { font-size: 23px; margin: 0 0 4px; color: var(--brand); }
       .header p { font-size: 12px; color: #64748b; margin: 2px 0; }
       .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: 13px; }
       .label { color: #64748b; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-      th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; }
-      td { padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; }
+      th { background: var(--brand-soft); color: var(--brand); padding: 9px 12px; text-align: left; font-size: 11px;
+           font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--brand-border); }
+      td { padding: 8px 12px; border: 1px solid #e6ebf1; font-size: 13px; }
       .text-center { text-align: center; }
-      .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+      .summary { background: var(--brand-soft); border: 1px solid var(--brand-border); padding: 18px; border-radius: 12px; margin-bottom: 20px; }
       .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; text-align: center; }
-      .summary-value { font-size: 24px; font-weight: 700; }
-      .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+      .summary-value { font-size: 26px; font-weight: 800; color: var(--brand); }
+      .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
       .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 12px; }
-      .sign-line { border-top: 1px solid #1e293b; padding-top: 4px; margin-top: 40px; }
-      @media print { .page { padding: 16px; } }
+      .sign-line { border-top: 1px solid #0f172a; padding-top: 4px; margin-top: 40px; }
+      @media print { .page { padding: 0 0 8px; } }
     </style></head><body>${pages}</body></html>`);
     win.document.close();
     win.print();
