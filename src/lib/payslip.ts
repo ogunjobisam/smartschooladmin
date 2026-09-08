@@ -171,7 +171,7 @@ export function buildPayslipHtml(data: PayslipData, opts: PayslipRenderOptions =
 
   <div class="total-box">
     <div class="row"><span>Gross pay</span><span class="mono">${money(gross)}</span></div>
-    <div class="row"><span>Total deductions</span><span class="mono" style="color:#b91c1c">−${money(
+    <div class="row"><span>Deductions</span><span class="mono" style="color:#b91c1c">−${money(
       data.deductions
     )}</span></div>
     <div class="row headline"><span>Net pay</span><span class="mono">${money(data.netPay)}</span></div>
