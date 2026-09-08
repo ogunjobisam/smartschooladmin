@@ -40,6 +40,7 @@ const Payments = lazy(() => import("./pages/Payments"));
 const RecordPayment = lazy(() => import("./pages/RecordPayment"));
 const Arrears = lazy(() => import("./pages/Arrears"));
 const Payroll = lazy(() => import("./pages/Payroll"));
+const StaffPay = lazy(() => import("./pages/StaffPay"));
 const PayrollRunDetail = lazy(() => import("./pages/PayrollRunDetail"));
 const Approvals = lazy(() => import("./pages/Approvals"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -132,6 +133,7 @@ function AppRoutes() {
           <Route path="/arrears" element={withLayout(<Arrears />)} />
           <Route path="/payroll" element={withLayout(<Payroll />)} />
           <Route path="/payroll/:id" element={withLayout(<PayrollRunDetail />)} />
+          <Route path="/my-pay" element={withLayout(<StaffPay />)} />
           <Route path="/approvals" element={withLayout(<Approvals />)} />
           <Route path="/reports" element={withLayout(<Reports />)} />
           <Route path="/audit-log" element={withLayout(<AuditLog />)} />

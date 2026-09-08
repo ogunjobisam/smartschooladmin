@@ -10,12 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useCurrency } from "@/hooks/use-currency";
 import { exportToCsv } from "@/lib/csv-export";
-import { PayslipView } from "@/components/payroll/PayslipView";
+import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { PayslipData } from "@/components/payroll/PayslipView";
+import type { PayslipData } from "@/lib/payslip";
 import {
   Table, TableHeader, TableRow, TableHead, TableBody, TableCell
 } from "@/components/ui/table";
@@ -23,7 +22,7 @@ import {
 export default function PayrollRunDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, schoolId, orgId } = useAuth();
-  const { formatMoney } = useCurrency();
+  const { formatMoney, currency } = useCurrency();
   const queryClient = useQueryClient();
   const [payslipData, setPayslipData] = useState<PayslipData | null>(null);
 
@@ -32,7 +31,7 @@ export default function PayrollRunDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payroll_runs")
-        .select("*, schools(name)")
+        .select("*, schools(name, address, email, phone, logo_url)")
         .eq("id", id!)
         .maybeSingle();
       return data;
@@ -45,7 +44,7 @@ export default function PayrollRunDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payroll_run_items")
-        .select("id, basic, allowances, deductions, net_pay, staff(first_name, last_name, staff_id_number, staff_positions(title, department, is_current))")
+        .select("id, basic, allowances, pension, tax, deductions, net_pay, staff(first_name, last_name, staff_id_number, staff_positions(title, department, is_current))")
         .eq("payroll_run_id", id!);
       return data || [];
     },
@@ -80,7 +79,10 @@ export default function PayrollRunDetail() {
       `${s.staff?.first_name || ""} ${s.staff?.last_name || ""}`,
       "", // bank info would come from staff_bank_details
       "",
-      (s.net_pay / 100).toFixed(2),
+      // Whole currency units, as stored — see the header of src/lib/payroll.ts.
+      // This used to divide by 100, which sent a ₦150,000 salary to the bank as
+      // 1500.00. Nothing anywhere stores kobo.
+      s.net_pay.toFixed(2),
     ]);
     exportToCsv(`bank-batch-${run?.period_label || "payroll"}`, headers, rows);
     toast.success("Bank batch CSV exported");
@@ -91,17 +93,27 @@ export default function PayrollRunDetail() {
   const openPayslip = (s: PayrollItem) => {
     const pos = s.staff?.staff_positions?.find((p) => p.is_current);
     setPayslipData({
+      school: {
+        name: run?.schools?.name || "",
+        address: run?.schools?.address,
+        email: run?.schools?.email,
+        phone: run?.schools?.phone,
+        logoUrl: run?.schools?.logo_url,
+      },
+      currency,
       staffName: `${s.staff?.first_name} ${s.staff?.last_name}`,
       staffId: s.staff?.staff_id_number || "",
       department: pos?.department || "",
       position: pos?.title || "",
       periodLabel: run?.period_label || "",
       runDate: run?.run_date || "",
+      status: run?.status,
       basic: s.basic,
       allowances: s.allowances,
+      pension: s.pension,
+      tax: s.tax,
       deductions: s.deductions,
       netPay: s.net_pay,
-      schoolName: run?.schools?.name || "",
     });
   };
 
@@ -189,8 +201,8 @@ export default function PayrollRunDetail() {
                         <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(s.deductions)}</TableCell>
                         <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatMoney(s.net_pay)}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openPayslip(s)}>
-                            <Eye className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => openPayslip(s)}>
+                            <Eye className="h-3.5 w-3.5" /> Payslip
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -209,11 +221,11 @@ export default function PayrollRunDetail() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!payslipData} onOpenChange={(open) => !open && setPayslipData(null)}>
-        <DialogContent className="sm:max-w-2xl">
-          {payslipData && <PayslipView data={payslipData} />}
-        </DialogContent>
-      </Dialog>
+      <PayslipDialog
+        open={!!payslipData}
+        onOpenChange={(open) => !open && setPayslipData(null)}
+        data={payslipData}
+      />
     </div>
   );
 }

@@ -205,13 +205,23 @@ without email.
 > student.
 
 ### 4.6 Payroll
-`src/pages/Payroll.tsx`, `PayrollRunDetail.tsx`, `src/lib/payroll.ts`
+`src/pages/Payroll.tsx`, `PayrollRunDetail.tsx`, `StaffPay.tsx`, `src/lib/payroll.ts`,
+`src/lib/payslip.ts`
 
 Runs assemble from staff payroll profiles, preview per-staff gross, deductions and
 net — naming anyone excluded for having no salary — then route through approval.
 Payslips generate from approved runs. Bank batch CSV export for disbursement.
 
-Pension is charged on basic salary, tax on gross.
+Pension is charged on basic salary, tax on gross, and both are stored on the run
+item so a payslip reports what was actually deducted rather than re-deriving it
+from rates that move.
+
+**Staff self-service.** `/my-pay` shows a staff member their own payslips, print
+or download as PDF. Scoped in the database, not just the UI: the SELECT policies
+in `20260902090000_staff_can_read_their_own_pay.sql` match on
+`staff.user_id = auth.uid()` and only for runs in `approved` or `paid`. Salary
+profiles are deliberately not opened — the payslip reads the run item, so
+self-service never needs sight of current salary or the rates behind it.
 
 ### 4.7 Admissions
 `src/pages/Admissions.tsx`, `Apply.tsx`, `supabase/functions/admissions`

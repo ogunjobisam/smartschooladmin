@@ -229,4 +229,103 @@ BEGIN
     'from the live definition');
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- A staff member may read their own pay, and nobody else's
+-- ---------------------------------------------------------------------------
+-- Payroll was role-gated with no notion of "this row is about me", so a teacher
+-- could not see their own payslip. Opening that up is the one change here that
+-- could leak money data, so each way it could go wrong is asserted separately.
+INSERT INTO staff (id, school_id, user_id, first_name, last_name)
+  VALUES ('f1111111-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+          'daaaaaaa-0000-0000-0000-00000000000a', 'Tayo', 'Adeyemi');
+-- A colleague, with no login of their own attached.
+INSERT INTO staff (id, school_id, first_name, last_name)
+  VALUES ('f1111111-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222',
+          'Chidi', 'Nwosu');
+
+INSERT INTO payroll_runs (id, school_id, period_label, status) VALUES
+  ('f2222222-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'March 2026', 'approved'),
+  ('f2222222-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'April 2026', 'draft');
+
+INSERT INTO payroll_run_items (id, payroll_run_id, staff_id, basic, allowances, pension, tax, deductions, net_pay) VALUES
+  -- theirs, on an approved run: the one row they should see
+  ('f3333333-0000-0000-0000-000000000001', 'f2222222-0000-0000-0000-000000000001',
+   'f1111111-0000-0000-0000-000000000001', 180000, 45000, 14400, 22500, 36900, 188100),
+  -- theirs, but the run is still a draft
+  ('f3333333-0000-0000-0000-000000000002', 'f2222222-0000-0000-0000-000000000002',
+   'f1111111-0000-0000-0000-000000000001', 180000, 45000, 14400, 22500, 36900, 188100),
+  -- a colleague's, on the same approved run
+  ('f3333333-0000-0000-0000-000000000003', 'f2222222-0000-0000-0000-000000000001',
+   'f1111111-0000-0000-0000-000000000002', 300000, 60000, 24000, 36000, 60000, 300000);
+
+INSERT INTO payroll_profiles (staff_id, basic_salary, pension_rate, tax_rate)
+  VALUES ('f1111111-0000-0000-0000-000000000001', 180000, 8, 10);
+INSERT INTO staff_bank_details (staff_id, bank_name, account_number, account_name) VALUES
+  ('f1111111-0000-0000-0000-000000000001', 'First Bank', '0123456789', 'Tayo Adeyemi'),
+  ('f1111111-0000-0000-0000-000000000002', 'Zenith', '9876543210', 'Chidi Nwosu');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'daaaaaaa-0000-0000-0000-00000000000a';
+
+SELECT public.assert((SELECT count(*) FROM payroll_run_items) = 1,
+  'a teacher sees a payroll item that is not their own, or on an unapproved run');
+SELECT public.assert(
+  (SELECT count(*) FROM payroll_run_items
+   WHERE id = 'f3333333-0000-0000-0000-000000000001') = 1,
+  'a teacher cannot read their own payslip from an approved run');
+SELECT public.assert(
+  (SELECT count(*) FROM payroll_run_items
+   WHERE id = 'f3333333-0000-0000-0000-000000000002') = 0,
+  'a teacher can read their own pay from a DRAFT run, before it is approved');
+SELECT public.assert(
+  (SELECT count(*) FROM payroll_run_items
+   WHERE id = 'f3333333-0000-0000-0000-000000000003') = 0,
+  'a teacher can read a colleague''s payslip');
+
+-- Only the run they were actually paid in, and only once approved.
+SELECT public.assert((SELECT count(*) FROM payroll_runs) = 1,
+  'a teacher sees a payroll run they were not in, or one still in draft');
+
+-- Their own account number, and no one else's.
+SELECT public.assert((SELECT count(*) FROM staff_bank_details) = 1,
+  'a teacher can read bank details other than their own');
+
+-- Salary and rates stay shut: the payslip reads the run item, so self-service
+-- never needed payroll_profiles and it was deliberately not opened.
+SELECT public.assert((SELECT count(*) FROM payroll_profiles) = 0,
+  'a teacher can read salary profiles, which self-service never needed');
+
+-- Read-only. A permissive SELECT policy must not become a way to edit pay.
+UPDATE payroll_run_items SET net_pay = 999999
+  WHERE id = 'f3333333-0000-0000-0000-000000000001';
+COMMIT;
+
+SELECT public.assert(
+  (SELECT net_pay FROM public.payroll_run_items
+   WHERE id = 'f3333333-0000-0000-0000-000000000001') = 188100,
+  'a staff member rewrote their own net pay');
+
+-- The policy must close, not open, when the link is missing. Anyone added
+-- without an invite has staff.user_id NULL, and NULL = NULL is not true.
+UPDATE staff SET user_id = NULL WHERE id = 'f1111111-0000-0000-0000-000000000001';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'daaaaaaa-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM payroll_run_items) = 0,
+  'an unlinked staff record still matched a payslip — the policy opens on NULL');
+COMMIT;
+UPDATE staff SET user_id = 'daaaaaaa-0000-0000-0000-00000000000a'
+  WHERE id = 'f1111111-0000-0000-0000-000000000001';
+
+-- Someone with no staff record at all must see nothing rather than everything.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM payroll_run_items) = 0,
+  'a student can read payroll items');
+SELECT public.assert((SELECT count(*) FROM staff_bank_details) = 0,
+  'a student can read staff bank details');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;

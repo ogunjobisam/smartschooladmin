@@ -58,6 +58,10 @@ export const NAV_ITEMS: NavItem[] = [
 
   { key: "transport", title: "Transport", url: "/transport", group: "operations" },
   { key: "payroll", title: "Payroll", url: "/payroll", group: "operations" },
+  // Everyone who works at the school, including those who cannot see the payroll
+  // itself. Their own payslips only — see the policies in
+  // 20260902090000_staff_can_read_their_own_pay.sql.
+  { key: "my-pay", title: "My Pay", url: "/my-pay", group: "operations" },
   { key: "approvals", title: "Approvals", url: "/approvals", group: "operations" },
   { key: "group-overview", title: "Group Overview", url: "/group-overview", group: "operations" },
   { key: "reports", title: "Reports", url: "/reports", group: "operations" },
@@ -86,39 +90,39 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "dashboard", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
-    "transport", "approvals", "reports",
+    "transport", "approvals", "reports", "my-pay",
     "settings", "users",
   ],
   principal: [
     "dashboard", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
-    "transport", "approvals", "reports",
+    "transport", "approvals", "reports", "my-pay",
     "users",
   ],
   bursar: [
     "dashboard", "wall", "admissions", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
     "announcements", "events", "preferences",
-    "transport", "payroll", "reports",
+    "transport", "payroll", "reports", "my-pay",
     "users",
   ],
   finance_officer: [
     "dashboard", "wall", "students",
     "invoices", "payments", "arrears",
     "events", "preferences",
-    "reports",
+    "reports", "my-pay",
     "users",
   ],
   hr_admin: [
     "dashboard", "wall", "staff", "achievements",
     "announcements", "events", "preferences",
-    "payroll", "reports",
+    "payroll", "reports", "my-pay",
     "users",
   ],
   teacher: [
     "dashboard", "wall", "students", "attendance", "exams", "performance", "achievements",
-    "announcements", "events", "preferences",
+    "announcements", "events", "preferences", "my-pay",
   ],
   parent: [
     "dashboard", "wall",
@@ -141,7 +145,11 @@ export function navItemsForRole(role: string | null): NavItem[] {
   return NAV_ITEMS.filter((i) => allowed.has(i.key));
 }
 
-/** The self-service portal for a role, or null for staff. */
+/**
+ * The self-service portal a role lands in after sign-in, or null for staff, who
+ * land in the app proper. Staff self-service is a page inside it — "My Pay" —
+ * rather than a separate portal, so this stays null for them.
+ */
 export function portalPathForRole(role: string | null): string | null {
   if (role === "parent") return "/parent";
   if (role === "student") return "/student";
