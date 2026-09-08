@@ -3287,6 +3287,15 @@ export type Database = {
         Args: { _hours?: number; _label?: string }
         Returns: Json
       }
+      create_demo_org_large: {
+        Args: {
+          _hours?: number
+          _label?: string
+          _students?: number
+          _teachers?: number
+        }
+        Returns: Json
+      }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
