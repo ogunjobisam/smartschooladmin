@@ -106,9 +106,12 @@ export function useClassPerformanceData(classId: string | undefined, periodId: s
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || [])
+      const rows = (data || [])
         .map((e) => (e as unknown as { students: ClassStudent & { status: string } }).students)
         .filter((s) => s && s.status === "active") as ClassStudent[];
+      // A pupil has one enrolment per term, so the same child can come back
+      // more than once when no single term is selected.
+      return Array.from(new Map(rows.map((s) => [s.id, s])).values());
     },
     enabled: !!classId,
   });
