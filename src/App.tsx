@@ -45,6 +45,7 @@ const PayrollRunDetail = lazy(() => import("./pages/PayrollRunDetail"));
 const Approvals = lazy(() => import("./pages/Approvals"));
 const Reports = lazy(() => import("./pages/Reports"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
+const RolesAccess = lazy(() => import("./pages/RolesAccess"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
 const StudentPortal = lazy(() => import("./pages/StudentPortal"));
@@ -140,6 +141,7 @@ function AppRoutes() {
           <Route path="/audit-log" element={withLayout(<AuditLog />)} />
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />
+          <Route path="/roles" element={withLayout(<RolesAccess />)} />
           <Route path="/parent" element={withLayout(<ParentDashboard />)} />
           <Route path="/student" element={withLayout(<StudentPortal />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />

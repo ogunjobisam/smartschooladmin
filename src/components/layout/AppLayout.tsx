@@ -11,6 +11,7 @@ import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { canAccessPath } from "@/lib/access";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 import { AnnouncementBanner } from "./AnnouncementBanner";
+import { ViewAsBanner } from "./ViewAsBanner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId, userRole } = useAuth();
@@ -37,6 +38,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
+
+          <ViewAsBanner />
 
           <DemoBanner />
 
