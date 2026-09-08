@@ -200,7 +200,7 @@ serve(async (req) => {
     const { data: createdInvoices, error: invErr } = await supabase
       .from("invoices")
       .insert(invoiceInserts)
-      .select("id, student_id");
+      .select("id, student_id, invoice_number, total_amount, due_date");
     if (invErr) throw invErr;
 
     // 6. Create invoice items based on fee schedule name
@@ -232,6 +232,54 @@ serve(async (req) => {
       }
     }
 
+    // 6b. Tell each family their bill is ready, with the amount and due date.
+    let alertsQueued = 0;
+    if (createdInvoices && createdInvoices.length > 0) {
+      const { data: links } = await supabase
+        .from("student_guardians")
+        .select("student_id, students!inner(first_name, last_name), guardians(email, first_name, last_name)")
+        .in("student_id", createdInvoices.map((i) => i.student_id));
+
+      const { data: org } = await supabase
+        .from("organisation_groups")
+        .select("currency")
+        .eq("id", targetSchool.org_id)
+        .maybeSingle();
+      const currency = (org?.currency as string) || "NGN";
+
+      const byStudent = new Map(createdInvoices.map((i) => [i.student_id, i]));
+      const rows: Record<string, unknown>[] = [];
+
+      for (const link of links || []) {
+        const g = link.guardians as { email: string | null; first_name: string; last_name: string } | null;
+        const s = link.students as { first_name: string; last_name: string } | null;
+        const inv = byStudent.get(link.student_id);
+        if (!g?.email || !s || !inv) continue;
+        const amount = `${currency} ${Number(inv.total_amount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
+        rows.push({
+          org_id: targetSchool.org_id,
+          school_id: school_id,
+          channel: "email",
+          recipient: g.email,
+          subject: `Invoice ${inv.invoice_number} for ${s.first_name} ${s.last_name}`,
+          body:
+            `Dear ${g.first_name} ${g.last_name},\n\nInvoice ${inv.invoice_number} for ${s.first_name} ${s.last_name} ` +
+            `has been issued for ${amount}` +
+            (inv.due_date ? `, due on ${inv.due_date}` : "") +
+            `.\n\nYou can view the full breakdown and pay online by signing in to the parent portal.`,
+          status: "queued",
+          entity_type: "invoice",
+          entity_id: inv.id,
+        });
+      }
+
+      if (rows.length > 0) {
+        const { error: queueError } = await supabase.from("outbound_message_queue").insert(rows);
+        if (queueError) console.error("Could not queue invoice alerts:", queueError);
+        else alertsQueued = rows.length;
+      }
+    }
+
     // 7. Create audit log entry
     await supabase.from("audit_logs").insert({
       org_id: targetSchool.org_id,
@@ -248,6 +296,7 @@ serve(async (req) => {
       created: createdInvoices?.length || 0,
       skipped: existingStudentIds.size,
       total_amount: (createdInvoices?.length || 0) * schedule.total_amount,
+      alerts_queued: alertsQueued,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
