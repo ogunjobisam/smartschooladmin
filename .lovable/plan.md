@@ -14,21 +14,21 @@
 9. Transcripts and report cards exist as printable documents, but neither students nor parents can actually reach or download them — only staff screens expose them today.
 
 ### B. Communications
-8. SMS is queued but never sent — no SMS provider is connected, so SMS messages sit in the queue forever.
-9. Reminder scheduling relies on the queue drain; repeat-reminder rules and per-user timezone handling are still rough.
+10. SMS is queued but never sent — no SMS provider is connected, so SMS messages sit in the queue forever.
+11. Reminder scheduling relies on the queue drain; repeat-reminder rules and per-user timezone handling are still rough.
 
 ### C. Money
-10. Transport is not billed — routes and riders exist, but no transport fee flows into invoices.
-11. Live card payments are still mock/simulated end to end; no real Paystack/Flutterwave keys in use.
+12. Transport is not billed — routes and riders exist, but no transport fee flows into invoices.
+13. Live card payments are still mock/simulated end to end; no real Paystack/Flutterwave keys in use.
 
 ### D. Trust and operations
-12. Several school notice/permission controls are unclear about who can publish what.
-13. Some database helper functions still raise "search path" security warnings in the scanner.
-14. No automated end-to-end test suite for the money journeys (student → invoice → payment → payroll → payslip).
+14. Several school notice/permission controls are unclear about who can publish what.
+15. Some database helper functions still raise "search path" security warnings in the scanner.
+16. No automated end-to-end test suite for the money journeys (student → invoice → payment → payroll → payslip).
 
 ### E. Smaller loose ends
-15. A few leftover test accounts cannot be deleted.
-16. www.smartschooladmin.app domain records are still incomplete (the plain domain works).
+17. A few leftover test accounts cannot be deleted.
+18. www.smartschooladmin.app domain records are still incomplete (the plain domain works).
 
 ## Part 2: What I propose to build now (your selections)
 
