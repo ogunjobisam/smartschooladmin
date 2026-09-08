@@ -145,7 +145,7 @@ export async function sendPaymentConfirmation(params: {
   if (!student) return;
 
   const guardianLinks = student.student_guardians || [];
-  const formattedAmount = (params.amount / 100).toLocaleString();
+  const formattedAmount = params.amount.toLocaleString();
   const title = `Payment confirmed for ${student.first_name} ${student.last_name}`;
   const message = params.invoiceNumber
     ? `Payment of ₦${formattedAmount} received for invoice ${params.invoiceNumber}.`

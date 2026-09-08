@@ -74,7 +74,8 @@ export default function RecordPayment() {
   const recordPayment = useMutation({
     mutationFn: async () => {
       if (!schoolId || !selectedStudentId || !amount || !method) throw new Error("Missing fields");
-      const amountKobo = Math.round(parseFloat(amount) * 100);
+      // Amounts are stored and displayed in whole currency units.
+      const amountValue = Math.round(parseFloat(amount));
 
       // Insert payment
       const { data: payment, error: payError } = await supabase
@@ -82,7 +83,7 @@ export default function RecordPayment() {
         .insert({
           school_id: schoolId,
           student_id: selectedStudentId,
-          amount: amountKobo,
+          amount: amountValue,
           payment_method: method as Enums<"payment_method">,
           reference_number: reference || null,
           payment_date: paymentDate,
@@ -96,8 +97,8 @@ export default function RecordPayment() {
 
       // Allocate to invoice if selected
       if (selectedInvoiceId && payment) {
-        const invoiceBalance = selectedInvoice ? (selectedInvoice.total_amount - selectedInvoice.amount_paid) : amountKobo;
-        const allocateAmount = Math.min(amountKobo, invoiceBalance);
+        const invoiceBalance = selectedInvoice ? (selectedInvoice.total_amount - selectedInvoice.amount_paid) : amountValue;
+        const allocateAmount = Math.min(amountValue, invoiceBalance);
 
         await supabase.from("payment_allocations").insert({
           payment_id: payment.id,
@@ -126,7 +127,7 @@ export default function RecordPayment() {
           orgId,
           schoolId,
           studentId: selectedStudentId,
-          amount: Math.round(parseFloat(amount) * 100),
+          amount: Math.round(parseFloat(amount)),
           paymentId: payment.id,
           invoiceNumber: selectedInvoice?.invoice_number,
         }).catch(console.error);

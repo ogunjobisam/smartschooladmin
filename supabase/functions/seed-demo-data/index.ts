@@ -206,9 +206,9 @@ serve(async (req) => {
 
         const ppInserts = staffList.map((s, i) => ({
           staff_id: s.id,
-          basic_salary: salaries[i] * 100,
-          housing_allowance: Math.round(salaries[i] * 0.2) * 100,
-          transport_allowance: Math.round(salaries[i] * 0.1) * 100,
+          basic_salary: salaries[i],
+          housing_allowance: Math.round(salaries[i] * 0.2),
+          transport_allowance: Math.round(salaries[i] * 0.1),
           pension_rate: 7.5,
           tax_rate: i < 5 ? 10 : 7,
         }));
@@ -397,7 +397,7 @@ serve(async (req) => {
         name: `${cls.name} - Term 2 Fees`,
         class_id: cls.id,
         academic_period_id: currentPeriod.id,
-        total_amount: cls.name.startsWith("SS") ? 25000000 : 18000000, // kobo
+        total_amount: cls.name.startsWith("SS") ? 250000 : 180000, // whole naira
         is_active: true,
       }));
       await supabase.from("fee_schedules").insert(fsInserts);
@@ -487,7 +487,7 @@ serve(async (req) => {
 
     if ((existingPayrollCount || 0) === 0 && staffList.length) {
       const totalGross = staffList.reduce((sum, _, i) => {
-        const sal = salaries[i % salaries.length] * 100;
+        const sal = salaries[i % salaries.length];
         return sum + sal + Math.round(sal * 0.3);
       }, 0);
       const totalDeductions = Math.round(totalGross * 0.15);
@@ -507,7 +507,7 @@ serve(async (req) => {
 
       if (payrollRun) {
         const priInserts = staffList.map((s, i) => {
-          const sal = salaries[i % salaries.length] * 100;
+          const sal = salaries[i % salaries.length];
           const allowances = Math.round(sal * 0.3);
           const deductions = Math.round((sal + allowances) * 0.15);
           return { payroll_run_id: payrollRun.id, staff_id: s.id, basic: sal, allowances, deductions, net_pay: sal + allowances - deductions };
