@@ -205,6 +205,21 @@ export default function Attendance() {
           entityId: selectedClassId,
           excludeUserId: user.id,
         }).catch(console.error);
+
+        // Parents hear about an absence or a late arrival the same morning.
+        sendAbsenceAlerts({
+          orgId,
+          schoolId,
+          className: displayClassName(className),
+          dateLabel: format(date, "d MMM yyyy"),
+          students: rows.map((r) => ({ id: r.studentId, status: r.status })),
+        })
+          .then((result) => {
+            if (result.queued > 0) {
+              toast.success(`${result.queued} parent alert${result.queued === 1 ? "" : "s"} sent`);
+            }
+          })
+          .catch(console.error);
       }
       queryClient.invalidateQueries({ queryKey: ["attendance-students"] });
     }
