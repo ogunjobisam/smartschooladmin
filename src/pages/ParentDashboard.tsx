@@ -113,7 +113,9 @@ export default function ParentDashboard() {
   const pendingInvoices = invoices?.filter((i) => i.status === "pending" || i.status === "overdue").length || 0;
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
-  const displayName = user?.user_metadata?.full_name || guardian ? `${guardian?.first_name} ${guardian?.last_name}` : "Parent";
+  const displayName = guardian
+    ? `${guardian.first_name} ${guardian.last_name}`
+    : user?.user_metadata?.full_name || "Parent";
 
   type ParentInvoice = NonNullable<typeof invoices>[number];
 

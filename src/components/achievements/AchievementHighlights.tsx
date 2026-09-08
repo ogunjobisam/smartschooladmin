@@ -27,6 +27,8 @@ interface Row {
   award_date: string;
   photo_path: string | null;
   subject_type: "student" | "staff";
+  student_id: string | null;
+  staff_id: string | null;
   students: { first_name: string; last_name: string } | null;
   staff: { first_name: string; last_name: string } | null;
   classes: { name: string } | null;
@@ -46,7 +48,7 @@ export function AchievementHighlights({ limit = 4, title = "Recent achievements"
       let query = supabase
         .from("recognitions")
         .select(
-          "id, title, category, award_date, photo_path, subject_type, students(first_name, last_name), staff(first_name, last_name), classes(name)"
+          "id, title, category, award_date, photo_path, subject_type, student_id, staff_id, students(first_name, last_name), staff(first_name, last_name), classes(name)"
         )
         .eq("status", "published")
         .order("award_date", { ascending: false })
@@ -60,9 +62,26 @@ export function AchievementHighlights({ limit = 4, title = "Recent achievements"
 
   const photoUrls = usePhotoUrls(rows.map((r) => r.photo_path));
 
+  // Parents and pupils can read published awards but not other families'
+  // records, so names for those rows come from a school-scoped lookup.
+  const { data: recipientNames } = useQuery({
+    queryKey: ["wall-recipient-names", schoolId],
+    queryFn: async () => {
+      if (!schoolId) return {} as Record<string, string>;
+      const { data, error } = await supabase.rpc("wall_recipient_names", { _school_id: schoolId });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of data || []) map[row.person_id as string] = row.full_name as string;
+      return map;
+    },
+    enabled: !!schoolId,
+  });
+
   const nameOf = (r: Row) => {
     const p = r.students ?? r.staff;
-    return p ? `${p.first_name} ${p.last_name}` : "Unknown";
+    if (p) return `${p.first_name} ${p.last_name}`;
+    const id = r.student_id ?? r.staff_id;
+    return (id && recipientNames?.[id]) || "A member of the school";
   };
 
   return (
