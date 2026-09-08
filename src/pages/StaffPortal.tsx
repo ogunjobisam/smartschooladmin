@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, subDays } from "date-fns";
 import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from "lucide-react";
@@ -8,6 +8,9 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
+import { ClassPerformancePanel } from "@/components/teacher/ClassPerformancePanel";
+import { GuardianContactsPanel } from "@/components/teacher/GuardianContactsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +30,7 @@ import { displayClassName } from "@/lib/sections";
  */
 export default function StaffPortal() {
   const { user, schoolId, orgId } = useAuth();
+  const navigate = useNavigate();
 
   const { data: staff, isLoading: staffLoading } = useQuery({
     queryKey: ["my-staff-basic", user?.id],
@@ -97,6 +101,11 @@ export default function StaffPortal() {
     },
     enabled: classIds.length > 0,
   });
+
+  const studentIds = useMemo(
+    () => Array.from(new Set(enrolments.map((e) => e.student_id))),
+    [enrolments]
+  );
 
   const since = useMemo(() => format(subDays(new Date(), 30), "yyyy-MM-dd"), []);
 
@@ -367,7 +376,7 @@ export default function StaffPortal() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">My students</CardTitle>
-              <CardDescription>Everyone enrolled in the classes you teach{schoolId ? "" : ""}.</CardDescription>
+              <CardDescription>Everyone enrolled in the classes you teach — tap a name for their full record.</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               {enrolments.length === 0 ? (
@@ -383,8 +392,12 @@ export default function StaffPortal() {
                   </TableHeader>
                   <TableBody>
                     {enrolments.map((e) => (
-                      <TableRow key={e.id}>
-                        <TableCell className="text-sm font-medium">
+                      <TableRow
+                        key={e.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/students/${e.student_id}`)}
+                      >
+                        <TableCell className="text-sm font-medium text-primary">
                           {e.students ? `${e.students.first_name} ${e.students.last_name}` : "—"}
                         </TableCell>
                         <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
@@ -398,6 +411,38 @@ export default function StaffPortal() {
               )}
             </CardContent>
           </Card>
+
+          <ClassPerformancePanel
+            classIds={classIds}
+            classNameById={Object.fromEntries(myClasses.map((c) => [c.id, c.name]))}
+          />
+
+          <GuardianContactsPanel
+            studentIds={studentIds}
+            classNameByStudentId={Object.fromEntries(enrolments.map((e) => [e.student_id, className(e.class_id)]))}
+          />
+
+          {enrolments.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold">Student recognitions</h2>
+                <p className="text-sm text-muted-foreground">What your students have been recognised for.</p>
+              </div>
+              {enrolments.slice(0, 10).map((e) =>
+                e.students ? (
+                  <div key={e.id}>
+                    <p className="mb-2 text-sm font-medium">{e.students.first_name} {e.students.last_name}</p>
+                    <RecognitionsPanel subjectType="student" personId={e.student_id} hideWhenEmpty />
+                  </div>
+                ) : null
+              )}
+              {enrolments.length > 10 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the first 10 students — open a student's record for the rest.
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

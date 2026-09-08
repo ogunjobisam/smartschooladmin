@@ -1,7 +1,8 @@
 import { displayClassName } from "@/lib/sections";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info, ArrowRight, CalendarClock, FileText } from "lucide-react";
+import { BookOpen, CreditCard, GraduationCap, Printer, Receipt, CalendarCheck, Info, ArrowRight, CalendarClock, FileText } from "lucide-react";
 
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -40,7 +41,7 @@ export default function StudentPortal() {
     queryFn: async () => {
       const { data } = await supabase
         .from("students")
-        .select("id, first_name, last_name, student_id_number, status, school_id, enrolments(classes(name)), schools(id, name, address, email, phone, logo_url)")
+        .select("id, first_name, last_name, student_id_number, status, school_id, enrolments(class_id, classes(name)), schools(id, name, address, email, phone, logo_url)")
         .eq("user_id", user!.id)
         .maybeSingle();
       return data;
@@ -61,6 +62,21 @@ export default function StudentPortal() {
       return data || [];
     },
     enabled: !!studentId,
+  });
+
+  const currentClassId = student?.enrolments?.[0]?.class_id ?? null;
+
+  // The subjects attached to the student's own class — "My subjects".
+  const { data: mySubjects = [] } = useQuery({
+    queryKey: ["student-portal-subjects", currentClassId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_subjects")
+        .select("subjects(name)")
+        .eq("class_id", currentClassId!);
+      return (data || []).map((r) => r.subjects?.name).filter(Boolean) as string[];
+    },
+    enabled: !!currentClassId,
   });
 
   const { scores, attendance, isLoading: performanceLoading } = useStudentPerformanceData(studentId);
@@ -232,11 +248,29 @@ export default function StudentPortal() {
 
       {studentId && <RecognitionsPanel subjectType="student" personId={studentId} />}
 
+      {mySubjects.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BookOpen className="h-4 w-4 text-accent" /> My subjects
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {mySubjects.map((name) => (
+              <span key={name} className="rounded-full border px-3 py-1 text-sm">{name}</span>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <GraduationCap className="h-4 w-4 text-accent" /> Your results
           </CardTitle>
+          <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
+            <Link to="/student/results">All results <ArrowRight className="h-3 w-3" /></Link>
+          </Button>
         </CardHeader>
         <CardContent>
           <PerformanceSummary performance={performance} isLoading={performanceLoading} />
@@ -321,10 +355,13 @@ export default function StudentPortal() {
       )}
 
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <CreditCard className="h-4 w-4 text-accent" /> Attendance summary
+            <CalendarCheck className="h-4 w-4 text-accent" /> Attendance summary
           </CardTitle>
+          <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
+            <Link to="/student/attendance">Full register <ArrowRight className="h-3 w-3" /></Link>
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

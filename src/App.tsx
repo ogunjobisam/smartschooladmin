@@ -67,6 +67,8 @@ const Admissions = lazy(() => import("./pages/Admissions"));
 const Apply = lazy(() => import("./pages/Apply"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
+const MyResults = lazy(() => import("./pages/student/MyResults"));
+const MyAttendance = lazy(() => import("./pages/student/MyAttendance"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -144,6 +146,8 @@ function AppRoutes() {
           <Route path="/roles" element={withLayout(<RolesAccess />)} />
           <Route path="/parent" element={withLayout(<ParentDashboard />)} />
           <Route path="/student" element={withLayout(<StudentPortal />)} />
+          <Route path="/student/results" element={withLayout(<MyResults />)} />
+          <Route path="/student/attendance" element={withLayout(<MyAttendance />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />
