@@ -27,6 +27,8 @@ interface Row {
   award_date: string;
   photo_path: string | null;
   subject_type: "student" | "staff";
+  student_id: string | null;
+  staff_id: string | null;
   students: { first_name: string; last_name: string } | null;
   staff: { first_name: string; last_name: string } | null;
   classes: { name: string } | null;
