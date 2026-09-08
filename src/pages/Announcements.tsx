@@ -451,7 +451,7 @@ export default function Announcements() {
                 </div>
                 {channelEmail && (
                   <p className="text-xs text-muted-foreground">
-                    Emails are queued, then sent from Settings → Notifications.
+                    Emails are queued first — send and track them on the Email Status page.
                   </p>
                 )}
               </div>
