@@ -25,7 +25,7 @@ import { displayClassName } from "@/lib/sections";
  * built for the office.
  */
 export default function StaffPortal() {
-  const { user, schoolId } = useAuth();
+  const { user, schoolId, orgId } = useAuth();
 
   const { data: staff, isLoading: staffLoading } = useQuery({
     queryKey: ["my-staff-basic", user?.id],
