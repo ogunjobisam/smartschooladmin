@@ -59,13 +59,15 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, userRoles: [], orgId: null, schoolId: null,
+  user: null, session: null, loading: true, userRole: null, userRoles: [], realRole: null, realRoles: [],
+  viewAsRole: null, setViewAsRole: () => {}, orgId: null, schoolId: null,
   currency: "NGN", schools: [], orgs: [], needsWorkspaceChoice: false, roleError: null,
   retryRole: () => {}, setSchoolId: () => {}, setOrgId: () => {}, confirmWorkspace: () => {}, signOut: async () => {},
 });
 
 const orgKey = (userId: string) => `smartschool.workspace.org.${userId}`;
 const schoolKey = (userId: string) => `smartschool.workspace.school.${userId}`;
+const viewAsKey = (userId: string) => `smartschool.viewAs.${userId}`;
 
 function readStored(key: string): string | null {
   try {
