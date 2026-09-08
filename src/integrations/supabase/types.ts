@@ -3319,6 +3319,7 @@ export type Database = {
       }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
+      drain_outbound_message_queue: { Args: never; Returns: undefined }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
@@ -3419,6 +3420,7 @@ export type Database = {
       sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
+      verify_queue_drain_token: { Args: { t: string }; Returns: boolean }
       wall_recipient_names: {
         Args: { _school_id: string }
         Returns: {
