@@ -378,7 +378,26 @@ Open the run:
 
 - **Approve Payroll** or **Reject** — a draft becomes approved
 - **Export Bank Batch** — a CSV of net pay and bank details for your bank
-- Each staff row opens their **payslip**, ready to print
+- Each staff row opens their **payslip**, to print or download as a PDF
+
+A payslip carries the school's logo and contact details, the employee's ID,
+position and department, the pension and tax split, and the account the money
+went to, shown as the last four digits only. **Download PDF** produces a file to
+email or file; **Print** opens it ready for paper.
+
+### My Pay
+
+Every member of staff has **My Pay**, listing their own payslips and nothing
+else — a teacher does not gain sight of the payroll by having it. Each row opens
+the same payslip, with the same download.
+
+Payslips appear there **once a run has been approved**. A draft is still a
+proposal that can be rejected, and showing someone a figure that later changes is
+worse than showing them nothing.
+
+> **If someone sees "Account not linked"**, their sign-in was never attached to
+> their staff record. That happens when a staff member was added without *Send
+> invite*. Re-issue their access from their staff record and the two are joined.
 
 ---
 

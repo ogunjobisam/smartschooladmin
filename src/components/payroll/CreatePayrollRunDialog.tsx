@@ -113,11 +113,16 @@ export function CreatePayrollRunDialog() {
         .single();
       if (runError) throw runError;
 
+      // Keep the pension and tax split, not just the total. Recomputing it later
+      // from payroll_profiles would be wrong the moment anyone's rate changes —
+      // last year's payslip would re-render with this year's pension rate.
       const items = payable.map((r) => ({
         payroll_run_id: run.id,
         staff_id: r.staff.id,
         basic: r.line.basic,
         allowances: r.line.allowances,
+        pension: r.line.pension,
+        tax: r.line.tax,
         deductions: r.line.deductions,
         net_pay: r.line.netPay,
       }));

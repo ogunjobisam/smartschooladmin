@@ -1983,7 +1983,9 @@ export type Database = {
           id: string
           net_pay: number
           payroll_run_id: string
+          pension: number
           staff_id: string
+          tax: number
         }
         Insert: {
           allowances?: number
@@ -1993,7 +1995,9 @@ export type Database = {
           id?: string
           net_pay?: number
           payroll_run_id: string
+          pension?: number
           staff_id: string
+          tax?: number
         }
         Update: {
           allowances?: number
@@ -2003,7 +2007,9 @@ export type Database = {
           id?: string
           net_pay?: number
           payroll_run_id?: string
+          pension?: number
           staff_id?: string
+          tax?: number
         }
         Relationships: [
           {

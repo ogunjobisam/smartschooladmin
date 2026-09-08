@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Lock, TrendingUp, IdCard } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, Banknote, Edit, Eye, Lock, TrendingUp, IdCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,12 +26,14 @@ import { InviteStaffButton } from "@/components/staff/InviteStaffButton";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
 import { SalaryChangeDialog } from "@/components/payroll/SalaryChangeDialog";
 import { EditPayrollProfileDialog } from "@/components/payroll/EditPayrollProfileDialog";
+import { PayslipDialog } from "@/components/payroll/PayslipDialog";
+import type { PayslipData } from "@/lib/payslip";
 import { calculatePayrollLine } from "@/lib/payroll";
 import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
-  const { formatMoney } = useCurrency();
+  const { formatMoney, currency } = useCurrency();
   const { schoolId, orgId, userRole } = useAuth();
   const queryClient = useQueryClient();
   const { branding } = useSchoolBranding();
@@ -40,6 +42,7 @@ export default function StaffDetail() {
   const [payrollProfileOpen, setPayrollProfileOpen] = useState(false);
   const [idCard, setIdCard] = useState<IdCardData | null>(null);
   const [idCardOpen, setIdCardOpen] = useState(false);
+  const [payslipData, setPayslipData] = useState<PayslipData | null>(null);
   const canRequestSalaryChange = userRole === "super_admin" || userRole === "proprietor" || userRole === "bursar" || userRole === "hr_admin";
 
   const { data: staff, isLoading } = useQuery({
@@ -47,7 +50,7 @@ export default function StaffDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("staff")
-        .select("*, staff_positions(title, department, is_current), schools(name)")
+        .select("*, staff_positions(title, department, is_current), schools(name, address, email, phone, logo_url)")
         .eq("id", id!)
         .maybeSingle();
       return data;
@@ -86,7 +89,7 @@ export default function StaffDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payroll_run_items")
-        .select("id, basic, allowances, deductions, net_pay, payroll_runs(period_label, status)")
+        .select("id, basic, allowances, pension, tax, deductions, net_pay, payroll_runs(period_label, status, run_date)")
         .eq("staff_id", id!)
         .order("created_at", { ascending: false })
         .limit(12);
@@ -106,6 +109,36 @@ export default function StaffDetail() {
 
   const currentPos = staff.staff_positions?.find((p) => p.is_current);
   const initials = `${staff.first_name[0]}${staff.last_name[0]}`.toUpperCase();
+
+  type StaffPayslip = NonNullable<typeof payslips>[number];
+
+  const openPayslip = (ps: StaffPayslip) => {
+    setPayslipData({
+      school: {
+        name: staff.schools?.name || branding.name || "",
+        address: staff.schools?.address,
+        email: staff.schools?.email,
+        phone: staff.schools?.phone,
+        logoUrl: staff.schools?.logo_url || branding.logoUrl,
+      },
+      currency,
+      staffName: `${staff.first_name} ${staff.last_name}`,
+      staffId: staff.staff_id_number,
+      department: currentPos?.department,
+      position: currentPos?.title,
+      periodLabel: ps.payroll_runs?.period_label || "",
+      runDate: ps.payroll_runs?.run_date || "",
+      status: ps.payroll_runs?.status,
+      basic: ps.basic,
+      allowances: ps.allowances,
+      pension: ps.pension,
+      tax: ps.tax,
+      deductions: ps.deductions,
+      netPay: ps.net_pay,
+      bankName: bankDetails?.bank_name,
+      accountNumber: bankDetails?.account_number,
+    });
+  };
 
   const pp = payrollProfile;
   // Shared with the payroll run so the profile preview and the payslip agree.
@@ -271,11 +304,12 @@ export default function StaffDetail() {
                   <TableHead className="text-xs text-right">Deductions</TableHead>
                   <TableHead className="text-xs text-right">Net</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs w-28" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payslips?.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No payslips found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No payslips found.</TableCell></TableRow>
                 ) : (
                   payslips?.map((ps) => (
                     <TableRow key={ps.id}>
@@ -285,6 +319,11 @@ export default function StaffDetail() {
                       <TableCell className="text-right font-mono text-sm tabular-nums text-destructive">{formatMoney(ps.deductions)}</TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">{formatMoney(ps.net_pay)}</TableCell>
                       <TableCell><StatusBadge status={ps.payroll_runs?.status || "draft"} /></TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => openPayslip(ps)}>
+                          <Eye className="h-3.5 w-3.5" /> Payslip
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -328,6 +367,11 @@ export default function StaffDetail() {
       {idCard && (
         <IdCardDialog open={idCardOpen} onOpenChange={setIdCardOpen} data={idCard} />
       )}
+      <PayslipDialog
+        open={!!payslipData}
+        onOpenChange={(open) => !open && setPayslipData(null)}
+        data={payslipData}
+      />
     </div>
   );
 }

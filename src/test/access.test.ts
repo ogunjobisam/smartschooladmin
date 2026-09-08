@@ -21,6 +21,20 @@ describe("canAccessPath", () => {
     expect(canAccessPath("teacher", "/students")).toBe(true);
   });
 
+  it("lets everyone who works at the school see their own pay", () => {
+    // Distinct from /payroll, which is the whole school's. A teacher has no
+    // business in the payroll run and every right to their own payslip.
+    for (const role of ["teacher", "principal", "school_admin", "hr_admin", "bursar", "finance_officer", "proprietor"]) {
+      expect(canAccessPath(role, "/my-pay"), role).toBe(true);
+    }
+    expect(canAccessPath("teacher", "/payroll")).toBe(false);
+  });
+
+  it("does not offer My Pay to families, who are not paid by the school", () => {
+    expect(canAccessPath("parent", "/my-pay")).toBe(false);
+    expect(canAccessPath("student", "/my-pay")).toBe(false);
+  });
+
   it("keeps a parent out of the whole school's finances", () => {
     // The parent portal shows their own children's invoices; the staff-facing
     // invoice and payment lists cover the entire school.
