@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js";
 import { classifyEmailFailure } from "../_shared/email-result.ts";
 import { formatSender, replyToAddress } from "../_shared/sender.ts";
 
