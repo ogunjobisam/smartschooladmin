@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload } from "@/components/common/PhotoUpload";
+import { SignInMethods } from "@/components/settings/SignInMethods";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -373,6 +374,10 @@ export default function NotificationSettings() {
           />
         </CardContent>
       </Card>
+
+      {/* Sign-in methods: password and Google on one account */}
+      <SignInMethods accountEmail={user?.email} />
+
 
       {/* Delivery frequency and quiet hours */}
       <Card>
