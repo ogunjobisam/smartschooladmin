@@ -83,7 +83,7 @@ Because your costs are in £ and revenue in NGN/GHS/KES, NGN depreciation shrink
 
 ## Open decisions for you
 
-1. **Raised prices** — ₦200 Standard / ₦350 Premium per student per term. OK, or set your own?
+1. **Premium price** — Standard is ₦300/student/term (your call). Premium at ₦450 (50% uplift) — OK, or set your own?
 2. **Free tier** up to 50 students (vs time-limited trial) — confirm.
 3. **Yearly discount** — ~10% off if a school pays a full year upfront — include?
 4. **SMS bundle prices** above — adjust the naira amounts?
