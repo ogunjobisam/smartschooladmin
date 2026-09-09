@@ -118,3 +118,27 @@ describe("salary field parsing", () => {
     expect(parseSalaryValue("basic_salary", "")).toBeNull();
   });
 });
+
+describe("payroll run lifecycle", () => {
+  it("lets a draft be edited, submitted or deleted", () => {
+    expect(actionsForStatus("draft")).toEqual(["edit", "submit", "delete"]);
+  });
+
+  it("locks a paid run", () => {
+    expect(actionsForStatus("paid")).toEqual([]);
+  });
+
+  it("only lets approvers sign off a submitted run", () => {
+    expect(payrollActions("pending", ["bursar"])).toEqual(["return_to_draft"]);
+    expect(payrollActions("pending", ["principal"])).toEqual(["approve", "reject"]);
+  });
+
+  it("lets payroll managers pay an approved run", () => {
+    expect(payrollActions("approved", ["bursar"])).toEqual(["mark_paid"]);
+    expect(payrollActions("approved", ["teacher"])).toEqual([]);
+  });
+
+  it("lets a rejected run be reopened", () => {
+    expect(payrollActions("rejected", ["hr_admin"])).toEqual(["return_to_draft", "delete"]);
+  });
+});
