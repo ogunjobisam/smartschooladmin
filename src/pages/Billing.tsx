@@ -4,7 +4,6 @@ import { CreditCard, Loader2, MessageSquare, Sparkles, CheckCircle2, AlertCircle
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/use-subscription";
-import { useCurrency } from "@/hooks/use-currency";
 import { PLANS, planByCode, SMS_BUNDLES, termCost } from "@/lib/subscriptions";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
