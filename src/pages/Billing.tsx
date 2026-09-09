@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
 export default function Billing() {
-  const { orgId, currency } = useAuth();
+  const { orgId } = useAuth();
   const { subscription, isLoading, refetch } = useSubscription();
   const queryClient = useQueryClient();
   // Platform billing is always priced in NGN, regardless of the org's own
@@ -128,7 +128,7 @@ export default function Billing() {
             <p className="text-2xl font-bold">
               {formatMoney(termCost(currentPlan ?? PLANS[0], subscription.studentCount))}
             </p>
-            <p className="text-xs text-muted-foreground">{currency} · per current term</p>
+            <p className="text-xs text-muted-foreground">NGN · per current term</p>
           </div>
           <div className="rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">SMS balance</p>
