@@ -307,7 +307,7 @@ export function buildCertificatesDocument(
     .letter { padding: 18px 16px; }
     .scale-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .certificate { transform: scale(.34); transform-origin: top left; }
-    .sheet.cert-sheet { width: 100%; height: calc(210mm * .34); overflow: hidden; }
+    .sheet.certificate { width: 100%; height: calc(210mm * .34); overflow: hidden; }
   }
   .letter p { line-height: 1.7; margin: 0 0 12px; }
 

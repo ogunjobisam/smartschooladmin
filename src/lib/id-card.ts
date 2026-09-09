@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { openDocument } from "@/lib/document-theme";
 
 export interface IdCardData {
   schoolName: string;
