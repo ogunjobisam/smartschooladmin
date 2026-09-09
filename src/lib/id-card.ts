@@ -95,6 +95,11 @@ export function buildIdCardHtml(data: IdCardData, opts: IdCardRenderOptions = {}
   .mark:before { width:${CR80.bleed}mm; height:.2mm; top:50%; }
   .mark:after { height:${CR80.bleed}mm; width:.2mm; left:50%; }
   .mark.tl { top:0; left:0 } .mark.tr { top:0; right:0 } .mark.bl { bottom:0; left:0 } .mark.br { bottom:0; right:0 }
+  @media screen and (max-width: 760px) {
+    body { padding:12px 10px; }
+    /* Card pages are fixed in mm; zoom keeps them fully visible on a phone. */
+    .sheet { zoom: 0.72; gap:12px; }
+  }
 
   /* ---------- front ---------- */
   .band { height:15mm; background:linear-gradient(135deg, var(--brand) 0%, rgba(0,0,0,.45) 320%); color:#fff; padding:2.6mm 4mm; display:flex; align-items:center; gap:2.6mm; position:relative; overflow:hidden; }

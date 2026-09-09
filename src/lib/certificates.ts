@@ -305,9 +305,8 @@ export function buildCertificatesDocument(
   @media screen and (max-width: 760px) {
     body { padding: 12px 8px; }
     .letter { padding: 18px 16px; }
-    .scale-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .certificate { transform: scale(.34); transform-origin: top left; }
-    .sheet.certificate { width: 100%; height: calc(210mm * .34); overflow: hidden; }
+    /* A4-landscape certificates are fixed in mm; zoom keeps them whole and on-screen. */
+    .sheet.certificate { zoom: 0.33; box-shadow: none; margin: 0 auto 12px; }
   }
   .letter p { line-height: 1.7; margin: 0 0 12px; }
 
