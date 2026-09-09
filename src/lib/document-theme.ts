@@ -273,7 +273,8 @@ export function documentCss(school: DocumentSchool | null | undefined, opts: Doc
     .doc-foot { flex-direction: column; gap: 6px; }
     table.doc { font-size: 12px; }
     table.doc thead th, table.doc tbody td, table.doc tfoot td { padding: 8px 8px; }
-    table.doc td, table.doc th { overflow-wrap: anywhere; }
+    table.doc tbody td { overflow-wrap: anywhere; }
+    table.doc thead th { white-space: normal; word-break: keep-all; }
     .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   }
   @media print {
