@@ -4,7 +4,6 @@ import { CreditCard, Loader2, MessageSquare, Sparkles, CheckCircle2, AlertCircle
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/use-subscription";
-import { useCurrency } from "@/hooks/use-currency";
 import { PLANS, planByCode, SMS_BUNDLES, termCost } from "@/lib/subscriptions";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "sonner";
@@ -15,10 +14,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
 export default function Billing() {
-  const { orgId, currency } = useAuth();
+  const { orgId } = useAuth();
   const { subscription, isLoading, refetch } = useSubscription();
-  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
+  // Platform billing is always priced in NGN, regardless of the org's own
+  // invoice currency, so the figures match the published plan prices.
+  const formatMoney = (n: number) => `₦${(n || 0).toLocaleString("en-NG")}`;
   const [paying, setPaying] = useState<"plan" | "sms" | null>(null);
   const [planChoice, setPlanChoice] = useState<string>("standard");
   const [bundle, setBundle] = useState<number>(SMS_BUNDLES[0].credits);
@@ -127,7 +128,7 @@ export default function Billing() {
             <p className="text-2xl font-bold">
               {formatMoney(termCost(currentPlan ?? PLANS[0], subscription.studentCount))}
             </p>
-            <p className="text-xs text-muted-foreground">{currency} · per current term</p>
+            <p className="text-xs text-muted-foreground">NGN · per current term</p>
           </div>
           <div className="rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">SMS balance</p>

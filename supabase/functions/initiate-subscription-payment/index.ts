@@ -85,10 +85,13 @@ Deno.serve(async (req) => {
 
     const { data: org } = await service
       .from("organisation_groups")
-      .select("currency, name")
+      .select("name")
       .eq("id", orgId)
       .maybeSingle();
-    const currency = org?.currency || "NGN";
+    // Platform billing is always priced in NGN (₦300/₦450 per student), so the
+    // charge is NGN regardless of the org's own invoice currency — Paystack would
+    // reject GBP anyway.
+    const currency = "NGN";
     const orgName = org?.name || "School";
 
     // Billable student count for the org's current term, via the SECURITY DEFINER fn.
