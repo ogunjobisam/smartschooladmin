@@ -49,7 +49,10 @@ export function PayslipDialog({ open, onOpenChange, data }: Props) {
     if (!data) return;
     setDownloading(true);
     try {
-      await downloadHtmlAsPdf(buildPayslipHtml(data, { preview: true }), payslipFileName(data));
+      await downloadHtmlAsPdf(buildPayslipHtml(data, { preview: true }), payslipFileName(data), {
+        // One sheet per employee, always.
+        singlePage: true,
+      });
     } catch (e) {
       toast.error("Could not build the PDF", {
         description: e instanceof Error ? e.message : "Please try printing instead.",

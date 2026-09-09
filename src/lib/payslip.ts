@@ -187,6 +187,18 @@ export function buildPayslipHtml(data: PayslipData, opts: PayslipRenderOptions =
     title: `Payslip — ${data.staffName} — ${data.periodLabel}`,
     body,
     maxWidth: 820,
+    // A payslip is always one sheet per employee: keep the blocks together and
+    // trim the printed spacing so nothing tips over onto a second page.
+    extraCss: `
+      .card, table.doc, .total-box, .doc-foot { page-break-inside: avoid; break-inside: avoid; }
+      @media print {
+        body { padding: 0; }
+        .section-title { margin: 16px 0 8px; }
+        .total-box { margin-top: 12px; }
+        .doc-foot { margin-top: 18px; }
+        .doc-rule { margin: 10px 0 16px; }
+      }
+    `,
   });
 }
 
