@@ -464,7 +464,7 @@ export default function ExamDetail() {
   const handleDeleteExam = async () => {
     if (!id) return;
     setDeleteOpen(false);
-    const { error: scoreError } = await supabase.from("exam_scores").delete().eq("exam_id", id);
+    const { error: scoreError } = await supabase.from("student_scores").delete().eq("exam_id", id);
     if (scoreError) { toast.error(getErrorMessage(scoreError, "Could not delete this exam's scores.")); return; }
     const { error } = await supabase.from("exams").delete().eq("id", id);
     if (error) { toast.error(getErrorMessage(error, "Could not delete this exam.")); return; }

@@ -16,27 +16,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { SCHOOL_SECTIONS, classesForSections, type PlannedClass, type SchoolSection } from "@/lib/sections";
 import { getErrorMessage } from "@/lib/errors";
+import { COUNTRIES } from "@/lib/currencies";
 
 const steps = ["Organisation", "School", "Classes", "Academic Year"];
 
-const countries = [
-  { code: "NG", name: "Nigeria", currency: "NGN" },
-  { code: "GB", name: "United Kingdom", currency: "GBP" },
-  { code: "US", name: "United States", currency: "USD" },
-  { code: "GH", name: "Ghana", currency: "GHS" },
-  { code: "KE", name: "Kenya", currency: "KES" },
-  { code: "ZA", name: "South Africa", currency: "ZAR" },
-  { code: "IN", name: "India", currency: "INR" },
-  { code: "CA", name: "Canada", currency: "CAD" },
-  { code: "AU", name: "Australia", currency: "AUD" },
-  { code: "DE", name: "Germany", currency: "EUR" },
-  { code: "FR", name: "France", currency: "EUR" },
-  { code: "AE", name: "United Arab Emirates", currency: "AED" },
-  { code: "EG", name: "Egypt", currency: "EGP" },
-  { code: "TZ", name: "Tanzania", currency: "TZS" },
-  { code: "UG", name: "Uganda", currency: "UGX" },
-  { code: "RW", name: "Rwanda", currency: "RWF" },
-];
+const countries = COUNTRIES;
 
 export default function Onboarding() {
   const { user, orgId, userRole } = useAuth();
