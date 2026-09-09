@@ -366,7 +366,7 @@ ${opts.body}
 /**
  * Open a generated document in a new tab. Mobile browsers often refuse to render
  * a document written into a blank tab, so we hand them a real blob URL instead
- * and only fall back to writing directly. Returns false if nothing could open.
+ * and fall back to a link tap when popups are blocked.
  */
 export function openDocument(html: string): boolean {
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
