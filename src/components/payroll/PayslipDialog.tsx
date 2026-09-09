@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Download, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
@@ -7,9 +7,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { buildPayslipHtml, payslipFileName, printPayslip, type PayslipData } from "@/lib/payslip";
-
-/** A4 portrait, in millimetres — the paper a payslip is filed on. */
-const A4 = { width: 210, height: 297 };
+import { downloadHtmlAsPdf } from "@/lib/pdf-export";
 
 interface Props {
   open: boolean;
@@ -21,12 +19,14 @@ interface Props {
  * Shows one payslip and lets the holder keep it.
  *
  * The document is rendered into an iframe rather than into the page, so what is
- * previewed, printed and downloaded is byte-for-byte the same document — the
- * previous version scraped the app's own DOM, which meant the printed copy looked
- * nothing like the screen and carried none of the school's branding.
+ * previewed, printed and downloaded is byte-for-byte the same document. The
+ * preview frame grows to the document's own height so the whole payslip is
+ * visible, and the PDF is captured from a separate full-height render — a fixed
+ * 560px frame used to clip the saved file halfway down the page.
  */
 export function PayslipDialog({ open, onOpenChange, data }: Props) {
   const [downloading, setDownloading] = useState(false);
+  const [frameHeight, setFrameHeight] = useState(600);
   const frameRef = useRef<HTMLIFrameElement>(null);
 
   const html = useMemo(
@@ -34,39 +34,22 @@ export function PayslipDialog({ open, onOpenChange, data }: Props) {
     [data],
   );
 
-  const handleDownload = async () => {
+  /** Match the frame to its content so nothing is cut off or scrolled away. */
+  const fitFrame = useCallback(() => {
     const doc = frameRef.current?.contentDocument;
-    if (!doc || !data) return;
+    if (!doc) return;
+    const height = Math.max(
+      doc.documentElement?.scrollHeight ?? 0,
+      doc.body?.scrollHeight ?? 0,
+    );
+    if (height > 0) setFrameHeight(height + 8);
+  }, []);
+
+  const handleDownload = async () => {
+    if (!data) return;
     setDownloading(true);
     try {
-      // Kept out of the main bundle: neither library is needed until someone
-      // actually asks for a file.
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      const canvas = await html2canvas(doc.body, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true, // the school logo is served from the assets bucket
-        logging: false,
-      });
-
-      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-      const width = A4.width;
-      let height = (canvas.height / canvas.width) * width;
-      let x = 0;
-      // A payslip is a single page, but scale to fit rather than crop if a long
-      // school name or address ever pushes it over — losing the net pay off the
-      // bottom edge would be far worse than a slightly smaller document.
-      if (height > A4.height) {
-        const shrink = A4.height / height;
-        height = A4.height;
-        x = (A4.width - width * shrink) / 2;
-      }
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.96), "JPEG", x, 0, width, height);
-      pdf.save(`${payslipFileName(data)}.pdf`);
+      await downloadHtmlAsPdf(buildPayslipHtml(data, { preview: true }), payslipFileName(data));
     } catch (e) {
       toast.error("Could not build the PDF", {
         description: e instanceof Error ? e.message : "Please try printing instead.",
@@ -102,9 +85,12 @@ export function PayslipDialog({ open, onOpenChange, data }: Props) {
             ref={frameRef}
             title="Payslip preview"
             srcDoc={html}
-            className="h-[560px] w-full rounded-md border-0 bg-white"
+            onLoad={fitFrame}
+            style={{ height: frameHeight }}
+            className="w-full rounded-md border-0 bg-white"
           />
         </div>
+
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" className="gap-1.5" onClick={handlePrint} disabled={!data}>
