@@ -1,5 +1,5 @@
 import { formatCurrency } from "@/lib/format";
-import { documentShell, letterheadHtml } from "@/lib/document-theme";
+import { documentShell, letterheadHtml, openDocument } from "@/lib/document-theme";
 
 
 /**
@@ -245,9 +245,5 @@ export function buildLettersDocument(recipients: LetterRecipient[], opts: Letter
 
 export function printLetters(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): boolean {
   if (recipients.length === 0) return false;
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(buildLettersDocument(recipients, opts, school));
-  win.document.close();
-  return true;
+  return openDocument(buildLettersDocument(recipients, opts, school));
 }

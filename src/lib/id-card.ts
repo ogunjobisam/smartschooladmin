@@ -78,7 +78,7 @@ export function buildIdCardHtml(data: IdCardData, opts: IdCardRenderOptions = {}
     ? `<span class="mark tl"></span><span class="mark tr"></span><span class="mark bl"></span><span class="mark br"></span>`
     : "";
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(data.holderKind)} ID — ${esc(data.holderName)}</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${esc(data.holderKind)} ID — ${esc(data.holderName)}</title>
 <style>
   :root { --brand: ${brand}; }
   * { box-sizing: border-box; }
@@ -205,8 +205,5 @@ ${preview ? "" : `
 
 /** Open a print window for the ID card. */
 export function printIdCard(data: IdCardData, opts: IdCardRenderOptions = {}) {
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(buildIdCardHtml(data, opts));
-  win.document.close();
+  openDocument(buildIdCardHtml(data, opts));
 }
