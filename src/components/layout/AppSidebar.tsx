@@ -48,6 +48,7 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   "group-overview": BarChart3,
   reports: ClipboardList,
   "audit-log": Shield,
+  "billing": Receipt,
   "school-profile": Building2,
   settings: Settings,
   users: UserPlus,

@@ -270,16 +270,54 @@ async function sendEmail(
 }
 
 /**
- * SMS is queued but not delivered: no provider is wired up yet.
+ * SMS delivery.
  *
- * Deliberately reported rather than silently dropped or marked sent — SMS is
- * how most Nigerian schools actually reach parents, so a queue quietly filling
- * with undelivered texts would be worse than a visible error.
+ * No provider is wired up yet, so SMS is queued but not delivered — deliberately
+ * reported rather than silently dropped or marked sent. SMS is how most
+ * Nigerian schools actually reach parents, so a queue quietly filling with
+ * undelivered texts would be worse than a visible error.
+ *
+ * Metering: a credit is only deducted from the organisation's prepaid SMS
+ * balance when a text is actually delivered. With no provider configured, no
+ * credit is ever charged, so schools that buy bundles now are not spending
+ * them on messages that never went out. When a provider is added, the success
+ * path below calls `charge_sms`; if the balance is empty, the message is left
+ * queued with a clear "no SMS credits" error rather than silently dropped.
  */
-function sendSms(): SendResult {
+async function sendSms(
+  row: QueueRow,
+  admin: ReturnType<typeof createClient>,
+): Promise<SendResult> {
+  const smsProviderKey =
+    Deno.env.get("SMS_PROVIDER") || Deno.env.get("TERMII_API_KEY") || Deno.env.get("AFRICASTALKING_API_KEY");
+  if (!smsProviderKey) {
+    return {
+      status: "unconfigured",
+      error: "No SMS provider configured. SMS messages stay queued until one is added.",
+    };
+  }
+
+  // A real provider exists — guard the org's prepaid balance before sending.
+  if (row.org_id) {
+    const { data: balance } = await admin
+      .from("sms_credit_balances")
+      .select("balance")
+      .eq("org_id", row.org_id)
+      .maybeSingle();
+    if (!balance || Number(balance.balance) <= 0) {
+      return {
+        status: "unconfigured",
+        error: "No SMS credits left. Buy a bundle from Billing to resume SMS delivery.",
+      };
+    }
+  }
+
+  // TODO: real provider HTTP call goes here. On a successful delivery:
+  //   await admin.rpc("charge_sms", { _org_id: row.org_id, _queue_id: row.id, _recipient: row.recipient });
+  // and return { status: "sent" }.
   return {
     status: "unconfigured",
-    error: "No SMS provider configured. SMS messages stay queued until one is added.",
+    error: "SMS provider recognised but not yet implemented for delivery.",
   };
 }
 
@@ -432,7 +470,7 @@ Deno.serve(async (req) => {
       };
       const result = row.channel === "email"
         ? await sendEmail(row, sender, tokens.get(row.recipient.toLowerCase()) ?? null)
-        : sendSms();
+        : await sendSms(row, admin);
       const now = new Date().toISOString();
 
       if (result.status === "sent") {

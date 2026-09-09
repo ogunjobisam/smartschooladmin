@@ -1617,6 +1617,51 @@ export type Database = {
           },
         ]
       }
+      org_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_id: string | null
+          org_id: string
+          plan_code: string
+          renews_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_id?: string | null
+          org_id: string
+          plan_code?: string
+          renews_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_id?: string | null
+          org_id?: string
+          plan_code?: string
+          renews_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       organisation_groups: {
         Row: {
           ai_addon_enabled: boolean
@@ -2104,6 +2149,68 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_payments: {
+        Row: {
+          academic_period_id: string | null
+          amount: number
+          created_at: string
+          currency: string
+          gateway: string
+          gateway_reference: string
+          id: string
+          org_id: string
+          payer_email: string | null
+          payer_name: string | null
+          plan_code: string | null
+          purpose: string
+          sms_credits: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          academic_period_id?: string | null
+          amount: number
+          created_at?: string
+          currency?: string
+          gateway: string
+          gateway_reference: string
+          id?: string
+          org_id: string
+          payer_email?: string | null
+          payer_name?: string | null
+          plan_code?: string | null
+          purpose: string
+          sms_credits?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          academic_period_id?: string | null
+          amount?: number
+          created_at?: string
+          currency?: string
+          gateway?: string
+          gateway_reference?: string
+          id?: string
+          org_id?: string
+          payer_email?: string | null
+          payer_name?: string | null
+          plan_code?: string | null
+          purpose?: string
+          sms_credits?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2693,6 +2800,64 @@ export type Database = {
           },
         ]
       }
+      sms_credit_balances: {
+        Row: {
+          balance: number
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_credit_balances_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_usage_log: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          queue_id: string | null
+          recipient: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          queue_id?: string | null
+          recipient: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          queue_id?: string | null
+          recipient?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_usage_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           created_at: string
@@ -3139,6 +3304,42 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          ai_enabled: boolean
+          code: string
+          multi_school: boolean
+          name: string
+          payroll_enabled: boolean
+          price_per_student_term: number
+          sort_order: number
+          storage_limit_mb: number
+          student_limit: number | null
+        }
+        Insert: {
+          ai_enabled?: boolean
+          code: string
+          multi_school?: boolean
+          name: string
+          payroll_enabled?: boolean
+          price_per_student_term?: number
+          sort_order?: number
+          storage_limit_mb?: number
+          student_limit?: number | null
+        }
+        Update: {
+          ai_enabled?: boolean
+          code?: string
+          multi_school?: boolean
+          name?: string
+          payroll_enabled?: boolean
+          price_per_student_term?: number
+          sort_order?: number
+          storage_limit_mb?: number
+          student_limit?: number | null
+        }
+        Relationships: []
+      }
       timetable_entries: {
         Row: {
           academic_period_id: string
@@ -3497,6 +3698,14 @@ export type Database = {
       }
     }
     Functions: {
+      activate_subscription: {
+        Args: { _org_id: string; _period_id: string; _plan_code: string }
+        Returns: undefined
+      }
+      add_sms_credits: {
+        Args: { _credits: number; _org_id: string }
+        Returns: undefined
+      }
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
       backfill_staff_id_numbers: {
         Args: { _school_id: string }
@@ -3513,6 +3722,10 @@ export type Database = {
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       can_view_own_recognition_photo: {
         Args: { _name: string }
+        Returns: boolean
+      }
+      charge_sms: {
+        Args: { _org_id: string; _queue_id: string; _recipient: string }
         Returns: boolean
       }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
@@ -3592,6 +3805,23 @@ export type Database = {
       }
       my_staff_id: { Args: never; Returns: string }
       my_student_id: { Args: never; Returns: string }
+      my_subscription: {
+        Args: never
+        Returns: {
+          ai_enabled: boolean
+          current_period_id: string
+          multi_school: boolean
+          payroll_enabled: boolean
+          plan_code: string
+          plan_name: string
+          price_per_student_term: number
+          sms_balance: number
+          status: string
+          storage_limit_mb: number
+          student_count: number
+          student_limit: number
+        }[]
+      }
       next_application_reference: {
         Args: { _school_id: string }
         Returns: string
@@ -3600,6 +3830,7 @@ export type Database = {
         Args: { _entity: string; _school_id: string }
         Returns: string
       }
+      org_current_student_count: { Args: { _org_id: string }; Returns: number }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
