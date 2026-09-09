@@ -390,12 +390,6 @@ export function openDocument(html: string): boolean {
   link.remove();
   revoke();
 
-  const written = window.open("", "_blank");
-  if (written) {
-    written.document.open();
-    written.document.write(html);
-    written.document.close();
-  }
   return true;
 }
 
