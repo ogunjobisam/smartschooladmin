@@ -28,6 +28,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 import { assertWrote } from "@/lib/writes";
+import { COUNTRIES, CURRENCIES, currencyForCountry } from "@/lib/currencies";
+import { formatCurrency } from "@/lib/format";
 
 const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "admissions", "notifications", "addons"];
 
@@ -1292,7 +1294,7 @@ function CurrencyCard({ orgId, canManage }: { orgId: string | null; canManage: b
     setSaving(true);
     const { error } = await supabase
       .from("organisation_groups")
-      .update({ country: country || null, currency })
+      .update({ country, currency })
       .eq("id", orgId);
     setSaving(false);
     if (error) {
