@@ -16,8 +16,10 @@ import { Label } from "@/components/ui/label";
 export default function Billing() {
   const { orgId, currency } = useAuth();
   const { subscription, isLoading, refetch } = useSubscription();
-  const { formatMoney } = useCurrency();
   const queryClient = useQueryClient();
+  // Platform billing is always priced in NGN, regardless of the org's own
+  // invoice currency, so the figures match the published plan prices.
+  const formatMoney = (n: number) => `₦${(n || 0).toLocaleString("en-NG")}`;
   const [paying, setPaying] = useState<"plan" | "sms" | null>(null);
   const [planChoice, setPlanChoice] = useState<string>("standard");
   const [bundle, setBundle] = useState<number>(SMS_BUNDLES[0].credits);
