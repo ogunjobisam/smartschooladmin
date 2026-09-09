@@ -158,7 +158,8 @@ export function statementHtml(data: StatementData): string {
   </div>
 
   <p class="section-title">Account activity</p>
-  <table class="doc">
+  <div class="table-scroll">
+  <table class="doc" style="min-width:520px">
     <thead><tr>
       <th>Date</th><th>Reference</th><th>Detail</th>
       <th style="text-align:right">Charged</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th>
@@ -171,6 +172,7 @@ export function statementHtml(data: StatementData): string {
       ${bodyRows}
     </tbody>
   </table>
+  </div>
 
   <div class="total-box">
     <div class="row"><span>Total charged</span><span class="mono">${money(totalCharged)}</span></div>

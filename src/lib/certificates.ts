@@ -308,6 +308,11 @@ export function buildCertificatesDocument(
     /* A4-landscape certificates are fixed in mm; zoom keeps them whole and on-screen. */
     .sheet.certificate { zoom: 0.33; box-shadow: none; margin: 0 auto 12px; }
   }
+  /* Laptops and small windows: an A4-landscape certificate is 297mm wide, so
+     scale the whole sheet down rather than making the reader scroll sideways. */
+  @media screen and (min-width: 761px) and (max-width: 1220px) {
+    .sheet.certificate { zoom: 0.66; box-shadow: none; }
+  }
   .letter p { line-height: 1.7; margin: 0 0 12px; }
 
   /* Certificate: full A4 landscape sheet, one award per page. */
