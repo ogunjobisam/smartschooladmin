@@ -2101,11 +2101,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          paid_at: string | null
           period_label: string
           run_date: string
           school_id: string
           staff_count: number
           status: Database["public"]["Enums"]["payroll_status"]
+          submitted_at: string | null
+          submitted_by: string | null
           total_deductions: number
           total_gross: number
           total_net: number
@@ -2117,11 +2120,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          paid_at?: string | null
           period_label: string
           run_date?: string
           school_id: string
           staff_count?: number
           status?: Database["public"]["Enums"]["payroll_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_deductions?: number
           total_gross?: number
           total_net?: number
@@ -2133,11 +2139,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          paid_at?: string | null
           period_label?: string
           run_date?: string
           school_id?: string
           staff_count?: number
           status?: Database["public"]["Enums"]["payroll_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_deductions?: number
           total_gross?: number
           total_net?: number

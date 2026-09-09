@@ -8,7 +8,15 @@ import { notifySchoolAdmins } from "@/lib/school-updates";
 import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown, Send } from "lucide-react";
+import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown, Send, MoreHorizontal } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +50,7 @@ export default function ExamDetail() {
   const [dirty, setDirty] = useState(false);
   const [reportCardStudent, setReportCardStudent] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const { branding } = useSchoolBranding();
 
   const handlePrintAllReportCards = () => {
@@ -442,6 +451,28 @@ export default function ExamDetail() {
   );
 
   // Releasing results: the exam is marked published and every family is told.
+  /** Mistakes and end-of-term wrap-up both need a way back out of "published". */
+  const setExamStatus = async (status: "draft" | "published" | "closed", message: string) => {
+    if (!id) return;
+    const { error } = await supabase.from("exams").update({ status }).eq("id", id);
+    if (error) { toast.error(getErrorMessage(error, "Could not update this exam.")); return; }
+    toast.success(message);
+    queryClient.invalidateQueries({ queryKey: ["exam", id] });
+    queryClient.invalidateQueries({ queryKey: ["exams"] });
+  };
+
+  const handleDeleteExam = async () => {
+    if (!id) return;
+    setDeleteOpen(false);
+    const { error: scoreError } = await supabase.from("exam_scores").delete().eq("exam_id", id);
+    if (scoreError) { toast.error(getErrorMessage(scoreError, "Could not delete this exam's scores.")); return; }
+    const { error } = await supabase.from("exams").delete().eq("id", id);
+    if (error) { toast.error(getErrorMessage(error, "Could not delete this exam.")); return; }
+    toast.success("Exam deleted");
+    queryClient.invalidateQueries({ queryKey: ["exams"] });
+    navigate("/exams");
+  };
+
   const handlePublishResults = async () => {
     if (!exam || !id || !orgId || !schoolId) return;
     setPublishing(true);
@@ -529,6 +560,38 @@ export default function ExamDetail() {
             </Button>
           )}
           {exam.status === "published" && <Badge variant="secondary">Results published</Badge>}
+          {exam.status === "closed" && <Badge variant="outline">Closed</Badge>}
+          {canManageStudents(userRole) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Exam actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {exam.status === "published" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setExamStatus("draft", "Results unpublished")}>
+                      Unpublish results
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setExamStatus("closed", "Exam closed")}>
+                      Close exam
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {exam.status === "closed" && (
+                  <DropdownMenuItem onClick={() => setExamStatus("published", "Exam reopened")}>
+                    Reopen exam
+                  </DropdownMenuItem>
+                )}
+                {exam.status !== "published" && (
+                  <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOpen(true)}>
+                    Delete exam
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
@@ -700,6 +763,26 @@ export default function ExamDetail() {
           )}
         </CardContent>
       </Card>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this exam?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {exam.name} and every score recorded against it will be permanently removed.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleDeleteExam(); }}
+            >
+              Delete exam
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
