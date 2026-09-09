@@ -9,15 +9,15 @@ Strategy only — no code yet. This revises the approved direction with three th
 - **Bulk SMS in Nigeria:** ~₦2–4 per delivered message. Use **₦3/SMS** average. ([SMSDora 2026](https://www.smsdora.com/bulk-sms-pricing-nigeria), [Paystack pricing](https://paystack.com/pricing))
 - **Paystack fees on the subscription payment:** 1.5% + ₦100 local, capped at ₦2,000; 3.9% + ₦100 international. ([Paystack pricing](https://paystack.com/pricing))
 
-## Recommended model (unchanged shape, prices reviewed)
+## Recommended model (unchanged shape, prices set)
 
 | Plan | Price (NGN) | In GBP (≈₦1,850/£) | Who |
 |------|-------------|-------------------|-----|
 | Free | ₦0 — up to 50 students | — | New/small schools |
-| Standard | **₦200/student/term** (raised from ₦150) | ~£0.108/student/term | Most schools |
-| Premium | **₦350/student/term** (raised from ₦250) | ~£0.189/student/term | Groups, AI, payroll |
+| Standard | **₦300/student/term** | ~£0.162/student/term | Most schools |
+| Premium | **₦450/student/term** | ~£0.243/student/term | Groups, AI, payroll |
 
-**Why raise the price:** at ₦150, GBP revenue per school was too thin to cover GBP costs comfortably (see below). ₦200 keeps it affordable for Nigerian private schools while giving a real margin in GBP.
+You set Standard at ₦300; Premium at ₦450 keeps the ~50% premium uplift for AI/payroll/multi-school. This gives a healthy GBP margin (see below) while staying within reach of Nigerian private schools.
 
 - **Bill per term**, matching the academic-period model. Offer **~10% off** if a school pays the full year upfront.
 - **Billable student** = actively enrolled in the current term only.
@@ -29,18 +29,18 @@ Worked example — a 200-student **Standard** school, per month (term ≈ 4 mont
 
 | Line | NGN/mo | GBP/mo (÷1,850) |
 |------|--------|-----------------|
-| Revenue: 200 × ₦200 ÷ 4 | ₦10,000 | **£5.41** |
-| Paystack fee on term payment (1.5% + ₦100) ÷4 | ₦138 | £0.07 |
+| Revenue: 200 × ₦300 ÷ 4 | ₦15,000 | **£8.11** |
+| Paystack fee on term payment (1.5% + ₦100) ÷4 | ₦163 | £0.09 |
 | Lovable Cloud (amortised across schools) | ~₦1,000–2,500 | £0.54–1.35 |
 | AI Gateway (Premium only; Standard ≈ nil) | — | £0.00 |
 | Managed email (receipts, absence, results alerts) | ~₦600–2,000 | £0.32–1.08 |
 | Document storage (a few GB + bandwidth) | ~₦200–800 | £0.11–0.43 |
-| **Platform cost (excl. SMS)** | | **£1.04–2.93** |
-| **Gross margin per school/mo** | | **£2.5–4.4 (~50–75%)** |
+| **Platform cost (excl. SMS)** | | **£1.06–2.95** |
+| **Gross margin per school/mo** | | **£5.2–7.1 (~60–85%)** |
 
-For a 500-student school: revenue ≈ ₦25,000/mo ≈ £13.5/mo; costs scale mostly flat-to-mild, so margin ≈ £9–11/mo. Margin improves sharply with size.
+For a 500-student school: revenue ≈ ₦37,500/mo ≈ £20.3/mo; costs scale mostly flat-to-mild, so margin ≈ £16–18/mo. Margin improves sharply with size.
 
-**Small-school honesty:** a 60-student Standard school brings ~£1.6/mo revenue vs ~£1–2 cost — roughly break-even. That's acceptable: small schools grow into profit, and the free tier (≤50) means we're not carrying the tiniest ones at all.
+**Small-school honesty:** a 60-student Standard school brings ~£2.4/mo revenue vs ~£1–2 cost — now clearly profitable, not break-even. The free tier (≤50) means we don't carry the tiniest schools at all.
 
 ### SMS — the cost that must NOT be bundled
 
@@ -83,7 +83,7 @@ Because your costs are in £ and revenue in NGN/GHS/KES, NGN depreciation shrink
 
 ## Open decisions for you
 
-1. **Raised prices** — ₦200 Standard / ₦350 Premium per student per term. OK, or set your own?
+1. **Premium price** — Standard is ₦300/student/term (your call). Premium at ₦450 (50% uplift) — OK, or set your own?
 2. **Free tier** up to 50 students (vs time-limited trial) — confirm.
 3. **Yearly discount** — ~10% off if a school pays a full year upfront — include?
 4. **SMS bundle prices** above — adjust the naira amounts?
