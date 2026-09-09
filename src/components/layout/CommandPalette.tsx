@@ -29,6 +29,7 @@ const pages = [
   { title: "Audit Log", url: "/audit-log", icon: Shield },
   { title: "Group Overview", url: "/group-overview", icon: BarChart3 },
   { title: "School Profile", url: "/school-profile", icon: Building2 },
+  { title: "Billing", url: "/billing", icon: Receipt },
   { title: "Settings", url: "/settings", icon: Settings },
   { title: "Users", url: "/users", icon: UserPlus },
   { title: "Notification Settings", url: "/notification-settings", icon: Bell },
