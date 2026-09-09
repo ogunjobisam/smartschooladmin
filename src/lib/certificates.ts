@@ -1,4 +1,4 @@
-import { documentTheme, type DocumentSchool } from "@/lib/document-theme";
+import { DOCUMENT_VIEWPORT_META, documentTheme, openDocument, type DocumentSchool } from "@/lib/document-theme";
 /**
  * Printable output for the achievement wall.
  *
@@ -289,7 +289,7 @@ export function buildCertificatesDocument(
   const t = documentTheme(school as unknown as DocumentSchool);
 
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${esc(`${school.name} — ${label}s`)}</title>
+<html><head><meta charset="utf-8">${DOCUMENT_VIEWPORT_META}<title>${esc(`${school.name} — ${label}s`)}</title>
 <style>
   :root { --brand: ${t.primary}; --brand-accent: ${t.accent}; --on-brand: ${t.onPrimary}; --brand-soft: ${t.soft}; --brand-border: ${t.border}; }
   @page { size: ${opts.kind === "certificate" ? "A4 landscape" : "A4"}; margin: ${opts.kind === "certificate" ? "0" : "18mm"}; }
@@ -302,6 +302,12 @@ export function buildCertificatesDocument(
   body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; color: #1f2937; background: #eef1f6; margin: 0; padding: 24px 16px; }
   .sheet { background: #fff; margin: 0 auto 24px; box-shadow: 0 6px 24px rgba(15,23,42,.14); }
   .letter { padding: 32px; max-width: 780px; }
+  @media screen and (max-width: 760px) {
+    body { padding: 12px 8px; }
+    .letter { padding: 18px 16px; }
+    /* A4-landscape certificates are fixed in mm; zoom keeps them whole and on-screen. */
+    .sheet.certificate { zoom: 0.33; box-shadow: none; margin: 0 auto 12px; }
+  }
   .letter p { line-height: 1.7; margin: 0 0 12px; }
 
   /* Certificate: full A4 landscape sheet, one award per page. */
@@ -368,9 +374,5 @@ export function printCertificates(
   school: CertificateSchool,
 ): boolean {
   if (recipients.length === 0) return false;
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(buildCertificatesDocument(recipients, opts, school));
-  win.document.close();
-  return true;
+  return openDocument(buildCertificatesDocument(recipients, opts, school));
 }

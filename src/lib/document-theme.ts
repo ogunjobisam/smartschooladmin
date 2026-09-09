@@ -256,7 +256,33 @@ export function documentCss(school: DocumentSchool | null | undefined, opts: Doc
   .actions { margin-top: 26px; text-align: center; }
   .actions button { padding: 11px 24px; background: var(--brand); color: var(--on-brand); border: 0;
     border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  @media print { .no-print { display: none !important; } body { padding: 0; } }
+
+  /* Phones and small tablets: single column, no sideways scrolling. */
+  @media screen and (max-width: 760px) {
+    body { max-width: 100%; padding: 18px 14px 32px; font-size: 13px; }
+    .doc-head { flex-direction: column; align-items: stretch; gap: 12px; }
+    .doc-head > div[style*="right"] { text-align: left !important; }
+    .doc-brand { gap: 12px; }
+    .doc-logo, .doc-monogram { height: 46px !important; width: 46px !important; }
+    .doc-school { font-size: 17px; }
+    .doc-title { font-size: 18px; }
+    .grid-2, .grid-3, .sign-row { grid-template-columns: 1fr; gap: 12px; }
+    .sign-row { margin-top: 30px; }
+    .card { padding: 14px; }
+    .total-box { min-width: 0; width: 100%; margin-left: 0; }
+    .doc-foot { flex-direction: column; gap: 6px; }
+    table.doc { font-size: 12px; }
+    table.doc thead th, table.doc tbody td, table.doc tfoot td { padding: 8px 8px; }
+    table.doc tbody td { overflow-wrap: anywhere; }
+    table.doc thead th { white-space: normal; word-break: keep-all; }
+    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+  @media print {
+    .no-print { display: none !important; }
+    body { padding: 0; max-width: none; }
+    .grid-2, .sign-row { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
 `;
 }
 
@@ -324,24 +350,50 @@ export interface DocumentShellOptions extends DocumentCssOptions {
   extraCss?: string;
 }
 
+/** The viewport tag every generated document needs to read well on a phone. */
+export const DOCUMENT_VIEWPORT_META =
+  '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
+
 /** Wrap a body fragment in a complete, brand-styled HTML document. */
 export function documentShell(school: DocumentSchool | null | undefined, opts: DocumentShellOptions): string {
   return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8" /><title>${esc(opts.title)}</title>
+<html lang="en"><head><meta charset="utf-8" />${DOCUMENT_VIEWPORT_META}<title>${esc(opts.title)}</title>
 <style>${documentCss(school, { size: opts.size, maxWidth: opts.maxWidth })}${opts.extraCss || ""}</style>
 </head><body>
 ${opts.body}
 </body></html>`;
 }
 
-/** Open a generated document in a new tab. Returns false if popups are blocked. */
+/**
+ * Open a generated document in a new tab. Mobile browsers often refuse to render
+ * a document written into a blank tab, so we hand them a real blob URL instead
+ * and fall back to a link tap when popups are blocked.
+ */
 export function openDocument(html: string): boolean {
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const revoke = () => window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  const tab = window.open(url, "_blank");
+  if (tab) {
+    revoke();
+    return true;
+  }
+
+  // Popup blocked: try a plain link click, which most mobile browsers allow
+  // while a tap is still being handled.
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  revoke();
+
   return true;
 }
+
 
 export function shortDate(value?: string | null): string {
   if (!value) return "—";
