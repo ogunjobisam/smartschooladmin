@@ -72,6 +72,8 @@ const MyResults = lazy(() => import("./pages/student/MyResults"));
 const MyAttendance = lazy(() => import("./pages/student/MyAttendance"));
 const MyTimetable = lazy(() => import("./pages/student/MyTimetable"));
 const Timetable = lazy(() => import("./pages/Timetable"));
+const Billing = lazy(() => import("./pages/Billing"));
+const Pricing = lazy(() => import("./pages/Pricing"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +121,7 @@ function AppRoutes() {
           <Route path="/terms" element={<TermsOfService />} />
           {/* A prospective parent is not a user of the app — no auth, no layout. */}
           <Route path="/apply/:slug" element={<Apply />} />
+          <Route path="/pricing" element={<Pricing />} />
 
           {/* Signed in, but before an organisation exists */}
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
@@ -144,6 +147,7 @@ function AppRoutes() {
           <Route path="/approvals" element={withLayout(<Approvals />)} />
           <Route path="/reports" element={withLayout(<Reports />)} />
           <Route path="/audit-log" element={withLayout(<AuditLog />)} />
+          <Route path="/billing" element={withLayout(<Billing />)} />
           <Route path="/school-profile" element={withLayout(<SchoolProfile />)} />
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />

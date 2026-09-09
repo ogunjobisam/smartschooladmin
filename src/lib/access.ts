@@ -73,6 +73,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "reports", title: "Reports", url: "/reports", group: "operations" },
   { key: "audit-log", title: "Audit Log", url: "/audit-log", group: "operations" },
 
+  { key: "billing", title: "Billing", url: "/billing", group: "system" },
   { key: "school-profile", title: "School Profile", url: "/school-profile", group: "system" },
   { key: "settings", title: "Settings", url: "/settings", group: "system" },
   { key: "users", title: "Users", url: "/users", group: "system" },
@@ -99,7 +100,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "school-profile", "settings", "users", "roles",
+    "billing", "school-profile", "settings", "users", "roles",
   ],
   principal: [
     "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
