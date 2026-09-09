@@ -192,4 +192,6 @@ export async function downloadHtmlAsPdf(
   } finally {
     frame.remove();
   }
+}
+
 
