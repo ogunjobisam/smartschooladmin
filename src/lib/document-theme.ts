@@ -349,24 +349,56 @@ export interface DocumentShellOptions extends DocumentCssOptions {
   extraCss?: string;
 }
 
+/** The viewport tag every generated document needs to read well on a phone. */
+export const DOCUMENT_VIEWPORT_META =
+  '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
+
 /** Wrap a body fragment in a complete, brand-styled HTML document. */
 export function documentShell(school: DocumentSchool | null | undefined, opts: DocumentShellOptions): string {
   return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8" /><title>${esc(opts.title)}</title>
+<html lang="en"><head><meta charset="utf-8" />${DOCUMENT_VIEWPORT_META}<title>${esc(opts.title)}</title>
 <style>${documentCss(school, { size: opts.size, maxWidth: opts.maxWidth })}${opts.extraCss || ""}</style>
 </head><body>
 ${opts.body}
 </body></html>`;
 }
 
-/** Open a generated document in a new tab. Returns false if popups are blocked. */
+/**
+ * Open a generated document in a new tab. Mobile browsers often refuse to render
+ * a document written into a blank tab, so we hand them a real blob URL instead
+ * and only fall back to writing directly. Returns false if nothing could open.
+ */
 export function openDocument(html: string): boolean {
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const revoke = () => window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  const tab = window.open(url, "_blank");
+  if (tab) {
+    revoke();
+    return true;
+  }
+
+  // Popup blocked: try a plain link click, which most mobile browsers allow
+  // while a tap is still being handled.
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  revoke();
+
+  const written = window.open("", "_blank");
+  if (written) {
+    written.document.open();
+    written.document.write(html);
+    written.document.close();
+  }
   return true;
 }
+
 
 export function shortDate(value?: string | null): string {
   if (!value) return "—";
