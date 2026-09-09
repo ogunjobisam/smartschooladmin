@@ -256,7 +256,32 @@ export function documentCss(school: DocumentSchool | null | undefined, opts: Doc
   .actions { margin-top: 26px; text-align: center; }
   .actions button { padding: 11px 24px; background: var(--brand); color: var(--on-brand); border: 0;
     border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  @media print { .no-print { display: none !important; } body { padding: 0; } }
+
+  /* Phones and small tablets: single column, no sideways scrolling. */
+  @media screen and (max-width: 760px) {
+    body { max-width: 100%; padding: 18px 14px 32px; font-size: 13px; }
+    .doc-head { flex-direction: column; align-items: stretch; gap: 12px; }
+    .doc-head > div[style*="right"] { text-align: left !important; }
+    .doc-brand { gap: 12px; }
+    .doc-logo, .doc-monogram { height: 46px !important; width: 46px !important; }
+    .doc-school { font-size: 17px; }
+    .doc-title { font-size: 18px; }
+    .grid-2, .grid-3, .sign-row { grid-template-columns: 1fr; gap: 12px; }
+    .sign-row { margin-top: 30px; }
+    .card { padding: 14px; }
+    .total-box { min-width: 0; width: 100%; margin-left: 0; }
+    .doc-foot { flex-direction: column; gap: 6px; }
+    table.doc { font-size: 12px; }
+    table.doc thead th, table.doc tbody td, table.doc tfoot td { padding: 8px 8px; }
+    table.doc td, table.doc th { overflow-wrap: anywhere; }
+    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+  @media print {
+    .no-print { display: none !important; }
+    body { padding: 0; max-width: none; }
+    .grid-2, .sign-row { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  }
 `;
 }
 
