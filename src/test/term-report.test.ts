@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 
-import { ordinal, termReportHtml, weightStatus, type TermReport } from "@/lib/term-report";
+import {
+  DEFAULT_TRAITS, ordinal, releaseChanges, termReportHtml, traitKey, traitLists, weightStatus, type TermReport,
+} from "@/lib/term-report";
 
 describe("ordinal", () => {
   it("writes positions the way a report card does", () => {
@@ -102,9 +104,86 @@ describe("termReportHtml", () => {
     expect(html).toContain("65.2%");
   });
 
+  it("prints the school's own traits instead of the defaults", () => {
+    const html = render({ traits: { affective: [{ key: "punctuality", label: "Timekeeping" }], psychomotor: [] } });
+    expect(html).toContain("Timekeeping");
+    expect(html).not.toContain("Neatness");
+  });
+
   it("puts every pupil after the first on a new page", () => {
     const html = render({ pupils: [{ id: "kemi", name: "Kemi Ade" }, { id: "tunde", name: "Tunde Bello" }] });
     expect(html.match(/class="report-page"/g)).toHaveLength(2);
     expect(html).toContain("No results for this term yet.");
+  });
+});
+
+describe("traitLists", () => {
+  it("uses the defaults for a school that has not customised anything", () => {
+    expect(traitLists(null)).toEqual(DEFAULT_TRAITS);
+    expect(traitLists([])).toEqual(DEFAULT_TRAITS);
+  });
+
+  it("keeps the default list for a domain the school left alone", () => {
+    const lists = traitLists([{ domain: "affective", key: "leadership", label: "Leadership" }]);
+    expect(lists.affective).toEqual([{ key: "leadership", label: "Leadership" }]);
+    expect(lists.psychomotor).toEqual(DEFAULT_TRAITS.psychomotor);
+  });
+});
+
+describe("traitKey", () => {
+  it("makes a plain key from the label", () => {
+    expect(traitKey("Relationship with others", [])).toBe("relationship_with_others");
+    expect(traitKey("  Games & sports! ", [])).toBe("games_sports");
+  });
+
+  it("never reuses a key already in the list", () => {
+    expect(traitKey("Neatness", ["neatness"])).toBe("neatness_2");
+    expect(traitKey("Neatness", ["neatness", "neatness_2"])).toBe("neatness_3");
+  });
+
+  it("still gives a key for a label with no letters", () => {
+    expect(traitKey("***", [])).toBe("trait");
+  });
+});
+
+describe("releaseChanges", () => {
+  const released = {
+    students: [{ student_id: "kemi", subjects_taken: 1, total: 75.6, out_of: 100, average: 75.6, arm_position: 2, level_position: 3 }],
+    subjects: [{ student_id: "kemi", subject_id: "maths", total: 75.6, out_of: 100, percent: 75.6, position: 2, class_average: 81, scores: {} }],
+    comments: [{ student_id: "kemi", kind: "class_teacher" as const, body: "Steady." }],
+  };
+
+  it("finds nothing when the live report matches the release", () => {
+    expect(releaseChanges(released, released)).toEqual([]);
+  });
+
+  it("finds nothing to compare before anything is released", () => {
+    expect(releaseChanges(released, null)).toEqual([]);
+  });
+
+  it("lists a corrected mark, the average and position it moved, and an edited comment", () => {
+    const live = {
+      students: [{ ...released.students[0], average: 83.6, arm_position: 1 }],
+      subjects: [{ ...released.subjects[0], percent: 83.6 }],
+      comments: [{ student_id: "kemi", kind: "class_teacher" as const, body: "Improved." }],
+    };
+    const changes = releaseChanges(live, released, new Map([["maths", "Mathematics"]]));
+    expect(changes).toEqual([
+      { studentId: "kemi", subjectId: "maths", what: "Mathematics", before: "75.6", after: "83.6" },
+      { studentId: "kemi", what: "Average", before: "75.6", after: "83.6" },
+      { studentId: "kemi", what: "Position", before: "2nd", after: "1st" },
+      { studentId: "kemi", what: "Class teacher's comment", before: "Steady.", after: "Improved." },
+    ]);
+  });
+
+  it("notices a subject or comment that appeared or disappeared since release", () => {
+    const live = {
+      students: released.students,
+      subjects: [...released.subjects, { ...released.subjects[0], subject_id: "english", percent: 50 }],
+      comments: [],
+    };
+    const changes = releaseChanges(live, released);
+    expect(changes).toContainEqual({ studentId: "kemi", subjectId: "english", what: "Subject", before: "—", after: "50.0" });
+    expect(changes).toContainEqual({ studentId: "kemi", what: "Class teacher's comment", before: "Steady.", after: "—" });
   });
 });

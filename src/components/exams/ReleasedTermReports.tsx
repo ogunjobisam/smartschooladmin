@@ -8,14 +8,14 @@ import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { openDocument } from "@/lib/document-theme";
 import { getErrorMessage } from "@/lib/errors";
 import {
-  fetchTermReport, ordinal, termReportHtml, type RatingDomain, type TermComments, type TermRating,
+  commentsByStudent, fetchTermReport, ordinal, ratingsByStudent, termReportHtml, traitLists,
 } from "@/lib/term-report";
 
 /**
  * A pupil's term report cards, for the pupil and their parents. Only terms the
- * school has released appear: term_report() returns nothing for a family until
- * then, and the comments and ratings are held back by row-level security the
- * same way.
+ * school has released appear, and everything shown — marks, positions,
+ * comments, ratings, even the trait names — comes from the snapshot taken at
+ * release, which term_report() hands families in place of the live report.
  */
 export function ReleasedTermReports({
   studentId, studentName, idNumber,
@@ -50,10 +50,7 @@ export function ReleasedTermReports({
   const open = async (entry: (typeof released)[number]) => {
     const { enrolment, report } = entry;
     try {
-      const periodId = enrolment.academic_period_id;
-      const [{ data: comments }, { data: ratings }, { data: subjects }, { data: attendance }] = await Promise.all([
-        supabase.from("term_report_comments").select("kind, body").eq("student_id", studentId).eq("academic_period_id", periodId),
-        supabase.from("term_report_ratings").select("domain, trait, rating").eq("student_id", studentId).eq("academic_period_id", periodId),
+      const [{ data: subjects }, { data: attendance }] = await Promise.all([
         supabase.from("subjects").select("id, name").in("id", report.subjects.map((s) => s.subject_id)),
         enrolment.academic_periods?.start_date && enrolment.academic_periods?.end_date
           ? supabase.from("attendance_records").select("status").eq("student_id", studentId).eq("class_id", enrolment.class_id)
@@ -61,12 +58,6 @@ export function ReleasedTermReports({
           : Promise.resolve({ data: [] as { status: string }[] }),
       ]);
 
-      const remarks: TermComments = {};
-      for (const c of comments || []) {
-        if (c.kind === "principal") remarks.principal = c.body;
-        else remarks.classTeacher = c.body;
-      }
-      const rows: TermRating[] = (ratings || []).map((r) => ({ domain: r.domain as RatingDomain, trait: r.trait, rating: r.rating }));
       const days = attendance || [];
       const present = days.filter((d) => d.status === "present" || d.status === "late").length;
       const period = enrolment.academic_periods;
@@ -79,9 +70,10 @@ export function ReleasedTermReports({
         report,
         subjectNames: new Map((subjects || []).map((s) => [s.id, s.name])),
         pupils: [{ id: studentId, name: studentName, idNumber }],
-        comments: new Map([[studentId, remarks]]),
-        ratings: new Map([[studentId, rows]]),
+        comments: commentsByStudent(report.comments),
+        ratings: ratingsByStudent(report.ratings),
         attendance: new Map([[studentId, { present, total: days.length }]]),
+        traits: traitLists(report.traits),
       }));
     } catch (err) {
       toast.error(getErrorMessage(err, "Could not open the report card."));

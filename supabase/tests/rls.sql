@@ -981,16 +981,160 @@ BEGIN
     'a parent can read another arm''s term report');
 END $$;
 
+-- Families read comments and ratings from the release snapshot, never the live
+-- tables — otherwise a comment edited after release would reach them unseen.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'comments') = 2,
+    'after release a parent does not get exactly their child''s two comments');
+  PERFORM public.assert(
+    (SELECT count(*) FROM jsonb_array_elements(r->'comments') x
+     WHERE x->>'student_id' <> 'a3000000-0000-0000-0000-000000000001') = 0,
+    'a parent gets comments about other pupils');
+  PERFORM public.assert(jsonb_array_length(r->'ratings') = 1,
+    'after release a parent does not get their child''s rating');
+END $$;
+
 BEGIN;
 SET LOCAL ROLE authenticated;
 SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
-SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
-  'after release a parent does not see exactly their child''s two comments');
-SELECT public.assert((SELECT count(*) FROM term_report_comments
-                      WHERE student_id <> 'a3000000-0000-0000-0000-000000000001') = 0,
-  'a parent can read comments about other pupils');
-SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 1,
-  'after release a parent cannot see their child''s ratings');
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 0,
+  'a parent can read the live comments table, which bypasses the release snapshot');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 0,
+  'a parent can read the live ratings table, which bypasses the release snapshot');
 COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- A released report is a snapshot, and staff can see what has moved since
+-- ---------------------------------------------------------------------------
+-- A teacher corrects Kemi's Maths exam from 72 to 82 after release, and edits
+-- her comment. Families keep seeing what was released; staff see the live
+-- report and the snapshot side by side until someone releases again.
+UPDATE student_scores SET score = 82
+  WHERE exam_id = '77777777-7777-7777-7777-77777777777b'
+    AND student_id = 'a3000000-0000-0000-0000-000000000001'
+    AND subject_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+UPDATE term_report_comments SET body = 'Kemi has improved.'
+  WHERE student_id = 'a3000000-0000-0000-0000-000000000001' AND kind = 'class_teacher';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 75.6,
+    'a mark corrected after release reached the parent without being re-released');
+  PERFORM public.assert(
+    (SELECT x->>'body' FROM jsonb_array_elements(r->'comments') x WHERE x->>'kind' = 'class_teacher') = 'Kemi works steadily.',
+    'a comment edited after release reached the parent without being re-released');
+
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 83.6,
+    'staff do not see the corrected mark live');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'snapshot'->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 75.6,
+    'staff are not given the released snapshot to compare against');
+  PERFORM public.assert(r->>'released_at' IS NOT NULL, 'staff are not told when the report was released');
+END $$;
+
+-- A manager cannot hand families a doctored snapshot: whatever is written, the
+-- database recomputes it. Writing a fake one is also how "release again" works.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+UPDATE term_report_releases SET snapshot = '{"students": [], "subjects": []}'::jsonb
+  WHERE class_id = '55555555-5555-5555-5555-555555555559';
+COMMIT;
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1,
+    'a snapshot written by hand was stored as given instead of recomputed');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 83.6,
+    'releasing again did not carry the correction to the parent');
+  PERFORM public.assert(
+    (SELECT x->>'body' FROM jsonb_array_elements(r->'comments') x WHERE x->>'kind' = 'class_teacher') = 'Kemi has improved.',
+    'releasing again did not carry the edited comment to the parent');
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Each school sets its own report card traits
+-- ---------------------------------------------------------------------------
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+INSERT INTO report_traits (school_id, domain, key, label, position) VALUES
+  ('22222222-2222-2222-2222-222222222222', 'affective', 'leadership', 'Leadership', 1);
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.report_traits) = 1,
+  'a principal could not add a report card trait');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  PERFORM public.assert((SELECT count(*) FROM report_traits) = 1,
+    'a teacher cannot read the school''s traits, so cannot rate against them');
+  BEGIN
+    INSERT INTO report_traits (school_id, domain, key, label, position)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'affective', 'obedience', 'Obedience', 2);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher changed the school''s report card traits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  -- Editing or removing one is as much a change as adding one. Filtered, not
+  -- refused, so it is checked from outside below.
+  UPDATE report_traits SET label = 'Renamed by a teacher';
+  DELETE FROM report_traits;
+  RESET ROLE;
+
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO report_traits (school_id, domain, key, label, position)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'affective', 'kindness', 'Kindness', 3);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a parent changed the school''s report card traits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+SELECT public.assert((SELECT label FROM public.report_traits WHERE key = 'leadership') = 'Leadership',
+  'a teacher renamed or removed one of the school''s report card traits');
+
+-- The school's list goes into the snapshot at release, so renaming a trait
+-- later does not rewrite a report card families already have.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+UPDATE term_report_releases SET released_at = now()
+  WHERE class_id = '55555555-5555-5555-5555-555555555559';
+COMMIT;
+UPDATE report_traits SET label = 'Leading others' WHERE key = 'leadership';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT x->>'label' FROM jsonb_array_elements(r->'traits') x WHERE x->>'key' = 'leadership') = 'Leadership',
+    'the released report card does not carry the trait list as it was at release');
+END $$;
 
 SELECT 'rls behaviour tests passed' AS result;

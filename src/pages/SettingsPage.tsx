@@ -14,6 +14,8 @@ import { NoticesCard } from "@/components/settings/NoticesCard";
 import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
 import { AppearanceCard } from "@/components/settings/AppearanceCard";
+import { ReportTraitsCard } from "@/components/settings/ReportTraitsCard";
+import { canManageTermReports } from "@/lib/access";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -404,6 +406,7 @@ export default function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
+          <TabsTrigger value="report-card">Report card</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
           <TabsTrigger value="admissions">Admissions</TabsTrigger>
@@ -645,6 +648,11 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Report card Tab ── */}
+        <TabsContent value="report-card" className="space-y-6 pt-4">
+          <ReportTraitsCard schoolId={schoolId} canManage={canManageTermReports(userRole)} />
         </TabsContent>
 
         {/* ── Subjects Tab ── */}

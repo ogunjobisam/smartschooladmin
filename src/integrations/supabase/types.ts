@@ -2450,6 +2450,44 @@ export type Database = {
           },
         ]
       }
+      report_traits: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          key: string
+          label: string
+          position: number
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          key: string
+          label: string
+          position?: number
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          key?: string
+          label?: string
+          position?: number
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_traits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -3504,6 +3542,7 @@ export type Database = {
           id: string
           released_at: string
           released_by: string | null
+          snapshot: Json | null
         }
         Insert: {
           academic_period_id: string
@@ -3511,6 +3550,7 @@ export type Database = {
           id?: string
           released_at?: string
           released_by?: string | null
+          snapshot?: Json | null
         }
         Update: {
           academic_period_id?: string
@@ -3518,6 +3558,7 @@ export type Database = {
           id?: string
           released_at?: string
           released_by?: string | null
+          snapshot?: Json | null
         }
         Relationships: [
           {
@@ -4095,6 +4136,10 @@ export type Database = {
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
       term_report: {
+        Args: { _class_id: string; _period_id: string }
+        Returns: Json
+      }
+      term_report_compute: {
         Args: { _class_id: string; _period_id: string }
         Returns: Json
       }

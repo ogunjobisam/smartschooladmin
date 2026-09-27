@@ -28,8 +28,9 @@ import { openDocument } from "@/lib/document-theme";
 import { DEFAULT_RUBRIC, gradeFromRubric } from "@/lib/performance";
 import { runAiInsight } from "@/lib/ai-insights";
 import {
-  AFFECTIVE_TRAITS, PSYCHOMOTOR_TRAITS, RATING_SCALE, fetchTermReport, ordinal, termReportHtml, weightStatus,
-  type RatingDomain, type TermComments, type TermRating, type TermReport as TermReportData,
+  RATING_SCALE, commentsByStudent, fetchTermReport, ordinal, ratingsByStudent, releaseChanges, termReportHtml,
+  traitLists, weightStatus,
+  type RatingDomain, type TermComments, type TermRating, type TermReport as TermReportData, type TraitLists,
 } from "@/lib/term-report";
 
 interface Pupil {
@@ -117,7 +118,6 @@ export default function TermReport() {
     },
     enabled: ready,
   });
-  const pupilIds = pupils.map((p) => p.id);
 
   const { data: subjects = [] } = useQuery({
     queryKey: ["subjects", schoolId],
@@ -128,31 +128,19 @@ export default function TermReport() {
     enabled: !!schoolId,
   });
 
-  const { data: comments = [] } = useQuery({
-    queryKey: ["term-report-comments", periodId, pupilIds.join(",")],
+  const { data: traitRows = [] } = useQuery({
+    queryKey: ["report-traits", schoolId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("term_report_comments")
-        .select("student_id, kind, body")
-        .eq("academic_period_id", periodId)
-        .in("student_id", pupilIds);
-      return data || [];
+        .from("report_traits")
+        .select("domain, key, label")
+        .eq("school_id", schoolId!)
+        .order("position");
+      return (data || []).map((t) => ({ ...t, domain: t.domain as RatingDomain }));
     },
-    enabled: ready && pupilIds.length > 0,
+    enabled: !!schoolId,
   });
-
-  const { data: ratings = [] } = useQuery({
-    queryKey: ["term-report-ratings", periodId, pupilIds.join(",")],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("term_report_ratings")
-        .select("student_id, domain, trait, rating")
-        .eq("academic_period_id", periodId)
-        .in("student_id", pupilIds);
-      return data || [];
-    },
-    enabled: ready && pupilIds.length > 0,
-  });
+  const traits = useMemo(() => traitLists(traitRows), [traitRows]);
 
   const { data: attendance = [] } = useQuery({
     queryKey: ["term-report-attendance", classId, period?.start_date, period?.end_date],
@@ -169,23 +157,10 @@ export default function TermReport() {
   });
 
   const subjectNames = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
-  const commentsByPupil = useMemo(() => {
-    const map = new Map<string, TermComments>();
-    for (const c of comments) {
-      const entry = map.get(c.student_id) ?? {};
-      if (c.kind === "principal") entry.principal = c.body;
-      else entry.classTeacher = c.body;
-      map.set(c.student_id, entry);
-    }
-    return map;
-  }, [comments]);
-  const ratingsByPupil = useMemo(() => {
-    const map = new Map<string, TermRating[]>();
-    for (const r of ratings) {
-      map.set(r.student_id, [...(map.get(r.student_id) ?? []), { domain: r.domain as RatingDomain, trait: r.trait, rating: r.rating }]);
-    }
-    return map;
-  }, [ratings]);
+  // Live comments and ratings come with the report itself, from the same query
+  // that computes it, so the broadsheet and its report cards cannot disagree.
+  const commentsByPupil = useMemo(() => commentsByStudent(report?.comments), [report]);
+  const ratingsByPupil = useMemo(() => ratingsByStudent(report?.ratings), [report]);
   const attendanceByPupil = useMemo(() => {
     const map = new Map<string, { present: number; total: number }>();
     for (const r of attendance) {
@@ -210,6 +185,11 @@ export default function TermReport() {
   }, [data]);
 
   const weights = weightStatus(data?.components ?? []);
+  const changes = useMemo(
+    () => (data?.released ? releaseChanges(data, data.snapshot, subjectNames) : []),
+    [data, subjectNames]
+  );
+  const pupilName = (id: string) => pupils.find((p) => p.id === id)?.name ?? "A pupil";
   const showLevel = !!cls?.level_name && cls.level_name !== cls.name;
 
   const openReportCards = (list: Pupil[]) => {
@@ -225,18 +205,29 @@ export default function TermReport() {
       comments: commentsByPupil,
       ratings: ratingsByPupil,
       attendance: attendanceByPupil,
+      traits,
     }));
   };
 
-  const setReleased = async (release: boolean) => {
+  // Releasing takes a snapshot in the database; so does touching the release
+  // row again, which is how corrections made since reach families.
+  const setReleased = async (action: "release" | "update" | "withdraw") => {
     setReleasing(true);
-    const { error } = release
-      ? await supabase.from("term_report_releases").insert({ class_id: classId, academic_period_id: periodId })
-      : await supabase.from("term_report_releases").delete().eq("class_id", classId).eq("academic_period_id", periodId);
+    const { error } =
+      action === "release"
+        ? await supabase.from("term_report_releases").insert({ class_id: classId, academic_period_id: periodId })
+        : action === "update"
+          ? await supabase.from("term_report_releases").update({ released_at: new Date().toISOString() })
+              .eq("class_id", classId).eq("academic_period_id", periodId)
+          : await supabase.from("term_report_releases").delete().eq("class_id", classId).eq("academic_period_id", periodId);
     setReleasing(false);
     setConfirmRelease(false);
     if (error) { toast.error(getErrorMessage(error, "Could not update the release.")); return; }
-    toast.success(release ? "Released to parents and pupils" : "Withdrawn from parents and pupils");
+    toast.success(
+      action === "release" ? "Released to parents and pupils"
+        : action === "update" ? "Families now see the corrected report"
+          : "Withdrawn from parents and pupils"
+    );
     queryClient.invalidateQueries({ queryKey: ["term-report", classId, periodId] });
   };
 
@@ -267,7 +258,9 @@ export default function TermReport() {
         </Select>
         {data && (
           <Badge variant={data.released ? "default" : "secondary"}>
-            {data.released ? "Released to families" : "Not released"}
+            {data.released
+              ? `Released${data.released_at ? ` ${new Date(data.released_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}` : ""}`
+              : "Not released"}
           </Badge>
         )}
         <div className="ml-auto flex flex-wrap gap-2">
@@ -276,7 +269,7 @@ export default function TermReport() {
           </Button>
           {isManager && data && (
             data.released ? (
-              <Button variant="outline" size="sm" onClick={() => setReleased(false)} disabled={releasing}>
+              <Button variant="outline" size="sm" onClick={() => setReleased("withdraw")} disabled={releasing}>
                 <Undo2 className="mr-2 h-3.5 w-3.5" /> Withdraw
               </Button>
             ) : (
@@ -287,6 +280,32 @@ export default function TermReport() {
           )}
         </div>
       </div>
+
+      {changes.length > 0 && (
+        <Card className="border-warning">
+          <CardContent className="space-y-2 py-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium">
+                {changes.length} {changes.length === 1 ? "change" : "changes"} since release. Families still see the released version.
+              </p>
+              {isManager && (
+                <Button size="sm" onClick={() => setReleased("update")} disabled={releasing}>
+                  {releasing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
+                  Update release
+                </Button>
+              )}
+            </div>
+            <ul className="space-y-0.5 text-muted-foreground">
+              {changes.slice(0, 12).map((c, i) => (
+                <li key={i}>
+                  <span className="text-foreground">{pupilName(c.studentId)}</span> · {c.what}: {c.before} → {c.after}
+                </li>
+              ))}
+              {changes.length > 12 && <li>and {changes.length - 12} more</li>}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {data && data.components.length > 0 && (
         <Card>
@@ -380,12 +399,10 @@ export default function TermReport() {
           attendance={attendanceByPupil.get(editing.id)}
           isManager={isManager}
           schoolId={schoolId}
+          traits={traits}
           onClose={() => setEditing(null)}
           onPrint={() => openReportCards([editing])}
-          onSaved={() => {
-            queryClient.invalidateQueries({ queryKey: ["term-report-comments", periodId] });
-            queryClient.invalidateQueries({ queryKey: ["term-report-ratings", periodId] });
-          }}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["term-report", classId, periodId] })}
         />
       )}
 
@@ -401,7 +418,7 @@ export default function TermReport() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setReleased(true)}>Release</AlertDialogAction>
+            <AlertDialogAction onClick={() => setReleased("release")}>Release</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -410,7 +427,7 @@ export default function TermReport() {
 }
 
 function ReportCardEditor({
-  pupil, periodId, className, report, subjectNames, comments, ratings, attendance, isManager, schoolId,
+  pupil, periodId, className, report, subjectNames, comments, ratings, attendance, isManager, schoolId, traits,
   onClose, onPrint, onSaved,
 }: {
   pupil: Pupil;
@@ -423,6 +440,7 @@ function ReportCardEditor({
   attendance?: { present: number; total: number };
   isManager: boolean;
   schoolId: string | null;
+  traits: TraitLists;
   onClose: () => void;
   onPrint: () => void;
   onSaved: () => void;
@@ -560,8 +578,8 @@ function ReportCardEditor({
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
-            {ratingGrid("Affective", "affective", AFFECTIVE_TRAITS)}
-            {ratingGrid("Psychomotor", "psychomotor", PSYCHOMOTOR_TRAITS)}
+            {ratingGrid("Affective", "affective", traits.affective)}
+            {ratingGrid("Psychomotor", "psychomotor", traits.psychomotor)}
           </div>
         </div>
 
