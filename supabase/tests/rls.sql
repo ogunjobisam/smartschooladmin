@@ -2530,6 +2530,10 @@ ROLLBACK;
 -- ---------------------------------------------------------------------------
 -- document_files was readable by every member of the organisation, so a parent
 -- or pupil could list every staff contract and payroll attachment, with its URL.
+-- A document is visible only through the record it is attached to, so the staff
+-- contract needs a real staff row behind it.
+INSERT INTO staff (id, school_id, first_name, last_name)
+  VALUES ('f5000000-0000-0000-0000-0000000000aa', '22222222-2222-2222-2222-222222222222', 'Contract', 'Holder');
 INSERT INTO document_files (id, org_id, school_id, entity_type, entity_id, file_name, file_url) VALUES
   ('f5000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222',
    'staff', 'f5000000-0000-0000-0000-0000000000aa', 'contract.pdf', 'school-documents/x/contract.pdf'),
@@ -2682,5 +2686,259 @@ UPDATE student_scores SET score = 56 WHERE id = 'f5c00000-0000-0000-0000-0000000
 COMMIT;
 SELECT public.assert((SELECT score FROM student_scores WHERE id = 'f5c00000-0000-0000-0000-000000000008') = 56,
   'a proprietor could not edit their own organisation''s score');
+
+-- ---------------------------------------------------------------------------
+-- Staff write gaps (20260928110000_close_staff_write_gaps)
+-- ---------------------------------------------------------------------------
+-- A self-contained organisation with fresh users, so no earlier section can
+-- have promoted them. Each refusal below was watched succeeding before the
+-- migration; each has a positive control proving someone can still do it.
+INSERT INTO organisation_groups (id, name) VALUES
+  ('e7a00000-0000-0000-0000-000000000001', 'Gap Org'),
+  ('e7a00000-0000-0000-0000-00000000000a', 'Gap Neighbour Org');
+INSERT INTO schools (id, org_id, name) VALUES
+  ('e7a00000-0000-0000-0000-000000000002', 'e7a00000-0000-0000-0000-000000000001', 'Gap School'),
+  ('e7a00000-0000-0000-0000-00000000000b', 'e7a00000-0000-0000-0000-00000000000a', 'Neighbour School');
+INSERT INTO classes (id, school_id, name)
+  VALUES ('e7a00000-0000-0000-0000-000000000003', 'e7a00000-0000-0000-0000-000000000002', 'Gap JSS1');
+INSERT INTO students (id, school_id, first_name, last_name)
+  VALUES ('e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000002', 'Bola', 'Ade');
+INSERT INTO enrolments (id, student_id, class_id, academic_period_id)
+  VALUES ('e7a00000-0000-0000-0000-000000000019', 'e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000003', '44444444-4444-4444-4444-444444444444');
+INSERT INTO subjects (id, school_id, name) VALUES
+  ('e7a00000-0000-0000-0000-000000000005', 'e7a00000-0000-0000-0000-000000000002', 'Gap Maths'),
+  ('e7a00000-0000-0000-0000-000000000018', 'e7a00000-0000-0000-0000-000000000002', 'Gap Latin');
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('e7a00000-0000-0000-0000-000000000006', 'e7a00000-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444', 'Gap Mid-term', 100);
+INSERT INTO student_scores (id, exam_id, student_id, subject_id, score)
+  VALUES ('e7a00000-0000-0000-0000-000000000007', 'e7a00000-0000-0000-0000-000000000006', 'e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000005', 64);
+INSERT INTO auth.users (id, email) VALUES
+  ('e7a00000-0000-0000-0000-0000000000a1', 'gap.principal@example.test'),
+  ('e7a00000-0000-0000-0000-0000000000a2', 'gap.bursar@example.test'),
+  ('e7a00000-0000-0000-0000-0000000000a3', 'gap.teacher@example.test'),
+  ('e7a00000-0000-0000-0000-0000000000a4', 'gap.office@example.test'),
+  ('e7a00000-0000-0000-0000-0000000000a5', 'gap.parent@example.test'),
+  ('e7a00000-0000-0000-0000-0000000000a6', 'neighbour.principal@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('e7a00000-0000-0000-0000-0000000000a1', 'principal', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002'),
+  ('e7a00000-0000-0000-0000-0000000000a2', 'bursar', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002'),
+  ('e7a00000-0000-0000-0000-0000000000a3', 'teacher', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002'),
+  ('e7a00000-0000-0000-0000-0000000000a4', 'support_staff', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002'),
+  ('e7a00000-0000-0000-0000-0000000000a5', 'parent', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002'),
+  ('e7a00000-0000-0000-0000-0000000000a6', 'principal', 'e7a00000-0000-0000-0000-00000000000a', 'e7a00000-0000-0000-0000-00000000000b');
+INSERT INTO guardians (id, org_id, user_id, first_name, last_name) VALUES
+  ('e7a00000-0000-0000-0000-000000000008', 'e7a00000-0000-0000-0000-000000000001', NULL, 'Kemi', 'Ade'),
+  ('e7a00000-0000-0000-0000-000000000009', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-0000000000a5', 'Stranger', 'Parent'),
+  ('e7a00000-0000-0000-0000-00000000000c', 'e7a00000-0000-0000-0000-00000000000a', NULL, 'Foreign', 'Guardian');
+INSERT INTO student_guardians (id, student_id, guardian_id, relationship)
+  VALUES ('e7a00000-0000-0000-0000-000000000020', 'e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000008', 'mother');
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount)
+  VALUES ('e7a00000-0000-0000-0000-00000000000d', 'e7a00000-0000-0000-0000-000000000002', 'e7a00000-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444444', 'GAP-INV-1', 900);
+INSERT INTO payments (id, school_id, student_id, amount)
+  VALUES ('e7a00000-0000-0000-0000-00000000000e', 'e7a00000-0000-0000-0000-000000000002', 'e7a00000-0000-0000-0000-000000000004', 300);
+INSERT INTO payment_allocations (id, payment_id, invoice_id, amount)
+  VALUES ('e7a00000-0000-0000-0000-00000000000f', 'e7a00000-0000-0000-0000-00000000000e', 'e7a00000-0000-0000-0000-00000000000d', 300);
+INSERT INTO receipts (id, school_id, payment_id, student_id, receipt_number, amount)
+  VALUES ('e7a00000-0000-0000-0000-000000000010', 'e7a00000-0000-0000-0000-000000000002', 'e7a00000-0000-0000-0000-00000000000e', 'e7a00000-0000-0000-0000-000000000004', 'GAP-RCP-1', 300);
+INSERT INTO invoice_items (id, invoice_id, description, amount)
+  VALUES ('e7a00000-0000-0000-0000-000000000011', 'e7a00000-0000-0000-0000-00000000000d', 'Tuition', 900);
+INSERT INTO payroll_runs (id, school_id, period_label)
+  VALUES ('e7a00000-0000-0000-0000-000000000012', 'e7a00000-0000-0000-0000-000000000002', 'Gap September');
+INSERT INTO staff (id, school_id, first_name, last_name)
+  VALUES ('e7a00000-0000-0000-0000-000000000013', 'e7a00000-0000-0000-0000-000000000002', 'Tunde', 'Clerk');
+INSERT INTO document_files (id, org_id, school_id, entity_type, entity_id, file_name, file_url) VALUES
+  ('e7a00000-0000-0000-0000-000000000014', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002', 'student', 'e7a00000-0000-0000-0000-000000000004', 'medical.pdf', 'x'),
+  ('e7a00000-0000-0000-0000-000000000015', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002', 'invoice', 'e7a00000-0000-0000-0000-00000000000d', 'remittance.pdf', 'x'),
+  ('e7a00000-0000-0000-0000-000000000016', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002', 'payroll_run', 'e7a00000-0000-0000-0000-000000000012', 'bank-schedule.pdf', 'x'),
+  ('e7a00000-0000-0000-0000-000000000017', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002', 'staff', 'e7a00000-0000-0000-0000-000000000013', 'contract.pdf', 'x');
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('school-documents', 'e7a00000-0000-0000-0000-000000000002/documents/student/e7a00000-0000-0000-0000-000000000004/1.pdf'),
+  ('school-documents', 'e7a00000-0000-0000-0000-000000000002/documents/payroll_run/e7a00000-0000-0000-0000-000000000012/1.pdf'),
+  ('school-assets', 'e7a00000-0000-0000-0000-000000000002/logo.png');
+
+-- 1. Subjects: the office and a teacher cannot delete one (scores cascade).
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+DELETE FROM subjects WHERE id = 'e7a00000-0000-0000-0000-000000000005';
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a3';
+DELETE FROM subjects WHERE id = 'e7a00000-0000-0000-0000-000000000005';
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = 'e7a00000-0000-0000-0000-000000000007') = 1,
+  'support staff or a teacher deleted a subject, and its scores cascaded away');
+SELECT pg_temp.refused('e7a00000-0000-0000-0000-0000000000a4',
+  $q$INSERT INTO class_subjects (class_id, subject_id)
+     VALUES ('e7a00000-0000-0000-0000-000000000003', 'e7a00000-0000-0000-0000-000000000018')$q$,
+  'support staff can assign subjects to a class');
+-- Positive control: a principal still runs subjects.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+INSERT INTO class_subjects (class_id, subject_id)
+  VALUES ('e7a00000-0000-0000-0000-000000000003', 'e7a00000-0000-0000-0000-000000000018');
+DELETE FROM subjects WHERE id = 'e7a00000-0000-0000-0000-000000000018';
+SELECT public.assert((SELECT count(*) FROM subjects WHERE id = 'e7a00000-0000-0000-0000-000000000018') = 0,
+  'a principal cannot delete a subject');
+ROLLBACK;
+
+-- 2. Guardian links decide which parent sees a child.
+SELECT pg_temp.refused('e7a00000-0000-0000-0000-0000000000a4',
+  $q$INSERT INTO student_guardians (student_id, guardian_id)
+     VALUES ('e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000009')$q$,
+  'support staff can link a parent account to any child');
+SELECT pg_temp.refused('e7a00000-0000-0000-0000-0000000000a1',
+  $q$INSERT INTO student_guardians (student_id, guardian_id)
+     VALUES ('e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-00000000000c')$q$,
+  'a principal can link a guardian from another organisation');
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+DELETE FROM student_guardians WHERE id = 'e7a00000-0000-0000-0000-000000000020';
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM student_guardians WHERE id = 'e7a00000-0000-0000-0000-000000000020') = 1,
+  'support staff removed a child''s guardian link');
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a5';
+SELECT public.assert((SELECT count(*) FROM students WHERE id = 'e7a00000-0000-0000-0000-000000000004') = 0,
+  'an unlinked parent can see the child');
+COMMIT;
+-- Positive control: a principal links the same parent, who then sees the child.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+INSERT INTO student_guardians (student_id, guardian_id)
+  VALUES ('e7a00000-0000-0000-0000-000000000004', 'e7a00000-0000-0000-0000-000000000009');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a5';
+SELECT public.assert((SELECT count(*) FROM students WHERE id = 'e7a00000-0000-0000-0000-000000000004') = 1,
+  'a principal cannot link a guardian in their own organisation');
+ROLLBACK;
+
+-- 3. Enrolments: only school managers move pupils between classes.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+DELETE FROM enrolments WHERE id = 'e7a00000-0000-0000-0000-000000000019';
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM enrolments WHERE id = 'e7a00000-0000-0000-0000-000000000019') = 1,
+  'support staff removed a pupil''s enrolment');
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+DELETE FROM enrolments WHERE id = 'e7a00000-0000-0000-0000-000000000019';
+SELECT public.assert((SELECT count(*) FROM enrolments WHERE id = 'e7a00000-0000-0000-0000-000000000019') = 0,
+  'a principal cannot change enrolments');
+ROLLBACK;
+
+-- 4. Money read by teachers and the office.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a3';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'e7a00000-0000-0000-0000-000000000010') = 0,
+  'a teacher can read the school''s receipts');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'e7a00000-0000-0000-0000-000000000010') = 0,
+  'support staff can read the school''s receipts');
+-- These two held before the migration too, only because their policies subquery
+-- invoices and payments, which are locked. They now hold on their own terms and
+-- stay here so loosening either parent table cannot silently reopen them.
+SELECT public.assert((SELECT count(*) FROM invoice_items WHERE id = 'e7a00000-0000-0000-0000-000000000011') = 0,
+  'support staff can read invoice items');
+SELECT public.assert((SELECT count(*) FROM payment_allocations WHERE id = 'e7a00000-0000-0000-0000-00000000000f') = 0,
+  'support staff can read payment allocations');
+-- Positive control: the bursar reads all three.
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a2';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'e7a00000-0000-0000-0000-000000000010') = 1,
+  'the bursar cannot read receipts');
+SELECT public.assert((SELECT count(*) FROM invoice_items WHERE id = 'e7a00000-0000-0000-0000-000000000011') = 1,
+  'the bursar cannot read invoice items');
+SELECT public.assert((SELECT count(*) FROM payment_allocations WHERE id = 'e7a00000-0000-0000-0000-00000000000f') = 1,
+  'the bursar cannot read payment allocations');
+COMMIT;
+
+-- 5. Documents follow the record they are attached to.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a3';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE org_id = 'e7a00000-0000-0000-0000-000000000001') = 0,
+  'a teacher can read documents for pupils they do not teach, invoices, payroll and staff');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id IN ('e7a00000-0000-0000-0000-000000000015', 'e7a00000-0000-0000-0000-000000000016', 'e7a00000-0000-0000-0000-000000000017')) = 0,
+  'support staff can read invoice, payroll or staff documents');
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000014') = 1,
+  'support staff cannot read a pupil''s documents');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE name LIKE 'e7a00000-0000-0000-0000-000000000002/documents/payroll_run/%') = 0,
+  'support staff can read payroll files in storage');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE name LIKE 'e7a00000-0000-0000-0000-000000000002/documents/student/%') = 1,
+  'support staff cannot read a pupil''s files in storage');
+DELETE FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000014';
+DELETE FROM storage.objects WHERE name LIKE 'e7a00000-0000-0000-0000-000000000002/documents/student/%';
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000014') = 1,
+  'support staff deleted a pupil''s document record');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE name LIKE 'e7a00000-0000-0000-0000-000000000002/documents/student/%') = 1,
+  'support staff deleted a pupil''s file from storage');
+-- Positive controls: the principal sees pupil, invoice and staff documents but
+-- not payroll; the bursar sees payroll; the principal can remove a document.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id IN ('e7a00000-0000-0000-0000-000000000014', 'e7a00000-0000-0000-0000-000000000015', 'e7a00000-0000-0000-0000-000000000017')) = 3,
+  'the principal cannot read pupil, invoice and staff documents');
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000016') = 0,
+  'the principal can read payroll documents');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a2';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000016') = 1,
+  'the bursar cannot read payroll documents');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE name LIKE 'e7a00000-0000-0000-0000-000000000002/documents/payroll_run/%') = 1,
+  'the bursar cannot read payroll files in storage');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+DELETE FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000014';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'e7a00000-0000-0000-0000-000000000014') = 0,
+  'the principal cannot delete a pupil''s document');
+ROLLBACK;
+-- The office can still add a pupil's document.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a4';
+INSERT INTO document_files (org_id, school_id, entity_type, entity_id, file_name, file_url)
+  VALUES ('e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-000000000002', 'student', 'e7a00000-0000-0000-0000-000000000004', 'birth-cert.pdf', 'x');
+INSERT INTO storage.objects (bucket_id, name)
+  VALUES ('school-documents', 'e7a00000-0000-0000-0000-000000000002/documents/student/e7a00000-0000-0000-0000-000000000004/2.pdf');
+ROLLBACK;
+
+-- 6. Logos: another organisation's principal cannot touch this school's.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a6';
+DELETE FROM storage.objects WHERE bucket_id = 'school-assets' AND name = 'e7a00000-0000-0000-0000-000000000002/logo.png';
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE bucket_id = 'school-assets' AND name = 'e7a00000-0000-0000-0000-000000000002/logo.png') = 1,
+  'a principal deleted another organisation''s logo');
+SELECT pg_temp.refused('e7a00000-0000-0000-0000-0000000000a6',
+  $q$INSERT INTO storage.objects (bucket_id, name)
+     VALUES ('school-assets', 'e7a00000-0000-0000-0000-000000000002/logo.svg')$q$,
+  'a principal can upload a logo for another organisation''s school');
+-- Positive controls: each principal manages their own school's logo.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a6';
+INSERT INTO storage.objects (bucket_id, name)
+  VALUES ('school-assets', 'e7a00000-0000-0000-0000-00000000000b/logo.png');
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a1';
+DELETE FROM storage.objects WHERE bucket_id = 'school-assets' AND name = 'e7a00000-0000-0000-0000-000000000002/logo.png';
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE bucket_id = 'school-assets' AND name = 'e7a00000-0000-0000-0000-000000000002/logo.png') = 0,
+  'a principal cannot replace their own school''s logo');
+ROLLBACK;
+
+-- 7. An audit entry is attributed to whoever wrote it.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e7a00000-0000-0000-0000-0000000000a5';
+INSERT INTO audit_logs (id, org_id, user_id, action, entity_type)
+  VALUES ('e7a00000-0000-0000-0000-000000000021', 'e7a00000-0000-0000-0000-000000000001', 'e7a00000-0000-0000-0000-0000000000a3', 'delete_student', 'student');
+COMMIT;
+SELECT public.assert((SELECT user_id FROM audit_logs WHERE id = 'e7a00000-0000-0000-0000-000000000021') = 'e7a00000-0000-0000-0000-0000000000a5',
+  'an audit entry can be attributed to someone else');
 
 SELECT 'rls behaviour tests passed' AS result;

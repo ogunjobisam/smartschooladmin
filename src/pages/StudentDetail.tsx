@@ -335,6 +335,7 @@ export default function StudentDetail() {
             studentId={id!}
             guardians={guardians || []}
             onRefresh={() => refetchGuardians()}
+            editable={canManageStudents(userRole)}
           />
         </TabsContent>
 
