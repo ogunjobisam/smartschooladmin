@@ -3794,6 +3794,7 @@ export type Database = {
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
       is_school_manager: { Args: { _user_id: string }; Returns: boolean }
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
+      is_support_staff_only: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
       my_ai_entitlement: {
         Args: never
