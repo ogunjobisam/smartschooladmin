@@ -16,8 +16,15 @@ only if it reads as navy *and* is reachable from the edge without crossing the
 crest. The unbroken gold ring around the shield is what stops the flood, which
 is why this works on a crest and would not on an arbitrary image.
 
+The output is one transparent PNG, to be uploaded as a school's logo in
+Settings -> Branding, which sets `schools.logo_url`. Everything crest-shaped in
+the app reads that column — the top bar, the page watermark, report cards,
+certificates, payslips — so there is nothing for a bundled copy to do, and
+public/brand/ belongs to the SmartSchoolAdmin product logo kit rather than to
+any one school.
+
 Usage:
-    python3 scripts/extract-crest.py SOURCE.png --out public/brand
+    python3 scripts/extract-crest.py SOURCE.png --out ~/Desktop
 """
 
 import argparse
@@ -75,7 +82,9 @@ def flood_ground(img: Image.Image) -> Image.Image:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("source", type=Path)
-    ap.add_argument("--out", type=Path, default=Path("public/brand"))
+    # Not public/brand: that folder is the product's logo kit, and a school's
+    # crest belongs in its logo_url rather than in the bundle.
+    ap.add_argument("--out", type=Path, default=Path("."))
     ap.add_argument("--box", nargs=4, type=int, metavar=("L", "T", "R", "B"),
                     help="crop before cutting; omit to use the whole image")
     args = ap.parse_args()
@@ -94,15 +103,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     cut.save(args.out / "crest.png")
     print(f"crest.png  {cut.size[0]}x{cut.size[1]}")
-
-    # Square icons, the crest centred on a transparent canvas so it is never
-    # cropped by a maskable icon's safe zone.
-    for size in (512, 192, 180, 64, 32):
-        side = max(cut.size)
-        canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-        canvas.paste(cut, ((side - cut.size[0]) // 2, (side - cut.size[1]) // 2))
-        canvas.resize((size, size), Image.LANCZOS).save(args.out / f"crest-{size}.png")
-    print("icons:     512 192 180 64 32")
+    print("Upload it in Settings -> Branding -> School Logo.")
 
 
 if __name__ == "__main__":
