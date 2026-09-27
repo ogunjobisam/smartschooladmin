@@ -30,7 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
-import { documentTheme } from "@/lib/document-theme";
+import { documentTheme, esc } from "@/lib/document-theme";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 interface ScoreEntry {
@@ -77,7 +77,7 @@ export default function ExamDetail() {
       const rows = studentScores.map((s, idx) => {
         const sub = subjectMap.get(s.subjectId);
         const p = ((s.score / s.max) * 100).toFixed(1);
-        return `<tr><td>${idx + 1}</td><td>${sub?.name || "Unknown"}</td><td class="text-center">${s.score}</td><td class="text-center">${s.max}</td><td class="text-center">${p}%</td><td class="text-center">${s.grade}</td></tr>`;
+        return `<tr><td>${idx + 1}</td><td>${esc(sub?.name || "Unknown")}</td><td class="text-center">${s.score}</td><td class="text-center">${s.max}</td><td class="text-center">${p}%</td><td class="text-center">${s.grade}</td></tr>`;
       }).join("");
 
 
@@ -85,17 +85,17 @@ export default function ExamDetail() {
         <div class="page">
           <div class="brand-bar"></div>
           <div class="header">
-            ${branding.logoUrl ? `<img class="crest" src="${branding.logoUrl}" alt="" />` : ""}
-            <h1>${branding.name}</h1>
-            ${branding.tagline ? `<p>${branding.tagline}</p>` : ""}
+            ${branding.logoUrl ? `<img class="crest" src="${esc(branding.logoUrl)}" alt="" />` : ""}
+            <h1>${esc(branding.name)}</h1>
+            ${branding.tagline ? `<p>${esc(branding.tagline)}</p>` : ""}
             <p style="font-weight:600;margin-top:4px">STUDENT REPORT CARD</p>
-            <p>${exam.name} • ${exam.academic_periods?.name || ""}</p>
+            <p>${esc(exam.name)} • ${esc(exam.academic_periods?.name)}</p>
           </div>
           <div class="student-info">
-            <div><span class="label">Student Name: </span><strong>${student.first_name} ${student.last_name}</strong></div>
-            <div><span class="label">Student ID: </span><strong>${student.student_id_number || "N/A"}</strong></div>
-            <div><span class="label">Class: </span><strong>${displayClassName(exam.classes?.name) || "—"}</strong></div>
-            <div><span class="label">Term/Period: </span><strong>${exam.academic_periods?.name || "—"}</strong></div>
+            <div><span class="label">Student Name: </span><strong>${esc(student.first_name)} ${esc(student.last_name)}</strong></div>
+            <div><span class="label">Student ID: </span><strong>${esc(student.student_id_number || "N/A")}</strong></div>
+            <div><span class="label">Class: </span><strong>${esc(displayClassName(exam.classes?.name) || "—")}</strong></div>
+            <div><span class="label">Term/Period: </span><strong>${esc(exam.academic_periods?.name || "—")}</strong></div>
           </div>
           <table><thead><tr><th>#</th><th>Subject</th><th class="text-center">Score</th><th class="text-center">Max</th><th class="text-center">%</th><th class="text-center">Grade</th></tr></thead><tbody>${rows}</tbody></table>
           <div class="summary"><div class="summary-grid">
@@ -114,7 +114,7 @@ export default function ExamDetail() {
       accentColor: branding.accentColor,
     });
 
-    win.document.write(`<html><head><title>Report Cards - ${exam.name}</title><style>
+    win.document.write(`<html><head><title>Report Cards - ${esc(exam.name)}</title><style>
       @page { size: A4; margin: 14mm; }
       :root { --brand: ${theme.primary}; --brand-accent: ${theme.accent}; --brand-soft: ${theme.soft}; --brand-border: ${theme.border}; }
       html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
