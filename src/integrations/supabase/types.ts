@@ -1338,6 +1338,65 @@ export type Database = {
           },
         ]
       }
+      invoice_adjustments: {
+        Row: {
+          amount: number
+          approval_request_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          id: string
+          invoice_id: string
+          invoice_item_id: string | null
+          kind: string
+          percent: number | null
+          reason: string
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          approval_request_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          invoice_id: string
+          invoice_item_id?: string | null
+          kind: string
+          percent?: number | null
+          reason: string
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          approval_request_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_item_id?: string | null
+          kind?: string
+          percent?: number | null
+          reason?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -1729,12 +1788,15 @@ export type Database = {
           last_attempt_at: string | null
           org_id: string
           processed_at: string | null
+          provider: string | null
+          provider_message_id: string | null
           recipient: string
           related_notification_id: string | null
           reply_to: string | null
           retried_by: string | null
           scheduled_for: string | null
           school_id: string | null
+          sms_parts: number | null
           status: string
           subject: string | null
         }
@@ -1750,12 +1812,15 @@ export type Database = {
           last_attempt_at?: string | null
           org_id: string
           processed_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient: string
           related_notification_id?: string | null
           reply_to?: string | null
           retried_by?: string | null
           scheduled_for?: string | null
           school_id?: string | null
+          sms_parts?: number | null
           status?: string
           subject?: string | null
         }
@@ -1771,12 +1836,15 @@ export type Database = {
           last_attempt_at?: string | null
           org_id?: string
           processed_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient?: string
           related_notification_id?: string | null
           reply_to?: string | null
           retried_by?: string | null
           scheduled_for?: string | null
           school_id?: string | null
+          sms_parts?: number | null
           status?: string
           subject?: string | null
         }
@@ -2450,6 +2518,89 @@ export type Database = {
           },
         ]
       }
+      report_traits: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          key: string
+          label: string
+          position: number
+          school_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          key: string
+          label: string
+          position?: number
+          school_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          key?: string
+          label?: string
+          position?: number
+          school_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_traits_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      result_holds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          family_message: string | null
+          id: string
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          family_message?: string | null
+          id?: string
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          family_message?: string | null
+          id?: string
+          reason?: string
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_holds_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_holds_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       result_releases: {
         Row: {
           academic_period_id: string
@@ -2826,6 +2977,7 @@ export type Database = {
           primary_color: string | null
           tagline: string | null
           updated_at: string
+          withhold_overdue_only: boolean
           withhold_results_until_paid: boolean
         }
         Insert: {
@@ -2845,6 +2997,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_overdue_only?: boolean
           withhold_results_until_paid?: boolean
         }
         Update: {
@@ -2864,6 +3017,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_overdue_only?: boolean
           withhold_results_until_paid?: boolean
         }
         Relationships: [
@@ -2907,6 +3061,9 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
+          parts: number
+          provider: string | null
+          provider_message_id: string | null
           queue_id: string | null
           recipient: string
         }
@@ -2914,6 +3071,9 @@ export type Database = {
           created_at?: string
           id?: string
           org_id: string
+          parts?: number
+          provider?: string | null
+          provider_message_id?: string | null
           queue_id?: string | null
           recipient: string
         }
@@ -2921,6 +3081,9 @@ export type Database = {
           created_at?: string
           id?: string
           org_id?: string
+          parts?: number
+          provider?: string | null
+          provider_message_id?: string | null
           queue_id?: string | null
           recipient?: string
         }
@@ -3562,6 +3725,7 @@ export type Database = {
           id: string
           released_at: string
           released_by: string | null
+          snapshot: Json | null
         }
         Insert: {
           academic_period_id: string
@@ -3569,6 +3733,7 @@ export type Database = {
           id?: string
           released_at?: string
           released_by?: string | null
+          snapshot?: Json | null
         }
         Update: {
           academic_period_id?: string
@@ -3576,6 +3741,7 @@ export type Database = {
           id?: string
           released_at?: string
           released_by?: string | null
+          snapshot?: Json | null
         }
         Relationships: [
           {
@@ -3973,6 +4139,7 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      can_approve_adjustments: { Args: { _school_id: string }; Returns: boolean }
       can_enter_mark: {
         Args: { _student_id: string; _subject_id: string }
         Returns: boolean
@@ -3988,7 +4155,13 @@ export type Database = {
         Returns: boolean
       }
       charge_sms: {
-        Args: { _org_id: string; _queue_id: string; _recipient: string }
+        Args: {
+          _org_id: string
+          _parts?: number
+          _provider?: string
+          _queue_id: string
+          _recipient: string
+        }
         Returns: boolean
       }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
@@ -4014,6 +4187,10 @@ export type Database = {
           _teachers?: number
         }
         Returns: Json
+      }
+      decide_invoice_adjustment: {
+        Args: { _adjustment_id: string; _approve: boolean; _notes: string }
+        Returns: undefined
       }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
@@ -4120,6 +4297,17 @@ export type Database = {
           school_id: string
         }[]
       }
+      refund_sms: { Args: { _queue_id: string }; Returns: number }
+      request_invoice_adjustment: {
+        Args: {
+          _amount: number | null
+          _invoice_id: string
+          _kind: string
+          _percent: number | null
+          _reason: string
+        }
+        Returns: string
+      }
       reserved_school_slugs: { Args: never; Returns: string[] }
       results_outstanding: {
         Args: { _period_id: string; _student_id: string }
@@ -4170,6 +4358,10 @@ export type Database = {
         Args: { _class_id: string; _period_id: string }
         Returns: Json
       }
+      term_report_compute: {
+        Args: { _class_id: string; _period_id: string }
+        Returns: Json
+      }
       term_report_released: {
         Args: { _period_id: string; _student_id: string }
         Returns: boolean
@@ -4187,6 +4379,9 @@ export type Database = {
         Args: { _student_id: string }
         Returns: {
           academic_period_id: string
+          held: boolean
+          message: string
+          note: string
           outstanding: number
           period_name: string
         }[]

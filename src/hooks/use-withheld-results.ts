@@ -6,6 +6,12 @@ export interface WithheldPeriod {
   academic_period_id: string;
   period_name: string;
   outstanding: number;
+  /** Held by hand rather than (or as well as) for fees. */
+  held: boolean;
+  /** What the family is told about a hold. */
+  message: string | null;
+  /** The internal reason for a hold. Staff only; always null for families. */
+  note: string | null;
 }
 
 /**

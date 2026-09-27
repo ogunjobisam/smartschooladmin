@@ -981,17 +981,32 @@ BEGIN
     'a parent can read another arm''s term report');
 END $$;
 
+-- Families read comments and ratings from the release snapshot, never the live
+-- tables — otherwise a comment edited after release would reach them unseen.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'comments') = 2,
+    'after release a parent does not get exactly their child''s two comments');
+  PERFORM public.assert(
+    (SELECT count(*) FROM jsonb_array_elements(r->'comments') x
+     WHERE x->>'student_id' <> 'a3000000-0000-0000-0000-000000000001') = 0,
+    'a parent gets comments about other pupils');
+  PERFORM public.assert(jsonb_array_length(r->'ratings') = 1,
+    'after release a parent does not get their child''s rating');
+END $$;
+
 BEGIN;
 SET LOCAL ROLE authenticated;
 SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
-SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
-  'after release a parent does not see exactly their child''s two comments');
-SELECT public.assert((SELECT count(*) FROM term_report_comments
-                      WHERE student_id <> 'a3000000-0000-0000-0000-000000000001') = 0,
-  'a parent can read comments about other pupils');
-SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 1,
-  'after release a parent cannot see their child''s ratings');
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 0,
+  'a parent can read the live comments table, which bypasses the release snapshot');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 0,
+  'a parent can read the live ratings table, which bypasses the release snapshot');
 COMMIT;
+
 
 -- ---------------------------------------------------------------------------
 -- A web address for each school (20260927190000)
@@ -1305,13 +1320,476 @@ BEGIN
   PERFORM public.assert(jsonb_array_length(r->'students') = 1,
     'a family that has paid still cannot read the released term report');
 END $$;
+-- Families read comments through term_report() (20260927210000), so that is
+-- where "everything comes back" is checked.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'comments') = 2,
+    'a family that has paid still cannot read the report card comments');
+END $$;
+
+UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- ---------------------------------------------------------------------------
+-- A released report is a snapshot, and staff can see what has moved since
+-- ---------------------------------------------------------------------------
+-- A teacher corrects Kemi's Maths exam from 72 to 82 after release, and edits
+-- her comment. Families keep seeing what was released; staff see the live
+-- report and the snapshot side by side until someone releases again.
+UPDATE student_scores SET score = 82
+  WHERE exam_id = '77777777-7777-7777-7777-77777777777b'
+    AND student_id = 'a3000000-0000-0000-0000-000000000001'
+    AND subject_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+UPDATE term_report_comments SET body = 'Kemi has improved.'
+  WHERE student_id = 'a3000000-0000-0000-0000-000000000001' AND kind = 'class_teacher';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 75.6,
+    'a mark corrected after release reached the parent without being re-released');
+  PERFORM public.assert(
+    (SELECT x->>'body' FROM jsonb_array_elements(r->'comments') x WHERE x->>'kind' = 'class_teacher') = 'Kemi works steadily.',
+    'a comment edited after release reached the parent without being re-released');
+
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 83.6,
+    'staff do not see the corrected mark live');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'snapshot'->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 75.6,
+    'staff are not given the released snapshot to compare against');
+  PERFORM public.assert(r->>'released_at' IS NOT NULL, 'staff are not told when the report was released');
+END $$;
+
+-- A manager cannot hand families a doctored snapshot: whatever is written, the
+-- database recomputes it. Writing a fake one is also how "release again" works.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+UPDATE term_report_releases SET snapshot = '{"students": [], "subjects": []}'::jsonb
+  WHERE class_id = '55555555-5555-5555-5555-555555555559';
+COMMIT;
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1,
+    'a snapshot written by hand was stored as given instead of recomputed');
+  PERFORM public.assert(
+    (SELECT (x->>'percent')::numeric FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 83.6,
+    'releasing again did not carry the correction to the parent');
+  PERFORM public.assert(
+    (SELECT x->>'body' FROM jsonb_array_elements(r->'comments') x WHERE x->>'kind' = 'class_teacher') = 'Kemi has improved.',
+    'releasing again did not carry the edited comment to the parent');
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Each school sets its own report card traits
+-- ---------------------------------------------------------------------------
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+INSERT INTO report_traits (school_id, domain, key, label, position) VALUES
+  ('22222222-2222-2222-2222-222222222222', 'affective', 'leadership', 'Leadership', 1);
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.report_traits) = 1,
+  'a principal could not add a report card trait');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  PERFORM public.assert((SELECT count(*) FROM report_traits) = 1,
+    'a teacher cannot read the school''s traits, so cannot rate against them');
+  BEGIN
+    INSERT INTO report_traits (school_id, domain, key, label, position)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'affective', 'obedience', 'Obedience', 2);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher changed the school''s report card traits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  -- Editing or removing one is as much a change as adding one. Filtered, not
+  -- refused, so it is checked from outside below.
+  UPDATE report_traits SET label = 'Renamed by a teacher';
+  DELETE FROM report_traits;
+  RESET ROLE;
+
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO report_traits (school_id, domain, key, label, position)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'affective', 'kindness', 'Kindness', 3);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a parent changed the school''s report card traits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+SELECT public.assert((SELECT label FROM public.report_traits WHERE key = 'leadership') = 'Leadership',
+  'a teacher renamed or removed one of the school''s report card traits');
+
+-- The school's list goes into the snapshot at release, so renaming a trait
+-- later does not rewrite a report card families already have.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+UPDATE term_report_releases SET released_at = now()
+  WHERE class_id = '55555555-5555-5555-5555-555555555559';
+COMMIT;
+UPDATE report_traits SET label = 'Leading others' WHERE key = 'leadership';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(
+    (SELECT x->>'label' FROM jsonb_array_elements(r->'traits') x WHERE x->>'key' = 'leadership') = 'Leadership',
+    'the released report card does not carry the trait list as it was at release');
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Only overdue fees withhold results; a manual hold withholds regardless
+-- ---------------------------------------------------------------------------
+-- Kemi is billed 30,000 for the term. With the school withholding results,
+-- a bill that is not yet due must not hide her marks — otherwise releasing
+-- reports the week fees go out would hide nearly every child's. Once it is
+-- past due, or if the school turns overdue-only off, it does.
+UPDATE schools SET withhold_results_until_paid = true WHERE id = '22222222-2222-2222-2222-222222222222';
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, amount_paid, status, due_date)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000d', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+          'INV-KEMI-T1', 30000, 0, 'pending', current_date + 14);
+
 BEGIN;
 SET LOCAL ROLE authenticated;
 SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
-SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
-  'a family that has paid still cannot read the report card comments');
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') > 0,
+  'a bill that is not yet due withheld the child''s results');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('a3000000-0000-0000-0000-000000000001')) = 0,
+  'a bill that is not yet due was reported as withholding results');
 COMMIT;
 
+-- The school chooses to count every bill, due or not.
+UPDATE schools SET withhold_overdue_only = false WHERE id = '22222222-2222-2222-2222-222222222222';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') = 0,
+  'with overdue-only off, an unpaid bill not yet due did not withhold results');
+COMMIT;
+UPDATE schools SET withhold_overdue_only = true WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- Past due: withheld, and the notice reports the overdue amount.
+UPDATE invoices SET due_date = current_date - 1 WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000d';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') = 0,
+  'an overdue bill did not withhold results');
+SELECT public.assert((SELECT outstanding FROM public.withheld_results('a3000000-0000-0000-0000-000000000001')) = 30000,
+  'the notice does not report the overdue amount');
+COMMIT;
+UPDATE invoices SET amount_paid = 30000, status = 'paid' WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000d';
 UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- A manual hold: Zainab owes nothing and the fee switch is off, yet the school
+-- holds her results for a reason of its own. The bursar may place it; a
+-- teacher may not; the family sees the school's message, never the reason.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) > 0,
+  'Zainab cannot see her marks before any hold, so the hold assertions prove nothing');
+COMMIT;
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO result_holds (school_id, student_id, reason)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003', 'Because');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher placed a hold on a pupil''s results';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000b';
+INSERT INTO result_holds (school_id, student_id, reason, family_message)
+  VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003',
+          'Library books not returned', 'Please see the principal.');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.result_holds) = 1, 'the bursar could not place a hold');
+
+-- A payment-plan release is about fees; it must not lift a hold.
+INSERT INTO result_releases (school_id, student_id, academic_period_id, reason)
+  VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003',
+          '44444444-4444-4444-4444-444444444444', 'Payment plan');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) = 0,
+  'a pupil on a manual hold can still read their marks');
+SELECT public.assert((SELECT count(*) FROM result_holds) = 0,
+  'a pupil can read the holds table and its reasons');
+SELECT public.assert(
+  (SELECT held AND message = 'Please see the principal.' AND note IS NULL
+   FROM public.withheld_results('a3000000-0000-0000-0000-000000000003') LIMIT 1),
+  'the held pupil is not told the school''s message, or is told the internal reason');
+COMMIT;
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000004', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 0,
+    'a pupil on a manual hold still receives their term report');
+
+  -- Staff see the hold, reason included.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.assert(
+    (SELECT held AND note = 'Library books not returned'
+     FROM public.withheld_results('a3000000-0000-0000-0000-000000000003') LIMIT 1),
+    'staff are not shown why a pupil''s results are held');
+END $$;
+
+-- Lifting it brings everything back.
+DELETE FROM result_holds WHERE student_id = 'a3000000-0000-0000-0000-000000000003';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) > 0,
+  'lifting a hold did not give the pupil their marks back');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- SMS credits: charged per part, refunded on failure, and only by the queue
+-- ---------------------------------------------------------------------------
+-- charge_sms() used to be executable by PUBLIC, so anyone — signed in or not —
+-- could call it with any organisation's id and spend its prepaid credits.
+INSERT INTO sms_credit_balances (org_id, balance) VALUES ('11111111-1111-1111-1111-111111111111', 5);
+INSERT INTO outbound_message_queue (id, org_id, channel, recipient, body)
+  VALUES ('0a000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'sms', '08031234567', 'Hello');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    PERFORM public.charge_sms('11111111-1111-1111-1111-111111111111', NULL, 'x', 1, 'sandbox');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a signed-in user can spend the organisation''s SMS credits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a signed-in user can mint SMS credits through a refund';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+
+  SET LOCAL ROLE anon;
+  BEGIN
+    PERFORM public.charge_sms('11111111-1111-1111-1111-111111111111', NULL, 'x', 1, 'sandbox');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an anonymous visitor can spend SMS credits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- As the queue (the service role, here the table owner): a two-part text
+-- costs two credits; one that would overdraw costs nothing and is refused.
+DO $$
+BEGIN
+  PERFORM public.assert(public.charge_sms('11111111-1111-1111-1111-111111111111',
+    '0a000000-0000-0000-0000-000000000001', '2348031234567', 2, 'termii'),
+    'the queue could not charge a two-part text against a balance of five');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 3,
+    'a two-part text did not cost two credits');
+  PERFORM public.assert((SELECT parts FROM sms_usage_log WHERE queue_id = '0a000000-0000-0000-0000-000000000001') = 2,
+    'the usage log does not record how many parts were charged');
+
+  PERFORM public.assert(NOT public.charge_sms('11111111-1111-1111-1111-111111111111',
+    NULL, '2348031234567', 4, 'termii'),
+    'a four-part text was charged against a balance of three');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 3,
+    'a refused charge still took credits');
+
+  -- The provider then fails: the two credits come back, once.
+  PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+  PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 5,
+    'a refund did not restore exactly the credits charged, or refunded twice');
+  PERFORM public.assert((SELECT count(*) FROM sms_usage_log WHERE queue_id = '0a000000-0000-0000-0000-000000000001') = 0,
+    'a refunded send is still in the usage log');
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Waivers and discounts change the bill, and need a second person
+-- ---------------------------------------------------------------------------
+-- Kemi is billed 50,000 on one line. The bursar asks for a 10,000 waiver; it
+-- changes nothing until someone else approves it, and then the invoice itself
+-- carries the credit, so every balance in the app follows.
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, amount_paid, status)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000e', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'INV-ADJ', 50000, 0, 'pending');
+INSERT INTO invoice_items (invoice_id, description, amount)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000e', 'First term tuition', 50000);
+
+-- A teacher cannot ask for one.
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 10000, NULL, 'Hardship');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher requested a waiver';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END $$;
+
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 10000, NULL, 'Hardship after flooding');
+  PERFORM set_config('test.adj', adj::text, false);
+
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 50000,
+    'a waiver changed the bill before anyone approved it');
+  PERFORM public.assert(
+    (SELECT type = 'fee_waiver' AND status = 'pending' AND amount = 10000 AND reference_type = 'invoice_adjustment'
+     FROM approval_requests WHERE reference_id = adj),
+    'requesting a waiver did not put it in the approvals queue');
+
+  -- The requester cannot approve their own request, by either road.
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Fine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: the bursar approved their own waiver';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE approval_requests SET status = 'approved', reviewed_by = auth.uid() WHERE reference_id = adj;
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a waiver was approved by editing the approvals table directly';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- The principal approves: the invoice gains a credit line and a smaller total.
+DO $$
+DECLARE adj uuid := current_setting('test.adj')::uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.decide_invoice_adjustment(adj, true, 'Approved for this term');
+
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'an approved waiver did not reduce the invoice total');
+  PERFORM public.assert(
+    (SELECT count(*) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e' AND amount = -10000) = 1,
+    'an approved waiver did not appear on the invoice as a credit line');
+  PERFORM public.assert(
+    (SELECT sum(amount) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'the invoice lines no longer add up to its total');
+  PERFORM public.assert(
+    (SELECT status = 'approved' AND reviewed_by = 'd2000000-0000-0000-0000-000000000001'
+     FROM approval_requests WHERE reference_id = adj),
+    'the approvals queue does not show who approved the waiver');
+
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Again');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a waiver was applied twice';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+END $$;
+
+-- More than is owed is refused; a percentage is worked out on the gross fees.
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'discount', 45000, NULL, 'Too much');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a discount larger than the balance was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'discount', NULL, 10, 'Sibling discount');
+  PERFORM public.assert((SELECT amount FROM invoice_adjustments WHERE id = adj) = 5000,
+    'a 10% discount was not worked out as 10% of the 50,000 billed');
+
+  -- A pending request counts against what is left to waive.
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 36000, NULL, 'Stacked');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: pending requests together could waive more than is owed';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  -- Rejected: nothing changes.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.decide_invoice_adjustment(adj, false, 'Not eligible');
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'a rejected discount changed the invoice');
+  PERFORM public.assert((SELECT status FROM invoice_adjustments WHERE id = adj) = 'rejected',
+    'a rejected discount is not recorded as rejected');
+END $$;
+
+-- The bursar cannot approve even someone else's request: that is the principal's call.
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'scholarship', 40000, NULL, 'Full scholarship');
+  -- The principal may approve, but not what they asked for themselves. The
+  -- bursar case above cannot show this: a bursar may not approve anything.
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Mine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an approver approved their own scholarship request';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Fine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a bursar approved a scholarship';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  -- Another senior approver clears the rest of the bill; the invoice is then settled.
+  PERFORM set_config('test.uid', 'dccccccc-0000-0000-0000-00000000000c', true);
+  PERFORM public.decide_invoice_adjustment(adj, true, 'Approved');
+  PERFORM public.assert(
+    (SELECT total_amount = 0 AND status = 'paid' FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e'),
+    'a fully waived invoice is not marked paid');
+END $$;
+
+-- Families never see the request trail, only the credit on the invoice.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM invoice_adjustments) = 0,
+  'a parent can read the school''s waiver and discount requests');
+SELECT public.assert(
+  (SELECT count(*) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e' AND amount < 0) = 2,
+  'a parent cannot see the credits on their child''s invoice');
+COMMIT;
 
 SELECT 'rls behaviour tests passed' AS result;
