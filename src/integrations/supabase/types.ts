@@ -3907,6 +3907,7 @@ export type Database = {
         | "parent"
         | "school_admin"
         | "student"
+        | "support_staff"
       application_status:
         | "new"
         | "reviewing"
@@ -4101,6 +4102,7 @@ export const Constants = {
         "parent",
         "school_admin",
         "student",
+        "support_staff",
       ],
       application_status: [
         "new",
