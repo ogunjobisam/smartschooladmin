@@ -73,6 +73,9 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "group-overview", title: "Group Overview", url: "/group-overview", group: "operations" },
   { key: "reports", title: "Reports", url: "/reports", group: "operations" },
   { key: "audit-log", title: "Audit Log", url: "/audit-log", group: "operations" },
+  // A copy of the school's records, for the school to keep. Owners and school
+  // admins only: it is everything at once, including families' contact details.
+  { key: "data-export", title: "Data Export", url: "/settings/data-export", group: "system" },
 
   { key: "billing", title: "Billing", url: "/billing", group: "system" },
   { key: "school-profile", title: "School Profile", url: "/school-profile", group: "system" },
@@ -101,7 +104,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "billing", "school-profile", "settings", "users", "roles",
+    "billing", "school-profile", "settings", "users", "roles", "data-export",
   ],
   principal: [
     "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
