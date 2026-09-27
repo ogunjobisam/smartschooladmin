@@ -133,15 +133,31 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="royal-check border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <NavLink to={portalPath ?? "/dashboard"} onClick={closeOnMobile} className="flex min-w-0 items-center gap-2.5">
+          {/* The crest is the school's, so it gets room to be seen — but only
+              when the sidebar is open. Collapsed, the rail is 3rem wide and
+              anything larger than the old size spills out of it.
+
+              object-contain matters as much as the size: AvatarImage is
+              `aspect-square h-full w-full` with no object-fit, so an <img>
+              falls back to `fill` and a crest that is not square gets stretched.
+              At 36px that was easy to miss; at 56px it would not be. */}
           {branding.logoUrl ? (
-            <Avatar className="h-9 w-9 shrink-0 rounded-lg ring-1 ring-sidebar-primary/60">
-              <AvatarImage src={branding.logoUrl} alt={branding.name} />
+            <Avatar
+              className={`shrink-0 rounded-lg ring-1 ring-sidebar-primary/60 ${
+                collapsed ? "h-9 w-9" : "h-14 w-14"
+              }`}
+            >
+              <AvatarImage src={branding.logoUrl} alt={branding.name} className="object-contain" />
               <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs">
                 {branding.name[0]}
               </AvatarFallback>
             </Avatar>
           ) : (
-            <Logo variant="mark" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
+            <Logo
+              variant="mark"
+              alt=""
+              className={`shrink-0 rounded-lg ${collapsed ? "h-8 w-8" : "h-14 w-14"}`}
+            />
           )}
           {!collapsed && (
             <div className="flex min-w-0 flex-col">

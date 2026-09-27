@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { canAssignRole, ROLE_RANK } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,23 +14,8 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin"];
-const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "teacher", "parent", "student"];
-
-// Role hierarchy: lower index = higher privilege
-const ROLE_RANK: Record<string, number> = {
-  super_admin: 0,
-  proprietor: 1,
-  group_admin: 2,
-  school_admin: 3,
-  principal: 4,
-  bursar: 5,
-  finance_officer: 6,
-  hr_admin: 7,
-  teacher: 8,
-  parent: 9,
-  student: 10,
-};
+const STAFF_ROLES = ["teacher", "principal", "bursar", "finance_officer", "hr_admin", "school_admin", "support_staff"];
+const VALID_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer", "hr_admin", "support_staff", "teacher", "parent", "student"];
 
 type AdminClient = ReturnType<typeof createClient>;
 
@@ -135,14 +121,22 @@ async function logRoleEvent(
   args: {
     orgId: string | null;
     actorId: string;
-    action: "role_added" | "role_removed" | "role_changed" | "user_removed";
+    action:
+      | "role_added"
+      | "role_removed"
+      | "role_changed"
+      | "user_removed"
+      | "super_admin_granted";
     targetUserId: string;
     detail: string;
     oldValues?: Record<string, unknown> | null;
     newValues?: Record<string, unknown> | null;
   }
 ) {
-  if (!args.orgId) return;
+  // A null org_id used to mean "drop the event". It now means a platform-level
+  // event, which audit_logs stores — see 20260927150000. Dropping it was how
+  // granting super_admin, whose holder can legitimately have no organisation,
+  // could happen with no record anywhere.
   const { error } = await admin.from("audit_logs").insert({
     org_id: args.orgId,
     user_id: args.actorId,
@@ -154,14 +148,6 @@ async function logRoleEvent(
     new_values: args.newValues ?? null,
   });
   if (error) console.error("Could not write role audit log:", error.message);
-}
-
-function canAssignRole(callerRole: string, targetRole: string): boolean {
-  const callerRank = ROLE_RANK[callerRole];
-  const targetRank = ROLE_RANK[targetRole];
-  if (callerRank === undefined || targetRank === undefined) return false;
-  // Can only assign roles strictly below your own rank
-  return targetRank > callerRank;
 }
 
 Deno.serve(async (req) => {
@@ -217,10 +203,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Your account is not assigned to a school" }, 403);
     }
 
-    // School-level admins may only hand out these roles. The rank check in
-    // canAssignRole() alone would let a school_admin create a principal, which
-    // is a school-wide authority they should not be able to grant.
-    const SCHOOL_ADMIN_ALLOWED_ROLES = ["teacher", "bursar", "finance_officer", "hr_admin", "parent", "student"];
+    // School-level admins may only hand out these roles, on top of whatever the
+    // rank rule in canAssignRole() already permits.
+    //
+    // school_admin and principal are in this list deliberately, and were not
+    // always: the old comment here said a school-wide authority was not a school
+    // admin's to grant. That is what stopped a school from ever having two
+    // people who run it, so it is now allowed on purpose. Rank still does the
+    // real work — a principal cannot reach school_admin above them, and a bursar
+    // cannot reach either.
+    const SCHOOL_ADMIN_ALLOWED_ROLES = [
+      "school_admin", "principal", "teacher", "bursar", "finance_officer",
+      "hr_admin", "support_staff", "parent", "student",
+    ];
     const assignableByCaller = (targetRole: string) =>
       canAssignRole(callerRole.role, targetRole) &&
       (!callerIsSchoolLevel || SCHOOL_ADMIN_ALLOWED_ROLES.includes(targetRole));
@@ -272,9 +267,13 @@ Deno.serve(async (req) => {
       await logRoleEvent(adminClient, {
         orgId: callerRole.org_id,
         actorId: caller.id,
-        action: "role_added",
+        // Its own action, so that "who made someone a platform owner?" is a
+        // filter rather than a search through every role_added row in the table.
+        action: extraRole === "super_admin" ? "super_admin_granted" : "role_added",
         targetUserId: user_id,
-        detail: `Added the ${extraRole} role`,
+        detail: extraRole === "super_admin"
+          ? "Granted the super admin role — full access to every organisation, school and setting"
+          : `Added the ${extraRole} role`,
         oldValues: { roles: guard.existing.map((r) => r.role) },
         newValues: { roles: [...guard.existing.map((r) => r.role), extraRole] },
       });
@@ -331,6 +330,33 @@ Deno.serve(async (req) => {
       if (!user_id) return jsonResponse({ error: "user_id required" }, 400);
       const guard = await guardTarget(user_id);
       if (guard.error) return guard.error;
+
+      /**
+       * Never remove the platform's last super admin.
+       *
+       * Now that a super admin can appoint another one, they can also manage one
+       * — including removing the role. Two super admins demoting each other, or
+       * one demoting themselves, would leave nobody able to grant the role back,
+       * because only a super admin may. The recovery would be a hand-written SQL
+       * statement against production, so the check belongs here rather than in a
+       * runbook. It counts rows rather than trusting the caller's own row, since
+       * the target may be someone else.
+       */
+      const losesSuperAdmin =
+        (!roleToRemove || roleToRemove === "super_admin") &&
+        guard.existing.some((r) => r.role === "super_admin");
+      if (losesSuperAdmin) {
+        const { count } = await adminClient
+          .from("user_roles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "super_admin");
+        if ((count ?? 0) <= 1) {
+          return jsonResponse(
+            { error: "This is the only super admin left. Appoint another one before removing this role." },
+            409
+          );
+        }
+      }
 
       let query = adminClient.from("user_roles").delete().eq("user_id", user_id);
       if (roleToRemove) query = query.eq("role", roleToRemove);

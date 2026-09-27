@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, canManageStudents, navItemsForRole, portalPathForRole, profileLinkForRole } from "@/lib/access";
+import { canAccessPath, canManageStudents, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
+import { ROLES } from "@/lib/roles";
 
 describe("canAccessPath", () => {
   it("lets a proprietor everywhere in the app shell", () => {
@@ -176,5 +177,46 @@ describe("unknown app-shell paths", () => {
   it("refuses paths that match no nav item", () => {
     expect(canAccessPath("proprietor", "/not-a-real-page")).toBe(false);
     expect(canAccessPath("teacher", "/secret")).toBe(false);
+  });
+});
+
+/**
+ * The role map is keyed by string, so a typo in it typechecks cleanly and simply
+ * drops the page from that role's menu — a link that silently never appears.
+ * `support_staff` was written with a "notices" key that does not exist, and this
+ * is what found it.
+ */
+describe("the role → nav map", () => {
+  const { NAV_KEY_BY_ROLE } = _internals;
+  const realKeys = new Set(NAV_ITEMS.map((i) => i.key));
+
+  it("names only keys that exist in NAV_ITEMS", () => {
+    for (const [role, keys] of Object.entries(NAV_KEY_BY_ROLE)) {
+      for (const key of keys as string[]) {
+        expect(realKeys.has(key), `${role} names "${key}", which is not a nav item`).toBe(true);
+      }
+    }
+  });
+
+  it("gives every role in the union a map entry, so nobody signs in to nothing", () => {
+    for (const role of ROLES.map((r) => r.value)) {
+      expect(navItemsForRole(role).length, `${role} can reach no page at all`).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps support staff out of anything with money or personnel in it", () => {
+    const reachable = navItemsForRole("support_staff").map((i) => i.url);
+    for (const forbidden of [
+      "/fees", "/invoices", "/payments", "/arrears", "/payroll",
+      "/approvals", "/reports", "/users", "/roles", "/audit-log", "/billing",
+    ]) {
+      expect(reachable, `support staff should not reach ${forbidden}`).not.toContain(forbidden);
+    }
+    expect(canAccessPath("support_staff", "/invoices")).toBe(false);
+    expect(canAccessPath("support_staff", "/payroll")).toBe(false);
+    expect(canAccessPath("support_staff", "/users")).toBe(false);
+    // But the office does need the people and the day.
+    expect(canAccessPath("support_staff", "/students")).toBe(true);
+    expect(canAccessPath("support_staff", "/timetable")).toBe(true);
   });
 });
