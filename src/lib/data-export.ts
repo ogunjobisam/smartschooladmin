@@ -110,6 +110,7 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "fee_schedules", scope: school },
       { table: "invoices", scope: school },
       { table: "invoice_items", scope: via("invoices") },
+      { table: "invoice_adjustments", scope: via("invoices") },
       { table: "payments", scope: school },
       { table: "payment_allocations", scope: via("payments") },
       { table: "payment_transactions", scope: school },

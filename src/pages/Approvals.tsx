@@ -108,7 +108,7 @@ export default function Approvals() {
       if (!orgId) return [];
       const { data } = await supabase
         .from("approval_requests")
-        .select("id, type, description, amount, status, created_at, requested_by, reference_id")
+        .select("id, type, description, amount, status, created_at, requested_by, reference_id, reference_type")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -121,6 +121,19 @@ export default function Approvals() {
     mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
       const reviewedAt = new Date().toISOString();
       const request = approvals?.find((a) => a.id === id);
+
+      // A waiver or discount is decided by the database in one step, which also
+      // changes the invoice and refuses anyone deciding their own request. The
+      // approvals row cannot be flipped directly for these.
+      if (request?.reference_type === "invoice_adjustment" && request.reference_id) {
+        const { error } = await supabase.rpc("decide_invoice_adjustment", {
+          _adjustment_id: request.reference_id,
+          _approve: status === "approved",
+          _notes: "",
+        });
+        if (error) throw error;
+        return;
+      }
 
       const { error } = await supabase
         .from("approval_requests")
@@ -155,6 +168,10 @@ export default function Approvals() {
       queryClient.invalidateQueries({ queryKey: ["payroll-profile"] });
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       queryClient.invalidateQueries({ queryKey: ["payroll-run"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice-items"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice-adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast({ title: `Request ${status}`, description: `The approval request has been ${status}.` });
     },
     onError: (err) => {

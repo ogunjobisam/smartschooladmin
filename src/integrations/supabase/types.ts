@@ -1338,6 +1338,65 @@ export type Database = {
           },
         ]
       }
+      invoice_adjustments: {
+        Row: {
+          amount: number
+          approval_request_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          id: string
+          invoice_id: string
+          invoice_item_id: string | null
+          kind: string
+          percent: number | null
+          reason: string
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          approval_request_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          invoice_id: string
+          invoice_item_id?: string | null
+          kind: string
+          percent?: number | null
+          reason: string
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          approval_request_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          invoice_id?: string
+          invoice_item_id?: string | null
+          kind?: string
+          percent?: number | null
+          reason?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           amount: number
@@ -4080,6 +4139,7 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      can_approve_adjustments: { Args: { _school_id: string }; Returns: boolean }
       can_enter_mark: {
         Args: { _student_id: string; _subject_id: string }
         Returns: boolean
@@ -4127,6 +4187,10 @@ export type Database = {
           _teachers?: number
         }
         Returns: Json
+      }
+      decide_invoice_adjustment: {
+        Args: { _adjustment_id: string; _approve: boolean; _notes: string }
+        Returns: undefined
       }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
@@ -4234,6 +4298,16 @@ export type Database = {
         }[]
       }
       refund_sms: { Args: { _queue_id: string }; Returns: number }
+      request_invoice_adjustment: {
+        Args: {
+          _amount: number | null
+          _invoice_id: string
+          _kind: string
+          _percent: number | null
+          _reason: string
+        }
+        Returns: string
+      }
       reserved_school_slugs: { Args: never; Returns: string[] }
       results_outstanding: {
         Args: { _period_id: string; _student_id: string }

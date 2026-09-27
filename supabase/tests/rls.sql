@@ -1644,4 +1644,152 @@ BEGIN
     'a refunded send is still in the usage log');
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- Waivers and discounts change the bill, and need a second person
+-- ---------------------------------------------------------------------------
+-- Kemi is billed 50,000 on one line. The bursar asks for a 10,000 waiver; it
+-- changes nothing until someone else approves it, and then the invoice itself
+-- carries the credit, so every balance in the app follows.
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, amount_paid, status)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000e', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'INV-ADJ', 50000, 0, 'pending');
+INSERT INTO invoice_items (invoice_id, description, amount)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000e', 'First term tuition', 50000);
+
+-- A teacher cannot ask for one.
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 10000, NULL, 'Hardship');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher requested a waiver';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END $$;
+
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 10000, NULL, 'Hardship after flooding');
+  PERFORM set_config('test.adj', adj::text, false);
+
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 50000,
+    'a waiver changed the bill before anyone approved it');
+  PERFORM public.assert(
+    (SELECT type = 'fee_waiver' AND status = 'pending' AND amount = 10000 AND reference_type = 'invoice_adjustment'
+     FROM approval_requests WHERE reference_id = adj),
+    'requesting a waiver did not put it in the approvals queue');
+
+  -- The requester cannot approve their own request, by either road.
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Fine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: the bursar approved their own waiver';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE approval_requests SET status = 'approved', reviewed_by = auth.uid() WHERE reference_id = adj;
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a waiver was approved by editing the approvals table directly';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- The principal approves: the invoice gains a credit line and a smaller total.
+DO $$
+DECLARE adj uuid := current_setting('test.adj')::uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.decide_invoice_adjustment(adj, true, 'Approved for this term');
+
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'an approved waiver did not reduce the invoice total');
+  PERFORM public.assert(
+    (SELECT count(*) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e' AND amount = -10000) = 1,
+    'an approved waiver did not appear on the invoice as a credit line');
+  PERFORM public.assert(
+    (SELECT sum(amount) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'the invoice lines no longer add up to its total');
+  PERFORM public.assert(
+    (SELECT status = 'approved' AND reviewed_by = 'd2000000-0000-0000-0000-000000000001'
+     FROM approval_requests WHERE reference_id = adj),
+    'the approvals queue does not show who approved the waiver');
+
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Again');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a waiver was applied twice';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+END $$;
+
+-- More than is owed is refused; a percentage is worked out on the gross fees.
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'discount', 45000, NULL, 'Too much');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a discount larger than the balance was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'discount', NULL, 10, 'Sibling discount');
+  PERFORM public.assert((SELECT amount FROM invoice_adjustments WHERE id = adj) = 5000,
+    'a 10% discount was not worked out as 10% of the 50,000 billed');
+
+  -- A pending request counts against what is left to waive.
+  BEGIN
+    PERFORM public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'waiver', 36000, NULL, 'Stacked');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: pending requests together could waive more than is owed';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  -- Rejected: nothing changes.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.decide_invoice_adjustment(adj, false, 'Not eligible');
+  PERFORM public.assert((SELECT total_amount FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e') = 40000,
+    'a rejected discount changed the invoice');
+  PERFORM public.assert((SELECT status FROM invoice_adjustments WHERE id = adj) = 'rejected',
+    'a rejected discount is not recorded as rejected');
+END $$;
+
+-- The bursar cannot approve even someone else's request: that is the principal's call.
+DO $$
+DECLARE adj uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  adj := public.request_invoice_adjustment('aaaaaaaa-0000-0000-0000-00000000000e', 'scholarship', 40000, NULL, 'Full scholarship');
+  -- The principal may approve, but not what they asked for themselves. The
+  -- bursar case above cannot show this: a bursar may not approve anything.
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Mine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an approver approved their own scholarship request';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('test.uid', 'e0000000-0000-0000-0000-00000000000b', true);
+  BEGIN
+    PERFORM public.decide_invoice_adjustment(adj, true, 'Fine');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a bursar approved a scholarship';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  -- Another senior approver clears the rest of the bill; the invoice is then settled.
+  PERFORM set_config('test.uid', 'dccccccc-0000-0000-0000-00000000000c', true);
+  PERFORM public.decide_invoice_adjustment(adj, true, 'Approved');
+  PERFORM public.assert(
+    (SELECT total_amount = 0 AND status = 'paid' FROM invoices WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000e'),
+    'a fully waived invoice is not marked paid');
+END $$;
+
+-- Families never see the request trail, only the credit on the invoice.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM invoice_adjustments) = 0,
+  'a parent can read the school''s waiver and discount requests');
+SELECT public.assert(
+  (SELECT count(*) FROM invoice_items WHERE invoice_id = 'aaaaaaaa-0000-0000-0000-00000000000e' AND amount < 0) = 2,
+  'a parent cannot see the credits on their child''s invoice');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;
