@@ -124,29 +124,6 @@ Deno.serve(async (req) => {
       : FREE_MONTHLY_ANALYSES;
 
 
-    const monthStart = new Date();
-    monthStart.setUTCDate(1);
-    monthStart.setUTCHours(0, 0, 0, 0);
-
-    const { count: usedThisMonth } = await admin
-      .from("ai_usage_events")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", org.id)
-      .eq("status", "succeeded")
-      .gte("created_at", monthStart.toISOString());
-
-    if ((usedThisMonth ?? 0) >= effectiveLimit) {
-      return json(
-        {
-          error: org.ai_addon_enabled
-            ? `Your organisation has used all ${effectiveLimit} AI analyses for this month.`
-            : `Your organisation has used all ${effectiveLimit} free AI analyses for this month. Buy the AI Analysis add-on for a larger monthly allowance.`,
-          code: org.ai_addon_enabled ? "limit_reached" : "free_limit_reached",
-        },
-        429
-      );
-    }
-
     // The school being analysed must belong to the caller's org. School-level
     // roles are further pinned to their own school.
     const schoolId: string | null = body.school_id ?? callerRole.school_id ?? null;
@@ -172,22 +149,46 @@ Deno.serve(async (req) => {
       return json({ error: "Too much data for one analysis. Narrow the class or term and try again." }, 413);
     }
 
+    // Reserve this analysis against the month's allowance before calling the
+    // model. Counting successes first and recording afterwards let parallel
+    // requests all pass the check; the reservation is counted under a lock.
+    const { data: reservation, error: reserveError } = await admin.rpc("reserve_ai_analysis", {
+      _org_id: org.id,
+      _limit: effectiveLimit,
+      _school_id: schoolId,
+      _user_id: user.id,
+      _analysis_type: analysisType,
+      _model: MODEL,
+    });
+    if (reserveError) throw reserveError;
+    const slot = (Array.isArray(reservation) ? reservation[0] : reservation) as
+      { event_id: string | null; used: number } | null;
+    if (!slot?.event_id) {
+      return json(
+        {
+          error: org.ai_addon_enabled
+            ? `Your organisation has used all ${effectiveLimit} AI analyses for this month.`
+            : `Your organisation has used all ${effectiveLimit} free AI analyses for this month. Buy the AI Analysis add-on for a larger monthly allowance.`,
+          code: org.ai_addon_enabled ? "limit_reached" : "free_limit_reached",
+        },
+        429
+      );
+    }
+    const eventId = slot.event_id;
+    const usedThisMonth = slot.used;
+
     const isReportCard = analysisType === "report_card_comments";
 
     const userPrompt = isReportCard
       ? `School: ${org.name}\n\nStudent results and attendance:\n${summary}`
       : `School: ${org.name}\nCurrency: ${org.currency || "NGN"}\nAnalysis requested: ${analysisType.replace(/_/g, " ")}\n\nData:\n${summary}`;
 
+    // A failure gives the reserved slot back.
     const logFailure = async (messageText: string) => {
-      await admin.from("ai_usage_events").insert({
-        org_id: org.id,
-        school_id: schoolId,
-        user_id: user.id,
-        analysis_type: analysisType,
-        model: MODEL,
-        status: "failed",
-        error_message: messageText.slice(0, 500),
-      });
+      await admin
+        .from("ai_usage_events")
+        .update({ status: "failed", error_message: messageText.slice(0, 500) })
+        .eq("id", eventId);
     };
 
     let response: Response;
@@ -244,16 +245,14 @@ Deno.serve(async (req) => {
       return json({ error: "The AI service returned an empty result. Please try again." }, 502);
     }
 
-    await admin.from("ai_usage_events").insert({
-      org_id: org.id,
-      school_id: schoolId,
-      user_id: user.id,
-      analysis_type: analysisType,
-      model: MODEL,
-      input_tokens: payload.usage?.input_tokens ?? 0,
-      output_tokens: payload.usage?.output_tokens ?? 0,
-      status: "succeeded",
-    });
+    await admin
+      .from("ai_usage_events")
+      .update({
+        input_tokens: payload.usage?.input_tokens ?? 0,
+        output_tokens: payload.usage?.output_tokens ?? 0,
+        status: "succeeded",
+      })
+      .eq("id", eventId);
 
     return json({
       result: text,

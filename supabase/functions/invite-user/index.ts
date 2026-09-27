@@ -264,6 +264,22 @@ Deno.serve(async (req) => {
 
       const target_school_id = body.school_id
         ?? (callerIsSchoolLevel ? callerSchoolId : guard.existing[0]?.school_id ?? null);
+      // A school named by the client must be the caller's to grant at: in their
+      // organisation, and their own school for a school-level caller. Without
+      // this a school_admin could make themselves principal of another school,
+      // or write a role row pointing at a school in another organisation.
+      if (body.school_id) {
+        if (callerIsSchoolLevel && body.school_id !== callerSchoolId) {
+          return jsonResponse({ error: "Cannot assign roles at other schools" }, 403);
+        }
+        if (callerRole.role !== "super_admin") {
+          const { data: targetSchool } = await adminClient
+            .from("schools").select("org_id").eq("id", body.school_id).maybeSingle();
+          if (!targetSchool || targetSchool.org_id !== callerRole.org_id) {
+            return jsonResponse({ error: "That school is not in your organisation" }, 403);
+          }
+        }
+      }
       const { error } = await adminClient.from("user_roles").insert({
         user_id,
         role: extraRole,
@@ -661,7 +677,11 @@ Deno.serve(async (req) => {
     // Auto-create staff record for staff roles
     if (STAFF_ROLES.includes(role) && school_id) {
       if (staff_id) {
-        await adminClient.from("staff").update({ user_id: userId }).eq("id", staff_id);
+        // Only a staff record at the school just validated above: staff_id comes
+        // from the client, and this runs with the service role, so without the
+        // school filter an admin could take over a staff record in another
+        // organisation by its id.
+        await adminClient.from("staff").update({ user_id: userId }).eq("id", staff_id).eq("school_id", school_id);
       } else {
         const nameParts = (full_name || email.split("@")[0]).split(" ");
         const firstName = nameParts[0] || "";

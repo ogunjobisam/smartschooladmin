@@ -107,6 +107,21 @@ Deno.serve(async (req) => {
       counts[table] = data?.length ?? 0;
     };
 
+    // Gathered before anything is deleted: the approvals and guardians that
+    // belong to this school are found through rows the steps below remove.
+    const idsOf = async (table: string) => {
+      const { data } = await admin.from(table).select("id").eq("school_id", school_id);
+      return (data ?? []).map((r: { id: string }) => r.id);
+    };
+    const schoolRecordIds = [...(await idsOf("invoices")), ...(await idsOf("payroll_runs"))];
+    const schoolStudentIds = await idsOf("students");
+    let schoolGuardianIds: string[] = [];
+    if (schoolStudentIds.length > 0) {
+      const { data: links } = await admin
+        .from("student_guardians").select("guardian_id").in("student_id", schoolStudentIds);
+      schoolGuardianIds = [...new Set((links ?? []).map((l: { guardian_id: string }) => l.guardian_id))];
+    }
+
     // 1. payment_allocations (via payments)
     await delVia("payment_allocations", "payment_id", "payments", { school_id });
 
@@ -127,7 +142,19 @@ Deno.serve(async (req) => {
     // whole organisation, which meant the one action that erases a school's
     // records also erased the record of who did it — and of every earlier role
     // change and retry. The wipe is logged below instead.
-    await del("approval_requests", { org_id });
+    //
+    // approval_requests and guardians belong to the organisation, not a
+    // school, and both used to be deleted for the whole organisation — so
+    // clearing one school of a group wiped every other school's guardians and
+    // pending approvals. Only this school's go now.
+    if (schoolRecordIds.length > 0) {
+      const { data, error } = await admin
+        .from("approval_requests").delete().eq("org_id", org_id).in("reference_id", schoolRecordIds).select("id");
+      if (error) console.error("Error deleting approval_requests:", error.message);
+      counts["approval_requests"] = data?.length ?? 0;
+    } else {
+      counts["approval_requests"] = 0;
+    }
 
     // 9-10. student child tables (via students)
     await delVia("student_guardians", "student_id", "students", { school_id });
@@ -136,8 +163,21 @@ Deno.serve(async (req) => {
     // 11. students
     await del("students", { school_id });
 
-    // 12. guardians (org-level)
-    await del("guardians", { org_id });
+    // 12. guardians: those of this school's pupils who have no child left at
+    // another school in the group.
+    counts["guardians"] = 0;
+    if (schoolGuardianIds.length > 0) {
+      const { data: stillLinked } = await admin
+        .from("student_guardians").select("guardian_id").in("guardian_id", schoolGuardianIds);
+      const keep = new Set((stillLinked ?? []).map((l: { guardian_id: string }) => l.guardian_id));
+      const orphaned = schoolGuardianIds.filter((id) => !keep.has(id));
+      if (orphaned.length > 0) {
+        const { data, error } = await admin
+          .from("guardians").delete().eq("org_id", org_id).in("id", orphaned).select("id");
+        if (error) console.error("Error deleting guardians:", error.message);
+        counts["guardians"] = data?.length ?? 0;
+      }
+    }
 
     // 13-15. staff child tables (via staff)
     await delVia("staff_bank_details", "staff_id", "staff", { school_id });

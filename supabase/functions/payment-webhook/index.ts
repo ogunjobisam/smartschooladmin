@@ -7,6 +7,7 @@
 // double-credits an invoice.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { timingSafeEqual } from "../_shared/abuse.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
       const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
       if (!secret) return json({ error: "Paystack not configured" }, 400);
       const expected = await hmacSha512(secret, raw);
-      if (expected !== paystackSignature) return json({ error: "Invalid signature" }, 401);
+      if (!timingSafeEqual(expected, paystackSignature)) return json({ error: "Invalid signature" }, 401);
       if (payload?.event !== "charge.success") return json({ ignored: true });
       const result = await finalisePayment(payload.data?.reference, "paystack");
       return json(result);
@@ -246,7 +247,7 @@ Deno.serve(async (req) => {
     // 2. Flutterwave webhook
     if (flutterwaveHash) {
       const expected = Deno.env.get("FLUTTERWAVE_WEBHOOK_HASH");
-      if (!expected || flutterwaveHash !== expected) return json({ error: "Invalid signature" }, 401);
+      if (!expected || !timingSafeEqual(flutterwaveHash, expected)) return json({ error: "Invalid signature" }, 401);
       const reference = payload?.data?.tx_ref || payload?.txRef;
       if (!reference) return json({ ignored: true });
       const result = await finalisePayment(reference, "flutterwave");
