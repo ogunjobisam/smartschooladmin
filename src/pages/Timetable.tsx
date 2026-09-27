@@ -111,8 +111,12 @@ export default function Timetable() {
   const { data: myClassIds = [] } = useQuery({
     queryKey: ["timetable-my-classes", myStaffId],
     queryFn: async () => {
-      const { data } = await supabase.from("class_teachers").select("class_id").eq("staff_id", myStaffId!);
-      return (data || []).map((r) => r.class_id as string);
+      // Holding the class, or teaching one subject in it, both count.
+      const [{ data: held }, { data: taught }] = await Promise.all([
+        supabase.from("class_teachers").select("class_id").eq("staff_id", myStaffId!),
+        supabase.from("subject_teachers").select("class_id").eq("staff_id", myStaffId!),
+      ]);
+      return [...new Set([...(held || []), ...(taught || [])].map((r) => r.class_id as string))];
     },
     enabled: !!myStaffId,
   });

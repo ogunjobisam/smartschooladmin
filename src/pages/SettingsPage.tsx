@@ -25,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { SCHOOL_SECTIONS, sectionLabel, sortBySection, type SchoolSection } from "@/lib/sections";
+import { SCHOOL_SECTIONS, composeClassName, sectionLabel, sortBySection, type SchoolSection } from "@/lib/sections";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,7 +103,10 @@ export default function SettingsPage() {
 
   // ── Classes ──
   const { data: classes, isLoading: classesLoading } = useQuery({
-    queryKey: ["classes", schoolId],
+    // Its own key. A dozen screens cache a narrower select (id, name) under
+    // ["classes", schoolId]; editing an arm from one of those would lose the
+    // level and relabel the class wrongly. Invalidating ["classes"] still hits it.
+    queryKey: ["classes", schoolId, "settings"],
     queryFn: async () => {
       if (!schoolId) return [];
       const { data } = await supabase.from("classes").select("*").eq("school_id", schoolId).order("level_order");
@@ -113,6 +116,7 @@ export default function SettingsPage() {
   });
 
   const [newClassName, setNewClassName] = useState("");
+  const [newClassArm, setNewClassArm] = useState("");
   const [newClassOrder, setNewClassOrder] = useState("");
   const [addingClass, setAddingClass] = useState(false);
 
@@ -244,12 +248,40 @@ export default function SettingsPage() {
   const handleAddClass = async () => {
     if (!schoolId || !newClassName.trim()) return;
     setAddingClass(true);
+    const level = newClassName.trim();
+    const arm = newClassArm.trim() || null;
     const { error } = await supabase.from("classes").insert({
-      school_id: schoolId, name: newClassName.trim(), level_order: parseInt(newClassOrder) || 0,
+      school_id: schoolId,
+      name: composeClassName(level, arm),
+      level_name: level,
+      arm,
+      level_order: parseInt(newClassOrder) || 0,
     });
     setAddingClass(false);
     if (error) toast.error("Failed to add class");
-    else { toast.success("Class added"); setNewClassName(""); setNewClassOrder(""); queryClient.invalidateQueries({ queryKey: ["classes"] }); }
+    else {
+      toast.success("Class added");
+      // Keep the level and order: the next arm of the same class is the usual next entry.
+      setNewClassArm("");
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+    }
+  };
+
+  // The class row is the arm, so changing the arm relabels the class too. The
+  // level stays put: that is what pupils are ranked across.
+  const handleSetClassArm = async (c: { id: string; name: string; level_name: string | null; arm: string | null }, value: string) => {
+    const arm = value.trim() || null;
+    if (arm === (c.arm ?? null)) return;
+    const level = c.level_name ?? c.name;
+    try {
+      await assertWrote(
+        supabase.from("classes").update({ arm, level_name: level, name: composeClassName(level, arm) }).eq("id", c.id).select("id"),
+        "update the arm",
+      );
+      queryClient.invalidateQueries({ queryKey: ["classes", schoolId] });
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Could not update the arm"));
+    }
   };
 
   const handleDeleteClass = async (id: string) => {
@@ -508,7 +540,10 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><GraduationCap className="h-4 w-4" /> Classes</CardTitle>
-              <CardDescription>Manage classes/grade levels for this school</CardDescription>
+              <CardDescription>
+                One row per arm. JSS1A and JSS1B share the class JSS1, which is what
+                pupils are ranked across; leave the arm blank for a class with only one.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {classesLoading ? (
@@ -520,6 +555,7 @@ export default function SettingsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="text-xs">Class Name</TableHead>
+                          <TableHead className="text-xs">Arm</TableHead>
                           <TableHead className="text-xs">Section</TableHead>
                           <TableHead className="text-xs">Order</TableHead>
                           <TableHead className="text-xs">Teachers</TableHead>
@@ -530,6 +566,21 @@ export default function SettingsPage() {
                         {classes.map((c) => (
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">{c.name}</TableCell>
+                            <TableCell>
+                              {canManage ? (
+                                <Input
+                                  key={`${c.id}-${c.arm ?? ""}`}
+                                  defaultValue={c.arm ?? ""}
+                                  placeholder="—"
+                                  aria-label={`Arm for ${c.name}`}
+                                  className="h-7 w-20 text-xs"
+                                  onBlur={(e) => handleSetClassArm(c, e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                                />
+                              ) : (
+                                <span className="text-sm text-muted-foreground">{c.arm || "—"}</span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {canManage ? (
                                 <Select
@@ -572,8 +623,12 @@ export default function SettingsPage() {
                       <Separator />
                       <div className="flex items-end gap-3">
                         <div className="flex-1 space-y-2">
-                          <Label>Class Name</Label>
-                          <Input placeholder="e.g. JSS 1" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} />
+                          <Label>Class</Label>
+                          <Input placeholder="e.g. JSS1" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} />
+                        </div>
+                        <div className="w-24 space-y-2">
+                          <Label>Arm</Label>
+                          <Input placeholder="e.g. A" value={newClassArm} onChange={(e) => setNewClassArm(e.target.value)} />
                         </div>
                         <div className="w-24 space-y-2">
                           <Label>Order</Label>
@@ -1232,9 +1287,124 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
                 {classSubjectIds.size} of {subjects.length} subjects assigned to this class
               </p>
             )}
+
+            {selectedClassId && (
+              <SubjectTeacherTable
+                classId={selectedClassId}
+                schoolId={schoolId}
+                // The mark sheet falls back to every subject when a class has none
+                // assigned, so the teacher list does the same.
+                subjects={classSubjectIds.size > 0 ? subjects.filter((s) => classSubjectIds.has(s.id)) : subjects}
+              />
+            )}
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+/**
+ * Who teaches each subject in one class. Once a subject has a teacher here, only
+ * that teacher can enter its marks for the class — row-level security enforces
+ * it, not this screen. A subject left on "Class teachers" stays open to everyone
+ * assigned to the class, which is how it worked before subjects had teachers.
+ */
+function SubjectTeacherTable({
+  classId, schoolId, subjects,
+}: {
+  classId: string;
+  schoolId: string | null;
+  subjects: { id: string; name: string; short_code: string | null }[];
+}) {
+  const queryClient = useQueryClient();
+  const [busySubject, setBusySubject] = useState<string | null>(null);
+
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["subject-teachers", classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("subject_teachers")
+        .select("id, subject_id, staff_id")
+        .eq("class_id", classId);
+      return data || [];
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["assignable-teachers", schoolId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("staff")
+        .select("id, first_name, last_name")
+        .eq("school_id", schoolId!)
+        .eq("employment_status", "active")
+        .order("last_name");
+      return data || [];
+    },
+    enabled: !!schoolId,
+  });
+
+  const teacherFor = new Map(assignments.map((a) => [a.subject_id, a.staff_id]));
+
+  const assign = async (subjectId: string, staffId: string | null) => {
+    setBusySubject(subjectId);
+    // One teacher per subject per class: clear whoever held it, then set the new one.
+    const { error: clearError } = await supabase
+      .from("subject_teachers")
+      .delete()
+      .eq("class_id", classId)
+      .eq("subject_id", subjectId);
+    const { error } = clearError || !staffId
+      ? { error: clearError }
+      : await supabase.from("subject_teachers").insert({ class_id: classId, subject_id: subjectId, staff_id: staffId });
+    setBusySubject(null);
+    if (error) toast.error(getErrorMessage(error, "Could not update the subject teacher"));
+    queryClient.invalidateQueries({ queryKey: ["subject-teachers", classId] });
+  };
+
+  if (subjects.length === 0) return null;
+
+  return (
+    <div className="space-y-2 pt-2">
+      <Separator />
+      <div className="pt-2">
+        <p className="text-sm font-medium">Subject teachers</p>
+        <p className="text-xs text-muted-foreground">
+          A subject teacher enters marks for their subject only. Subjects left on
+          "Class teachers" can be marked by anyone assigned to this class.
+        </p>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-xs">Subject</TableHead>
+            <TableHead className="text-xs">Teacher</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {subjects.map((s) => (
+            <TableRow key={s.id}>
+              <TableCell className="text-sm">{s.name}</TableCell>
+              <TableCell>
+                <Select
+                  value={teacherFor.get(s.id) ?? "class"}
+                  disabled={busySubject === s.id}
+                  onValueChange={(v) => assign(s.id, v === "class" ? null : v)}
+                >
+                  <SelectTrigger className="h-8 w-[220px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="class">Class teachers</SelectItem>
+                    {teachers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.last_name}, {t.first_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

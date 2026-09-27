@@ -50,14 +50,18 @@ export default function StaffPortal() {
   const { data: myClasses = [], isLoading: classesLoading } = useQuery({
     queryKey: ["my-classes", staffId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("class_teachers")
-        .select("class_id, classes(id, name, school_id)")
-        .eq("staff_id", staffId!);
-      if (error) throw error;
-      return (data || [])
-        .map((row) => row.classes)
-        .filter((c): c is { id: string; name: string; school_id: string } => !!c);
+      // Holding the class, or teaching one subject in it, both count.
+      const [held, taught] = await Promise.all([
+        supabase.from("class_teachers").select("class_id, classes(id, name, school_id)").eq("staff_id", staffId!),
+        supabase.from("subject_teachers").select("class_id, classes(id, name, school_id)").eq("staff_id", staffId!),
+      ]);
+      if (held.error) throw held.error;
+      if (taught.error) throw taught.error;
+      const byId = new Map<string, { id: string; name: string; school_id: string }>();
+      for (const row of [...(held.data || []), ...(taught.data || [])]) {
+        if (row.classes) byId.set(row.classes.id, row.classes);
+      }
+      return [...byId.values()];
     },
     enabled: !!staffId,
   });

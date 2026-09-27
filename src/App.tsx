@@ -61,6 +61,7 @@ const Attendance = lazy(() => import("./pages/Attendance"));
 const Exams = lazy(() => import("./pages/Exams"));
 const Performance = lazy(() => import("./pages/Performance"));
 const ExamDetail = lazy(() => import("./pages/ExamDetail"));
+const TermReport = lazy(() => import("./pages/TermReport"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const Events = lazy(() => import("./pages/Events"));
 const Transport = lazy(() => import("./pages/Transport"));
@@ -165,6 +166,7 @@ function AppRoutes() {
           <Route path="/attendance" element={withLayout(<Attendance />)} />
           <Route path="/exams" element={withLayout(<Exams />)} />
           <Route path="/performance" element={withLayout(<Performance />)} />
+          <Route path="/exams/term-report" element={withLayout(<TermReport />)} />
           <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
           <Route path="/announcements" element={withLayout(<Announcements />)} />
           <Route path="/events" element={withLayout(<Events />)} />

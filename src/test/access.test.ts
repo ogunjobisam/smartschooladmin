@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, canManageStudents, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
+import { canAccessPath, canManageStudents, canManageTermReports, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
 import { ROLES } from "@/lib/roles";
+import fs from "node:fs";
+import path from "node:path";
 
 describe("canAccessPath", () => {
   it("lets a proprietor everywhere in the app shell", () => {
@@ -170,6 +172,33 @@ describe("canManageStudents", () => {
     for (const role of ["teacher", "parent", "student", "finance_officer", "hr_admin", null]) {
       expect(canManageStudents(role), String(role)).toBe(false);
     }
+  });
+});
+
+describe("canManageTermReports", () => {
+  // The screen hides the principal's comment box and the release button from
+  // everyone else; is_academic_manager() in SQL is what actually refuses them.
+  // They must name the same roles, or the screen offers what RLS refuses.
+  it("names exactly the roles is_academic_manager() admits", () => {
+    const dir = path.resolve(__dirname, "../../supabase/migrations");
+    const definitions = fs.readdirSync(dir).sort()
+      .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+      .flatMap((sql) => sql.match(/FUNCTION public\.is_academic_manager[\s\S]*?\$\$;/g) ?? []);
+    expect(definitions.length).toBeGreaterThan(0);
+    const latest = definitions[definitions.length - 1];
+    const sqlRoles = [...latest.matchAll(/'([a-z_]+)'::app_role/g)].map((m) => m[1]);
+    // has_role() treats super_admin as holding every role but student.
+    const expected = new Set([...sqlRoles, "super_admin"]);
+
+    for (const { value } of ROLES) {
+      expect(canManageTermReports(value), value).toBe(expected.has(value));
+    }
+  });
+
+  it("leaves out the bursar, who manages the school but not its results", () => {
+    expect(canManageTermReports("bursar")).toBe(false);
+    expect(canManageTermReports("teacher")).toBe(false);
+    expect(canManageTermReports(null)).toBe(false);
   });
 });
 

@@ -539,4 +539,458 @@ SELECT public.assert((SELECT count(*) FROM exam_subjects) = 1,
   'nobody can see the exam_subjects fixture, so the support-staff assertion is vacuous');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- A subject teacher marks their own subject, and nobody else's
+-- ---------------------------------------------------------------------------
+-- Mark entry used to be scoped to the class: anyone in class_teachers could
+-- write every subject's score for every pupil in it. subject_teachers narrows
+-- that. Once a subject has a teacher in a class, only that teacher writes its
+-- marks there; a subject nobody has been given stays with the class's teachers,
+-- so a school that has not assigned anything yet keeps working as before.
+--
+-- Fresh users, because two of the teachers above are promoted or spread across
+-- schools later in this file, and either would measure the wrong thing.
+INSERT INTO subjects (id, school_id, name)
+  VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', '22222222-2222-2222-2222-222222222222', 'English');
+INSERT INTO student_scores (id, exam_id, student_id, subject_id, score)
+  VALUES ('88888888-8888-8888-8888-888888888889', '77777777-7777-7777-7777-777777777777',
+          '66666666-6666-6666-6666-666666666666', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 60);
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-777777777779', '22222222-2222-2222-2222-222222222222',
+          '44444444-4444-4444-4444-444444444444', 'End of term', 100);
+
+INSERT INTO auth.users (id, email) VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'maths.teacher@example.test'),
+  ('d1000000-0000-0000-0000-000000000002', 'form.teacher@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d1000000-0000-0000-0000-000000000002', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+INSERT INTO staff (id, school_id, user_id, first_name, last_name) VALUES
+  ('f1111111-0000-0000-0000-000000000006', '22222222-2222-2222-2222-222222222222',
+   'd1000000-0000-0000-0000-000000000001', 'Bola', 'Maths'),
+  ('f1111111-0000-0000-0000-000000000007', '22222222-2222-2222-2222-222222222222',
+   'd1000000-0000-0000-0000-000000000002', 'Funmi', 'Form');
+-- The form teacher holds the class; the maths teacher holds only Maths in it,
+-- with no class_teachers row, which is how a subject specialist is set up.
+INSERT INTO class_teachers (class_id, staff_id, is_form_teacher)
+  VALUES ('55555555-5555-5555-5555-555555555555', 'f1111111-0000-0000-0000-000000000007', true);
+INSERT INTO subject_teachers (class_id, subject_id, staff_id)
+  VALUES ('55555555-5555-5555-5555-555555555555', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'f1111111-0000-0000-0000-000000000006');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the maths teacher fixture is not teacher-only, so the narrowed clause is never reached');
+-- Teaching one subject in a class is teaching the class: they need the register.
+SELECT public.assert((SELECT count(*) FROM students) = 1,
+  'a subject teacher cannot see the pupils of a class they teach a subject in');
+SELECT public.assert((SELECT count(*) FROM classes WHERE id = '55555555-5555-5555-5555-555555555555') = 1,
+  'a subject teacher cannot see a class they teach a subject in');
+UPDATE student_scores SET score = 75 WHERE id = '88888888-8888-8888-8888-888888888888';
+UPDATE student_scores SET score = 99 WHERE id = '88888888-8888-8888-8888-888888888889';
+INSERT INTO student_scores (exam_id, student_id, subject_id, score)
+  VALUES ('77777777-7777-7777-7777-777777777779', '66666666-6666-6666-6666-666666666666',
+          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 81);
+SELECT public.assert(
+  public.markable_subjects('55555555-5555-5555-5555-555555555555',
+    ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[])
+  = ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb']::uuid[],
+  'markable_subjects does not give the maths teacher exactly Maths, so the screen and RLS disagree');
+COMMIT;
+
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 75,
+  'a subject teacher cannot correct a mark in their own subject');
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888889') = 60,
+  'a subject teacher changed a mark in a subject they do not teach');
+SELECT public.assert(
+  (SELECT count(*) FROM public.student_scores
+   WHERE exam_id = '77777777-7777-7777-7777-777777777779' AND score = 81) = 1,
+  'a subject teacher cannot enter a new mark in their own subject');
+
+-- A new mark in someone else's subject is refused outright, not filtered.
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO student_scores (exam_id, student_id, subject_id, score)
+      VALUES ('77777777-7777-7777-7777-777777777779', '66666666-6666-6666-6666-666666666666',
+              'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 12);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a subject teacher entered a new mark in a subject they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000002';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the form teacher fixture is not teacher-only, so the narrowed clause is never reached');
+-- Maths has its own teacher now, so the form teacher loses it...
+UPDATE student_scores SET score = 10 WHERE id = '88888888-8888-8888-8888-888888888888';
+-- ...but keeps English, which nobody has been given.
+UPDATE student_scores SET score = 64 WHERE id = '88888888-8888-8888-8888-888888888889';
+-- Compiling the report card needs every subject, so reading stays class-wide.
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = '66666666-6666-6666-6666-666666666666') = 3,
+  'a form teacher cannot read every subject''s marks for their own class');
+SELECT public.assert(
+  public.markable_subjects('55555555-5555-5555-5555-555555555555',
+    ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[])
+  = ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[],
+  'markable_subjects does not give the form teacher exactly the unassigned subject');
+-- A teacher must not be able to hand themselves a subject.
+UPDATE subject_teachers SET staff_id = 'f1111111-0000-0000-0000-000000000007';
+COMMIT;
+
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 75,
+  'a form teacher overwrote a mark in a subject that has its own teacher');
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888889') = 64,
+  'a form teacher lost a subject nobody has been assigned — schools without assignments would stop working');
+SELECT public.assert(
+  (SELECT staff_id FROM public.subject_teachers
+   WHERE class_id = '55555555-5555-5555-5555-555555555555') = 'f1111111-0000-0000-0000-000000000006',
+  'a teacher reassigned a subject to themselves');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO subject_teachers (class_id, subject_id, staff_id)
+      VALUES ('55555555-5555-5555-5555-555555555555', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd',
+              'f1111111-0000-0000-0000-000000000007');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher assigned themselves a subject';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- Someone above teacher still writes every subject: the narrowing is for
+-- teachers only. The admin-who-teaches from earlier holds a teacher row too.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dccccccc-0000-0000-0000-00000000000c';
+SELECT public.assert(NOT public.is_teacher_only(auth.uid()),
+  'the admin fixture is teacher-only, so this proves nothing');
+UPDATE student_scores SET score = 76 WHERE id = '88888888-8888-8888-8888-888888888888';
+COMMIT;
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 76,
+  'an administrator lost the ability to correct a subject teacher''s mark');
+
+-- ---------------------------------------------------------------------------
+-- Arms are a field, not part of the name
+-- ---------------------------------------------------------------------------
+-- Ranking by class across arms groups on level_name; ranking by arm groups on
+-- the class row. Anything that inserts a class without saying which is which —
+-- onboarding, the demo seeder, an old screen — gets both split from the name.
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('JSS1A')) = 'JSS1'
+                 AND (SELECT arm FROM public.split_class_arm('JSS1A')) = 'A',
+  'JSS1A did not split into JSS1 / A');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('Primary 4 b')) = 'Primary 4'
+                 AND (SELECT arm FROM public.split_class_arm('Primary 4 b')) = 'B',
+  'Primary 4 b did not split into Primary 4 / B');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('SS2-C')) = 'SS2'
+                 AND (SELECT arm FROM public.split_class_arm('SS2-C')) = 'C',
+  'SS2-C did not split into SS2 / C');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('Nursery 1')) = 'Nursery 1'
+                 AND (SELECT arm FROM public.split_class_arm('Nursery 1')) IS NULL,
+  'a class with no arm was given one');
+SELECT public.assert((SELECT arm FROM public.split_class_arm('JSS1 Annexe')) IS NULL,
+  'a word after the level was mistaken for an arm');
+
+INSERT INTO classes (id, school_id, name) VALUES
+  ('55555555-5555-5555-5555-555555555557', '22222222-2222-2222-2222-222222222222', 'JSS2B');
+INSERT INTO classes (id, school_id, name, level_name, arm) VALUES
+  ('55555555-5555-5555-5555-555555555558', '22222222-2222-2222-2222-222222222222', 'JSS2 Gold', 'JSS2', 'Gold');
+SELECT public.assert(
+  (SELECT level_name = 'JSS2' AND arm = 'B' FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555557'),
+  'a class inserted by name alone did not get its level and arm filled in');
+SELECT public.assert(
+  (SELECT level_name = 'JSS2' AND arm = 'Gold' FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555558'),
+  'an explicit level and arm were overwritten by the name split');
+SELECT public.assert(
+  (SELECT level_name FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555555') = 'JSS1',
+  'a class with no arm has no level, so it drops out of class-wide ranking');
+
+-- ---------------------------------------------------------------------------
+-- The term report: totals, positions, and who may see them
+-- ---------------------------------------------------------------------------
+-- JSS3 has two arms. In JSS3A the term is CA1 (20%) and an exam (80%), plus a
+-- mock that is not weighted and must be ignored. JSS3B has one exam worth 100%.
+--
+--   JSS3A  Maths                          English                 average
+--   Kemi   18/20 + 72/100 -> 75.6         10/20 + 50/100 -> 50    62.8
+--   Tunde  20/20 + 90/100 -> 92           (missed CA1) + 60 -> 48 70
+--   Zainab 18/20 + 72/100 -> 75.6         10/20 + 50/100 -> 50    62.8  (+ mock 100, ignored)
+--   JSS3B  Musa  65/100 -> 65                                     65
+--
+-- Tunde missing CA1 English still scores it out of 100: CA1 happened for the
+-- class, so an absent pupil gets nothing for it rather than a smaller total.
+INSERT INTO classes (id, school_id, name) VALUES
+  ('55555555-5555-5555-5555-555555555559', '22222222-2222-2222-2222-222222222222', 'JSS3A'),
+  ('55555555-5555-5555-5555-55555555555a', '22222222-2222-2222-2222-222222222222', 'JSS3B');
+INSERT INTO students (id, school_id, first_name, last_name) VALUES
+  ('a3000000-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'Kemi', 'Ade'),
+  ('a3000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Tunde', 'Bello'),
+  ('a3000000-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'Zainab', 'Cole'),
+  ('a3000000-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', 'Musa', 'Dada');
+INSERT INTO enrolments (student_id, class_id, academic_period_id) VALUES
+  ('a3000000-0000-0000-0000-000000000001', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444'),
+  ('a3000000-0000-0000-0000-000000000002', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444'),
+  ('a3000000-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444'),
+  ('a3000000-0000-0000-0000-000000000004', '55555555-5555-5555-5555-55555555555a', '44444444-4444-4444-4444-444444444444');
+INSERT INTO exams (id, school_id, class_id, academic_period_id, name, max_score, term_weight) VALUES
+  ('77777777-7777-7777-7777-77777777777a', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444', 'CA1', 20, 20),
+  ('77777777-7777-7777-7777-77777777777b', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444', 'Exam', 100, 80),
+  ('77777777-7777-7777-7777-77777777777c', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444', 'Mock', 100, NULL),
+  ('77777777-7777-7777-7777-77777777777d', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-55555555555a', '44444444-4444-4444-4444-444444444444', 'Exam', 100, 100);
+INSERT INTO student_scores (exam_id, student_id, subject_id, score) VALUES
+  ('77777777-7777-7777-7777-77777777777a', 'a3000000-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 18),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 72),
+  ('77777777-7777-7777-7777-77777777777a', 'a3000000-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 10),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 50),
+  ('77777777-7777-7777-7777-77777777777a', 'a3000000-0000-0000-0000-000000000002', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 20),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000002', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 90),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000002', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 60),
+  ('77777777-7777-7777-7777-77777777777a', 'a3000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 18),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 72),
+  ('77777777-7777-7777-7777-77777777777c', 'a3000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 100),
+  ('77777777-7777-7777-7777-77777777777a', 'a3000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 10),
+  ('77777777-7777-7777-7777-77777777777b', 'a3000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 50),
+  ('77777777-7777-7777-7777-77777777777d', 'a3000000-0000-0000-0000-000000000004', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 65);
+
+-- The people: a principal, JSS3A's form teacher, Kemi's parent, and Zainab.
+INSERT INTO auth.users (id, email) VALUES
+  ('d2000000-0000-0000-0000-000000000001', 'principal@example.test'),
+  ('d2000000-0000-0000-0000-000000000002', 'jss3a.form@example.test'),
+  ('d2000000-0000-0000-0000-000000000003', 'kemi.parent@example.test'),
+  ('d2000000-0000-0000-0000-000000000004', 'zainab@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('d2000000-0000-0000-0000-000000000001', 'principal', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d2000000-0000-0000-0000-000000000002', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d2000000-0000-0000-0000-000000000003', 'parent', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d2000000-0000-0000-0000-000000000004', 'student', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+INSERT INTO staff (id, school_id, user_id, first_name, last_name) VALUES
+  ('f1111111-0000-0000-0000-000000000008', '22222222-2222-2222-2222-222222222222',
+   'd2000000-0000-0000-0000-000000000002', 'Yemi', 'Form');
+INSERT INTO class_teachers (class_id, staff_id, is_form_teacher)
+  VALUES ('55555555-5555-5555-5555-555555555559', 'f1111111-0000-0000-0000-000000000008', true);
+INSERT INTO guardians (id, org_id, user_id, first_name, last_name) VALUES
+  ('99999999-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
+   'd2000000-0000-0000-0000-000000000003', 'Bisi', 'Ade');
+INSERT INTO student_guardians (student_id, guardian_id)
+  VALUES ('a3000000-0000-0000-0000-000000000001', '99999999-0000-0000-0000-000000000002');
+UPDATE students SET user_id = 'd2000000-0000-0000-0000-000000000004'
+  WHERE id = 'a3000000-0000-0000-0000-000000000003';
+
+-- Staff see the whole arm, with the arithmetic above.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 3,
+    'the principal does not see all three pupils of JSS3A');
+  PERFORM public.assert(jsonb_array_length(r->'components') = 2,
+    'the term report did not count exactly the two weighted exams — the unweighted mock leaked in, or one was dropped');
+  PERFORM public.assert((r->>'arm_size')::int = 3 AND (r->>'level_size')::int = 4,
+    'arm and class sizes are wrong: JSS3A has 3 pupils, JSS3 has 4');
+
+  -- Kemi
+  PERFORM public.assert(
+    (SELECT (s->>'average')::numeric FROM jsonb_array_elements(r->'students') s
+     WHERE s->>'student_id' = 'a3000000-0000-0000-0000-000000000001') = 62.8,
+    'Kemi''s term average is not 62.8');
+  PERFORM public.assert(
+    (SELECT (s->>'arm_position')::int = 2 AND (s->>'level_position')::int = 3
+     FROM jsonb_array_elements(r->'students') s
+     WHERE s->>'student_id' = 'a3000000-0000-0000-0000-000000000001'),
+    'Kemi should be 2nd in JSS3A (tied) and 3rd across JSS3');
+  -- Zainab ties Kemi exactly, so shares the place, and her mock does not count.
+  PERFORM public.assert(
+    (SELECT (s->>'arm_position')::int FROM jsonb_array_elements(r->'students') s
+     WHERE s->>'student_id' = 'a3000000-0000-0000-0000-000000000003') = 2,
+    'a pupil tied on average does not share the position — or the unweighted mock was counted');
+  -- Tunde
+  PERFORM public.assert(
+    (SELECT (s->>'arm_position')::int = 1 AND (s->>'level_position')::int = 1
+     FROM jsonb_array_elements(r->'students') s
+     WHERE s->>'student_id' = 'a3000000-0000-0000-0000-000000000002'),
+    'Tunde should top JSS3A and JSS3');
+  PERFORM public.assert(
+    (SELECT (x->>'total')::numeric = 48 AND (x->>'out_of')::numeric = 100
+     FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000002'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd'),
+    'a missed CA shrank the total it is marked out of, instead of scoring zero');
+  PERFORM public.assert(
+    (SELECT (x->>'position')::int = 2 AND round((x->>'class_average')::numeric, 2) = 81.07
+     FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+    'Kemi''s Maths position or the JSS3A Maths average is wrong');
+  PERFORM public.assert(
+    (SELECT (x->'scores'->>'77777777-7777-7777-7777-77777777777a')::numeric
+     FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' = 'a3000000-0000-0000-0000-000000000001'
+       AND x->>'subject_id' = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 18,
+    'the report does not carry each assessment''s own score for the CA columns');
+END $$;
+
+-- The form teacher sees their arm; a teacher who does not hold it sees nothing.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 3,
+    'the form teacher cannot see their own arm''s term report');
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  PERFORM public.assert(public.is_teacher_only(auth.uid()), 'fixture is not teacher-only');
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(coalesce(jsonb_array_length(r->'students'), 0) = 0,
+    'a teacher who does not hold JSS3A can read its term report');
+END $$;
+
+-- Families see nothing until the school releases the arm's report...
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(coalesce(jsonb_array_length(r->'students'), 0) = 0,
+    'a parent can read the term report before it is released');
+END $$;
+
+-- Comments and ratings, written before release so the gate below is tested.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000002';
+INSERT INTO term_report_comments (student_id, academic_period_id, kind, body) VALUES
+  ('a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'class_teacher', 'Kemi works steadily.'),
+  ('a3000000-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444', 'class_teacher', 'Tunde leads the class.');
+INSERT INTO term_report_ratings (student_id, academic_period_id, domain, trait, rating) VALUES
+  ('a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'affective', 'punctuality', 4);
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.term_report_comments) = 2,
+  'the form teacher could not write class teacher comments for their own pupils');
+SELECT public.assert((SELECT count(*) FROM public.term_report_ratings) = 1,
+  'the form teacher could not rate their own pupil');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO term_report_comments (student_id, academic_period_id, kind, body)
+      VALUES ('a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'principal', 'Promoted.');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher wrote the principal''s comment';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO term_report_comments (student_id, academic_period_id, kind, body)
+      VALUES ('a3000000-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444444', 'class_teacher', 'Not mine.');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a form teacher commented on a pupil in another arm';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO term_report_ratings (student_id, academic_period_id, domain, trait, rating)
+      VALUES ('a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'affective', 'neatness', 6);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a rating outside 1 to 5 was accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+INSERT INTO term_report_comments (student_id, academic_period_id, kind, body)
+  VALUES ('a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'principal', 'A good term.');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.term_report_comments WHERE kind = 'principal') = 1,
+  'the principal could not write the principal''s comment');
+
+-- Before release, a parent reads none of it.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 0,
+  'a parent can read report comments before the report is released');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 0,
+  'a parent can read report ratings before the report is released');
+COMMIT;
+
+-- Only a manager may release, not the form teacher.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000002';
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO term_report_releases (class_id, academic_period_id)
+      VALUES ('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher released a term report to parents';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END $$;
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000001';
+INSERT INTO term_report_releases (class_id, academic_period_id)
+  VALUES ('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.term_report_releases) = 1,
+  'the principal could not release the JSS3A term report');
+
+-- ...and after release, only their own child, with positions from the whole arm.
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1
+    AND r->'students'->0->>'student_id' = 'a3000000-0000-0000-0000-000000000001',
+    'a parent sees pupils other than their own child');
+  PERFORM public.assert((r->'students'->0->>'arm_position')::int = 2 AND (r->>'arm_size')::int = 3,
+    'a parent''s view lost the arm-wide position');
+  PERFORM public.assert(
+    (SELECT count(*) FROM jsonb_array_elements(r->'subjects') x
+     WHERE x->>'student_id' <> 'a3000000-0000-0000-0000-000000000001') = 0,
+    'a parent can read other pupils'' subject totals');
+
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000004', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1
+    AND r->'students'->0->>'student_id' = 'a3000000-0000-0000-0000-000000000003',
+    'a pupil does not see exactly their own released report');
+
+  -- JSS3B is not released, so Musa's family would see nothing yet; Kemi's
+  -- parent certainly sees nothing of it.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-55555555555a', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(coalesce(jsonb_array_length(r->'students'), 0) = 0,
+    'a parent can read another arm''s term report');
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
+  'after release a parent does not see exactly their child''s two comments');
+SELECT public.assert((SELECT count(*) FROM term_report_comments
+                      WHERE student_id <> 'a3000000-0000-0000-0000-000000000001') = 0,
+  'a parent can read comments about other pupils');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 1,
+  'after release a parent cannot see their child''s ratings');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;

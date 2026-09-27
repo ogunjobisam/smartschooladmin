@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
-import { canManageStudents } from "@/lib/access";
+import { canManageStudents, canManageTermReports } from "@/lib/access";
 import { notifySchoolAdmins } from "@/lib/school-updates";
 import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
@@ -250,6 +250,25 @@ export default function ExamDetail() {
     [classSubjectList, configMap]
   );
 
+  // Which of these subjects this user may write marks for. A teacher whose
+  // subject has its own teacher in this class gets it read-only; row-level
+  // security refuses the write either way, so the sheet just says so up front.
+  const subjectIds = useMemo(() => subjects.map((s) => s.id), [subjects]);
+  const { data: markable, isLoading: markableLoading } = useQuery({
+    queryKey: ["markable-subjects", exam?.class_id, subjectIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("markable_subjects", {
+        _class_id: exam!.class_id!,
+        _subject_ids: subjectIds,
+      });
+      if (error) throw error;
+      return new Set(data ?? []);
+    },
+    enabled: !!exam?.class_id && subjectIds.length > 0,
+  });
+  const canMark = (subjectId: string) => markable?.has(subjectId) ?? false;
+  const lockedSubjects = markableLoading ? [] : subjects.filter((s) => !canMark(s.id));
+
   const maxFor = (subjectId: string) => Number(configMap.get(subjectId)?.max_score ?? exam?.max_score ?? 100);
   const weightFor = (subjectId: string) => Number(configMap.get(subjectId)?.weight ?? 1);
   const gradeFor = (score: number | null, max: number) => gradeScoreFromRubric(score, max, rubric);
@@ -371,7 +390,17 @@ export default function ExamDetail() {
     if (!id || !user) return;
     setSaving(true);
 
-    const entries = Array.from(scores.values()).filter((s) => s.score !== "");
+    // Only what changed, and only in subjects this user may mark. Saving used to
+    // delete the whole exam's scores and re-insert them, which for a subject
+    // teacher would delete their own rows and then fail on everyone else's.
+    const original = new Map(
+      existingScores.map((s) => [`${s.student_id}-${s.subject_id}`, s.score != null ? String(s.score) : ""])
+    );
+    const changed = Array.from(scores.values()).filter(
+      (e) => canMark(e.subjectId) && e.score !== (original.get(`${e.studentId}-${e.subjectId}`) ?? "")
+    );
+    const entries = changed.filter((e) => e.score !== "");
+    const clearedIds = changed.filter((e) => e.score === "" && e.existingId).map((e) => e.existingId!);
 
     const records = entries.map((e) => ({
       exam_id: id,
@@ -384,21 +413,24 @@ export default function ExamDetail() {
       updated_at: new Date().toISOString(),
     }));
 
-    // Delete existing and re-insert (upsert pattern)
-    await supabase.from("student_scores").delete().eq("exam_id", id);
-    const { error } = await supabase.from("student_scores").insert(records);
+    const { error: upsertError } = records.length > 0
+      ? await supabase.from("student_scores").upsert(records, { onConflict: "exam_id,student_id,subject_id" })
+      : { error: null };
+    const { error } = upsertError || clearedIds.length === 0
+      ? { error: upsertError }
+      : await supabase.from("student_scores").delete().in("id", clearedIds);
 
     setSaving(false);
     if (error) toast.error("Failed to save scores: " + error.message);
     else {
-      toast.success(`Saved scores for ${entries.length} entries`);
+      toast.success(`Saved ${changed.length} ${changed.length === 1 ? "change" : "changes"}`);
       setDirty(false);
       if (orgId && schoolId) {
         notifySchoolAdmins({
           orgId,
           schoolId,
           area: "exam_results",
-          summary: `${entries.length} results were entered for ${exam?.name ?? "an exam"}.`,
+          summary: `${changed.length} results were entered for ${exam?.name ?? "an exam"}.`,
           link: `/exams/${id}`,
           entityType: "exam",
           entityId: id,
@@ -601,6 +633,13 @@ export default function ExamDetail() {
         </div>
       </PageHeader>
 
+      <TermWeightCard
+        examId={exam.id}
+        weight={exam.term_weight}
+        canEdit={canManageTermReports(userRole)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["exam", id] })}
+      />
+
       {id && (
         <ExamRubricEditor
           examId={id}
@@ -644,6 +683,13 @@ export default function ExamDetail() {
         </Card>
       ) : (
         <Card>
+          {lockedSubjects.length > 0 && (
+            <p className="border-b px-4 py-2 text-xs text-muted-foreground">
+              {lockedSubjects.length === subjects.length
+                ? "You are not assigned any subject in this class, so this sheet is read-only."
+                : `Read-only here: ${lockedSubjects.map((s) => s.short_code || s.name).join(", ")}. Their subject teachers enter those marks.`}
+            </p>
+          )}
           <CardContent className="overflow-x-auto p-0">
             <Table>
               <TableHeader>
@@ -682,6 +728,7 @@ export default function ExamDetail() {
                             className="h-8 w-full text-center text-sm"
                             value={getScore(student.id, sub.id)}
                             onChange={(e) => updateScore(student.id, sub.id, e.target.value)}
+                            disabled={!canMark(sub.id)}
                             placeholder="—"
                           />
                         </TableCell>
@@ -784,5 +831,71 @@ export default function ExamDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * How much of the term total this exam carries: CA1 20, CA2 20, the exam 60.
+ * Blank leaves it out of the term report, which is what every exam created
+ * before term reports existed does.
+ */
+function TermWeightCard({
+  examId, weight, canEdit, onSaved,
+}: {
+  examId: string;
+  weight: number | null;
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const [value, setValue] = useState(weight === null ? "" : String(weight));
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setValue(weight === null ? "" : String(weight)), [weight]);
+
+  const next = value.trim() === "" ? null : Number(value);
+  const invalid = next !== null && !(next > 0 && next <= 100);
+  const changed = next !== (weight === null ? null : Number(weight));
+
+  const save = async () => {
+    if (invalid || !changed) return;
+    setSaving(true);
+    const { error } = await supabase.from("exams").update({ term_weight: next }).eq("id", examId);
+    setSaving(false);
+    if (error) toast.error(getErrorMessage(error, "Could not save the term weight."));
+    else { toast.success(next === null ? "Left out of the term report" : `Counts for ${next}% of the term`); onSaved(); }
+  };
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center gap-3 py-3 text-sm">
+        <span className="font-medium">Term report</span>
+        {canEdit ? (
+          <>
+            <span className="text-muted-foreground">counts for</span>
+            <Input
+              type="number"
+              min="1"
+              max="100"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="—"
+              aria-label="Term report weight"
+              className="h-8 w-20"
+            />
+            <span className="text-muted-foreground">% of the term total</span>
+            {changed && (
+              <Button size="sm" variant="secondary" onClick={save} disabled={saving || invalid}>
+                {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Save
+              </Button>
+            )}
+            {invalid && <span className="text-xs text-destructive">Between 1 and 100, or blank.</span>}
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            {weight === null ? "Not part of the term report" : `Counts for ${weight}% of the term total`}
+          </span>
+        )}
+      </CardContent>
+    </Card>
   );
 }

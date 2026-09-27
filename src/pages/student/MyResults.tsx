@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, GraduationCap, Printer } from "lucide-react";
 
+import { ReleasedTermReports } from "@/components/exams/ReleasedTermReports";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Badge } from "@/components/ui/badge";
@@ -61,18 +62,19 @@ function groupByPeriod(scores: ScoreRow[]): PeriodGroup[] {
 export default function MyResults() {
   const { user } = useAuth();
 
-  const { data: studentId, isLoading: studentLoading } = useQuery({
+  const { data: me, isLoading: studentLoading } = useQuery({
     queryKey: ["my-results-student", user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from("students")
-        .select("id")
+        .select("id, first_name, last_name, student_id_number")
         .eq("user_id", user!.id)
         .maybeSingle();
-      return data?.id ?? null;
+      return data ?? null;
     },
     enabled: !!user?.id,
   });
+  const studentId = me?.id ?? null;
 
   const { scores, isLoading } = useStudentPerformanceData(studentId ?? undefined);
   const periods = useMemo(() => groupByPeriod(scores), [scores]);
@@ -102,6 +104,14 @@ export default function MyResults() {
           <Download className="h-3.5 w-3.5" /> Download transcript
         </Button>
       </PageHeader>
+
+      {me && (
+        <ReleasedTermReports
+          studentId={me.id}
+          studentName={`${me.first_name} ${me.last_name}`}
+          idNumber={me.student_id_number}
+        />
+      )}
 
       {periods.length === 0 ? (
         <EmptyState

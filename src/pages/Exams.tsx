@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   Plus, Pencil, BookOpen, Search, X, Download, Bookmark, Trash2, ArrowUp, ArrowDown,
-  ChevronLeft, ChevronRight, Loader2,
+  ChevronLeft, ChevronRight, Loader2, FileText,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -340,6 +340,9 @@ export default function Exams() {
           <Button variant="outline" size="sm" onClick={handleExportAll} disabled={total === 0 || exporting}>
             {exporting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
             Export all matches
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/exams/term-report")}>
+            <FileText className="mr-2 h-3.5 w-3.5" /> Term report
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 h-3.5 w-3.5" /> New Exam

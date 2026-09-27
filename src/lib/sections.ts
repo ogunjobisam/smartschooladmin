@@ -84,6 +84,19 @@ export function sortBySection<T extends { section?: SchoolSection | null; level_
 }
 
 /**
+ * The label for one arm of a class: "JSS1" + "A" is "JSS1A", "Primary 4" +
+ * "Gold" is "Primary 4 Gold". A single-letter arm sits straight after a number,
+ * which is how schools write it and what split_class_arm() in SQL reads back.
+ */
+export function composeClassName(level: string, arm?: string | null): string {
+  const base = level.trim();
+  const a = (arm ?? "").trim();
+  if (!a) return base;
+  const tight = /^[A-Za-z]$/.test(a) && /[0-9]$/.test(base);
+  return tight ? `${base}${a.toUpperCase()}` : `${base} ${a}`;
+}
+
+/**
  * Render a class name safely.
  *
  * Some schools were created by an older onboarding path that stored the whole

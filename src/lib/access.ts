@@ -246,5 +246,19 @@ export function canManageTemplates(role: string | null): boolean {
   return TEMPLATE_WRITERS.includes((role || "") as AppRole);
 }
 
+/**
+ * Roles that own a school's academic record: they write the principal's
+ * comment on a report card and release term reports to families. Mirrors
+ * is_academic_manager() in SQL, which is what actually enforces it — a bursar
+ * manages the school but not its results.
+ */
+const ACADEMIC_MANAGERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal",
+];
+
+export function canManageTermReports(role: string | null): boolean {
+  return ACADEMIC_MANAGERS.includes((role || "") as AppRole);
+}
+
 /** Exported for tests. */
 export const _internals = { NAV_KEY_BY_ROLE, URL_BY_KEY };

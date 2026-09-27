@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  SCHOOL_SECTIONS, classesForSections, sectionLabel, sectionRank, sortBySection,
+  SCHOOL_SECTIONS, classesForSections, composeClassName, sectionLabel, sectionRank, sortBySection,
 } from "@/lib/sections";
 
 describe("classesForSections", () => {
@@ -78,5 +78,25 @@ describe("sortBySection", () => {
 describe("sectionRank", () => {
   it("ranks in age order", () => {
     expect(sectionRank("toddler")).toBeLessThan(sectionRank("secondary"));
+  });
+});
+
+describe("composeClassName", () => {
+  it("writes a letter arm straight after the level number", () => {
+    expect(composeClassName("JSS1", "A")).toBe("JSS1A");
+    expect(composeClassName("Primary 4", "b")).toBe("Primary 4B");
+  });
+
+  it("spaces a word arm", () => {
+    expect(composeClassName("JSS2", "Gold")).toBe("JSS2 Gold");
+  });
+
+  it("is just the level when there is no arm", () => {
+    expect(composeClassName(" Nursery 1 ", null)).toBe("Nursery 1");
+    expect(composeClassName("JSS1", "  ")).toBe("JSS1");
+  });
+
+  it("spaces a letter arm when the level does not end in a number", () => {
+    expect(composeClassName("Reception", "A")).toBe("Reception A");
   });
 });

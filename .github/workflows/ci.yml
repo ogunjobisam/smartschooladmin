@@ -30,6 +30,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The prebuild hook generates the sitemap with `bunx tsx`, as Lovable's
+      # environment does. Without bun on the runner the build exits 127.
+      - uses: oven-sh/setup-bun@v2
+
       - run: npm ci
 
       # Run all four even when an earlier one fails, so a single push shows
