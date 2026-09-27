@@ -260,5 +260,20 @@ export function canManageTermReports(role: string | null): boolean {
   return ACADEMIC_MANAGERS.includes((role || "") as AppRole);
 }
 
+/**
+ * Roles that may release a pupil's withheld results for a term regardless of
+ * fees. Mirrors public.can_release_results(), which is what enforces it; a
+ * test fails if the two drift. super_admin is here because has_role() admits
+ * it to every staff role.
+ */
+export const RESULT_RELEASERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer",
+];
+
+/** Whether a role may offer "Release anyway" on withheld results. */
+export function canReleaseResults(role: string | null): boolean {
+  return RESULT_RELEASERS.includes((role || "") as AppRole);
+}
+
 /** Exported for tests. */
 export const _internals = { NAV_KEY_BY_ROLE, URL_BY_KEY };
