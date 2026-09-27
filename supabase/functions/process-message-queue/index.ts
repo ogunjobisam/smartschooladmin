@@ -3,6 +3,9 @@ import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js";
 import { classifyEmailFailure } from "../_shared/email-result.ts";
 import { fetchCallerRoles, primaryRole } from "../_shared/caller-roles.ts";
 import { formatSender, replyToAddress } from "../_shared/sender.ts";
+import {
+  chooseSmsProvider, deliverSms, validSenderId, type SmsDetail, type SmsLedger, type SmsProvider,
+} from "../_shared/sms.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,9 +52,11 @@ interface Sender {
 }
 
 /**
- * Four distinct outcomes, because they need different bookkeeping:
+ * Five distinct outcomes, because they need different bookkeeping:
  *
  *  - sent          delivered, done
+ *  - simulated     SMS through the sandbox: recorded, never delivered, no credit
+ *                  spent — its own status so nobody reads it as "parents got it"
  *  - retry         transient (rate limit, provider 5xx) — costs an attempt
  *  - failed        permanent (bad address, rejected sender) — give up now
  *  - unconfigured  no provider wired up yet — costs no attempt, or a school
@@ -59,10 +64,12 @@ interface Sender {
  *                  retries and mark the whole queue failed
  */
 type SendResult =
-  | { status: "sent" }
+  | { status: "sent"; sms?: SmsDetail }
+  | { status: "simulated"; sms: SmsDetail }
   | { status: "retry"; error: string }
   | { status: "failed"; error: string }
   | { status: "unconfigured"; error: string };
+
 
 /**
  * Resend's built-in sender, used when no verified one is configured.
@@ -271,55 +278,18 @@ async function sendEmail(
 }
 
 /**
- * SMS delivery.
- *
- * No provider is wired up yet, so SMS is queued but not delivered — deliberately
- * reported rather than silently dropped or marked sent. SMS is how most
- * Nigerian schools actually reach parents, so a queue quietly filling with
- * undelivered texts would be worse than a visible error.
- *
- * Metering: a credit is only deducted from the organisation's prepaid SMS
- * balance when a text is actually delivered. With no provider configured, no
- * credit is ever charged, so schools that buy bundles now are not spending
- * them on messages that never went out. When a provider is added, the success
- * path below calls `charge_sms`; if the balance is empty, the message is left
- * queued with a clear "no SMS credits" error rather than silently dropped.
+ * SMS delivery: deliverSms() in _shared/sms.ts reserves credits, sends through
+ * the provider and refunds on failure; it is tested there. This adapts its
+ * result to the queue's own outcomes.
  */
 async function sendSms(
   row: QueueRow,
-  admin: ReturnType<typeof createClient>,
+  admin: SmsLedger,
+  provider: SmsProvider | null,
+  providerMissing: string,
+  senderId: string,
 ): Promise<SendResult> {
-  const smsProviderKey =
-    Deno.env.get("SMS_PROVIDER") || Deno.env.get("TERMII_API_KEY") || Deno.env.get("AFRICASTALKING_API_KEY");
-  if (!smsProviderKey) {
-    return {
-      status: "unconfigured",
-      error: "No SMS provider configured. SMS messages stay queued until one is added.",
-    };
-  }
-
-  // A real provider exists — guard the org's prepaid balance before sending.
-  if (row.org_id) {
-    const { data: balance } = await admin
-      .from("sms_credit_balances")
-      .select("balance")
-      .eq("org_id", row.org_id)
-      .maybeSingle();
-    if (!balance || Number(balance.balance) <= 0) {
-      return {
-        status: "unconfigured",
-        error: "No SMS credits left. Buy a bundle from Billing to resume SMS delivery.",
-      };
-    }
-  }
-
-  // TODO: real provider HTTP call goes here. On a successful delivery:
-  //   await admin.rpc("charge_sms", { _org_id: row.org_id, _queue_id: row.id, _recipient: row.recipient });
-  // and return { status: "sent" }.
-  return {
-    status: "unconfigured",
-    error: "SMS provider recognised but not yet implemented for delivery.",
-  };
+  return await deliverSms(row, admin, provider, providerMissing, senderId);
 }
 
 Deno.serve(async (req) => {
@@ -454,7 +424,19 @@ Deno.serve(async (req) => {
 
 
 
+    // One decision per drain, not per message.
+    const smsChoice = chooseSmsProvider({
+      SMS_PROVIDER: Deno.env.get("SMS_PROVIDER"),
+      TERMII_API_KEY: Deno.env.get("TERMII_API_KEY"),
+      TERMII_BASE_URL: Deno.env.get("TERMII_BASE_URL"),
+      TERMII_CHANNEL: Deno.env.get("TERMII_CHANNEL"),
+    });
+    const smsProvider = smsChoice.provider;
+    const smsMissing = "reason" in smsChoice ? smsChoice.reason : "";
+    const smsSenderId = validSenderId(Deno.env.get("SMS_SENDER_ID"));
+
     let sent = 0;
+    let simulated = 0;
     let failed = 0;
     let deferred = 0;
 
@@ -471,15 +453,25 @@ Deno.serve(async (req) => {
       };
       const result = row.channel === "email"
         ? await sendEmail(row, sender, tokens.get(row.recipient.toLowerCase()) ?? null)
-        : await sendSms(row, admin);
+        : await sendSms(row, admin, smsProvider, smsMissing, smsSenderId);
       const now = new Date().toISOString();
 
-      if (result.status === "sent") {
+      if (result.status === "sent" || result.status === "simulated") {
         await admin
           .from("outbound_message_queue")
-          .update({ status: "sent", attempts: row.attempts + 1, processed_at: now, last_attempt_at: now, error_message: null })
+          .update({
+            status: result.status,
+            attempts: row.attempts + 1,
+            processed_at: now,
+            last_attempt_at: now,
+            error_message: null,
+            ...(result.sms
+              ? { provider: result.sms.provider, provider_message_id: result.sms.providerMessageId, sms_parts: result.sms.parts }
+              : {}),
+          })
           .eq("id", row.id);
-        sent++;
+        if (result.status === "sent") sent++;
+        else simulated++;
         continue;
       }
 
@@ -516,8 +508,12 @@ Deno.serve(async (req) => {
       success: true,
       considered: pending.length,
       sent,
+      simulated,
       failed,
       deferred,
+      // So the settings screen can say whether SMS is live, simulated or off.
+      sms_provider: smsProvider?.name ?? null,
+      sms_delivers: smsProvider?.delivers ?? false,
       email_configured: !!(Deno.env.get("LOVABLE_API_KEY") || Deno.env.get("RESEND_API_KEY")),
       // So the settings screen can say which sender is in use.
       sender: Deno.env.get("LOVABLE_API_KEY")

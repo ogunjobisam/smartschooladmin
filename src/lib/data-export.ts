@@ -87,6 +87,8 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       // 8-second statement timeout; one exam is pupils × subjects.
       { table: "student_scores", scope: via("exams", "exam_id", 1) },
       { table: "result_releases", scope: school },
+      { table: "result_holds", scope: school },
+      { table: "report_traits", scope: school },
       { table: "term_report_comments", scope: via("students", "student_id") },
       { table: "term_report_ratings", scope: via("students", "student_id") },
       { table: "term_report_releases", scope: via("classes", "class_id") },
@@ -114,6 +116,7 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "fee_schedules", scope: school },
       { table: "invoices", scope: school },
       { table: "invoice_items", scope: via("invoices", "invoice_id") },
+      { table: "invoice_adjustments", scope: via("invoices", "invoice_id") },
       { table: "payments", scope: school },
       { table: "payment_allocations", scope: via("payments", "payment_id") },
       { table: "payment_transactions", scope: school },

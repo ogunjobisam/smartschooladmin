@@ -6,7 +6,8 @@ import type { TermReport as TermReportData } from "@/lib/term-report";
 
 // The page against a fake backend: the report is the JSS3A fixture from
 // supabase/tests/rls.sql, so the numbers here are the ones the SQL produces.
-const report: TermReportData = {
+let report: TermReportData;
+const baseReport: TermReportData = {
   released: false,
   components: [
     { exam_id: "ca1", name: "CA1", term_weight: 20, max_score: 20 },
@@ -23,6 +24,9 @@ const report: TermReportData = {
     { student_id: "tunde", subject_id: "english", total: 48, out_of: 100, percent: 48, position: 3, class_average: 49.33, scores: { exam: 60 } },
     { student_id: "kemi", subject_id: "maths", total: 75.6, out_of: 100, percent: 75.6, position: 2, class_average: 81.07, scores: { ca1: 18, exam: 72 } },
   ],
+  comments: [{ student_id: "kemi", kind: "class_teacher", body: "Steady." }],
+  ratings: [],
+  traits: null,
 };
 
 const tables: Record<string, unknown[]> = {
@@ -34,8 +38,7 @@ const tables: Record<string, unknown[]> = {
     { students: { id: "zainab", first_name: "Zainab", last_name: "Cole", student_id_number: "KQ-3", status: "active" } },
   ],
   subjects: [{ id: "maths", name: "Mathematics", short_code: "MTH" }, { id: "english", name: "English", short_code: "ENG" }],
-  term_report_comments: [{ student_id: "kemi", kind: "class_teacher", body: "Steady." }],
-  term_report_ratings: [],
+  report_traits: [],
   attendance_records: [],
 };
 
@@ -70,7 +73,7 @@ const renderPage = () =>
     </QueryClientProvider>
   );
 
-beforeEach(() => { role = "principal"; });
+beforeEach(() => { role = "principal"; report = baseReport; });
 
 describe("Term report page", () => {
   it("shows each pupil's average and both positions, tied pupils sharing a place", async () => {
@@ -112,5 +115,30 @@ describe("Term report page", () => {
     await screen.findByText("Tunde Bello");
     expect(screen.getByRole("button", { name: /print all report cards/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /release to families/i })).not.toBeInTheDocument();
+  });
+
+  it("lists what has changed since release and offers to update it", async () => {
+    // Kemi's Maths was corrected after release: live says 83.6, families still see 75.6.
+    report = {
+      ...baseReport,
+      released: true,
+      released_at: "2026-09-27T12:00:00Z",
+      snapshot: baseReport,
+      subjects: baseReport.subjects.map((x) =>
+        x.student_id === "kemi" && x.subject_id === "maths" ? { ...x, percent: 83.6 } : x
+      ),
+    };
+    renderPage();
+    expect(await screen.findByText(/1 change since release/)).toBeInTheDocument();
+    expect(screen.getByText(/Mathematics: 75.6 → 83.6/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update release/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /release to families/i })).not.toBeInTheDocument();
+  });
+
+  it("says nothing about changes when the live report matches the release", async () => {
+    report = { ...baseReport, released: true, released_at: "2026-09-27T12:00:00Z", snapshot: baseReport };
+    renderPage();
+    await screen.findByText("Tunde Bello");
+    expect(screen.queryByText(/since release/)).not.toBeInTheDocument();
   });
 });

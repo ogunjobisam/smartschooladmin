@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { InvoiceAdjustments } from "@/components/finance/InvoiceAdjustments";
+import { canReleaseResults } from "@/lib/access";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +31,7 @@ import {
 export default function InvoiceDetail() {
   usePaymentReturn();
   const { id } = useParams<{ id: string }>();
-  const { schoolId, orgId, userRoles } = useAuth();
+  const { schoolId, orgId, userRoles, userRole } = useAuth();
   const { formatMoney, currency } = useCurrency();
   const queryClient = useQueryClient();
   const [payOpen, setPayOpen] = useState(false);
@@ -249,6 +251,15 @@ export default function InvoiceDetail() {
               <div className="flex justify-between text-sm font-bold"><span>Balance Due</span><span className={`font-mono tabular-nums ${balance > 0 ? 'text-destructive' : ''}`}>{formatMoney(balance)}</span></div>
             </div>
           </div>
+
+          {invoice.status !== "void" && invoice.status !== "draft" && (
+            <InvoiceAdjustments
+              invoiceId={invoice.id}
+              outstanding={Math.max(0, (invoice.total_amount || 0) - (invoice.amount_paid || 0))}
+              // The same roles request_invoice_adjustment() admits.
+              canRequest={canReleaseResults(userRole)}
+            />
+          )}
 
           <div className="rounded-lg border bg-card">
             <div className="border-b px-5 py-3">
