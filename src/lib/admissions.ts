@@ -147,7 +147,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   "status", "support", "smtp", "staging", "test",
   // top-level routes in src/App.tsx
   "achievements", "admissions", "announcements", "apply", "approvals",
-  "arrears", "attendance", "audit-log", "billing", "dashboard", "events",
+  "arrears", "attendance", "audit-log", "billing", "cbt", "dashboard", "events",
   "exams", "fees", "forgot-password", "group-overview", "guardians",
   "invoices", "login", "message-delivery", "my-pay",
   "notification-settings", "notification-templates", "notifications",
