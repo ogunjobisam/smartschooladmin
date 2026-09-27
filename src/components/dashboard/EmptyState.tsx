@@ -13,11 +13,14 @@ interface EmptyStateProps {
 export const EmptyState = React.forwardRef<HTMLDivElement, EmptyStateProps>(
   ({ icon: Icon = Inbox, title, description, actionLabel, onAction }, ref) => {
     return (
-      <div ref={ref} className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card py-16 text-center">
-        <div className="rounded-full bg-muted p-4">
-          <Icon className="h-8 w-8 text-muted-foreground" />
+      <div
+        ref={ref}
+        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gold/45 bg-gold-soft/25 py-14 text-center"
+      >
+        <div className="rounded-full bg-gold-soft p-4">
+          <Icon className="h-8 w-8 text-gold-ink" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold text-foreground">{title}</h3>
+        <h3 className="font-display mt-4 text-lg font-semibold text-primary">{title}</h3>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
         {actionLabel && onAction && (
           <Button onClick={onAction} className="mt-4" size="sm">{actionLabel}</Button>

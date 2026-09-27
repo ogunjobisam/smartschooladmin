@@ -105,8 +105,8 @@ export function AppSidebar() {
                       to={url}
                       end={url === "/"}
                       onClick={closeOnMobile}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-gradient-to-r from-sidebar-primary to-[hsl(44_58%_40%)] text-sidebar-primary-foreground font-semibold shadow-tile"
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span className="truncate">{item.title}</span>}
@@ -122,11 +122,11 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar collapsible="icon" className="royal-check border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <NavLink to={portalPath ?? "/dashboard"} onClick={closeOnMobile} className="flex min-w-0 items-center gap-2.5">
           {branding.logoUrl ? (
-            <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+            <Avatar className="h-9 w-9 shrink-0 rounded-lg ring-1 ring-sidebar-primary/60">
               <AvatarImage src={branding.logoUrl} alt={branding.name} />
               <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-xs">
                 {branding.name[0]}
@@ -139,7 +139,7 @@ export function AppSidebar() {
           )}
           {!collapsed && (
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-semibold text-sidebar-accent-foreground">{branding.name}</span>
+              <span className="font-display truncate text-sm font-semibold text-sidebar-accent-foreground">{branding.name}</span>
               <span className="truncate text-[11px] text-sidebar-muted capitalize">{branding.tagline || userRole?.replace("_", " ") || 'User'}</span>
             </div>
           )}

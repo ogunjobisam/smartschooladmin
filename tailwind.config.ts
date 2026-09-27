@@ -15,6 +15,13 @@ export default {
     },
     extend: {
       colors: {
+        // Gold is decorative (rules, edge bars, tiles). `gold.ink` is the
+        // darkened variant that is legible as text on the cream ground.
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          ink: "hsl(var(--gold-ink))",
+          soft: "hsl(var(--gold-soft))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -67,6 +74,17 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
           muted: "hsl(var(--sidebar-muted))",
         },
+      },
+      fontFamily: {
+        // One line to revisit if the ceremonial face ever changes. Body text
+        // deliberately stays on the sans in `body`.
+        display: ["Cinzel", "Georgia", "Times New Roman", "serif"],
+      },
+      boxShadow: {
+        // Cards sit on cream, not grey, so the shadow needs a warm cast and
+        // less spread than shadcn's default or it reads as dirt.
+        royal: "0 1px 2px hsl(var(--primary) / 0.04), 0 8px 24px -12px hsl(var(--primary) / 0.18)",
+        tile: "0 4px 12px -4px hsl(var(--primary) / 0.35)",
       },
       borderRadius: {
         lg: "var(--radius)",
