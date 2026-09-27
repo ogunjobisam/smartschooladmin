@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
   ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
-  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox, Award, Medal, CalendarRange
+  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox, Award, Medal, CalendarRange, Download
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -48,6 +48,7 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   "group-overview": BarChart3,
   reports: ClipboardList,
   "audit-log": Shield,
+  "data-export": Download,
   "billing": Receipt,
   "school-profile": Building2,
   settings: Settings,
