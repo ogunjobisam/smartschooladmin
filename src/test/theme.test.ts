@@ -257,10 +257,34 @@ describe("dark separates its surfaces at least as well as light", () => {
   }
 
   it("does not pretend the sidebar keeps its light-mode separation", () => {
-    // The one pairing deliberately exempt. In light the sidebar is a dark
-    // island on cream at ~16:1; in dark there is nowhere for it to go, and its
-    // edge is carried by --sidebar-border and the royal-check texture instead.
+    // The one pairing deliberately exempt. In light the sidebar is a dark island
+    // on cream at ~16:1; in dark there is nowhere for it to go, and it measures
+    // 1.14:1 against the page.
+    //
+    // That number is misleading, and rendering it is what showed why: contrast
+    // ratio compares two flat colours, and cannot see that one side of this edge
+    // is textured and the other is not. The `royal-check` diamonds make the
+    // sidebar read as *patterned* against a flat page, which the eye resolves far
+    // more readily than 1.14:1 of luminance. On screen the edge is unmistakable,
+    // and it terminates exactly where the diamonds stop.
+    //
+    // An earlier version of this comment credited --sidebar-border, which was
+    // wrong and pointed the next reader at the wrong token: AppSidebar is
+    // `className="royal-check border-r-0"`, explicitly removing the right border
+    // that ui/sidebar.tsx would otherwise add. --sidebar-border draws the
+    // horizontal rules under the header and above the footer, and nothing
+    // vertical at all.
     expect(contrastRatio(dark["--sidebar-background"], dark["--background"])).toBeLessThan(2);
+
+    // So this is the assertion that matters: the texture is the edge. Nothing
+    // covered it before — --royal-check appeared in this file only inside a
+    // comment — which meant setting it equal to --sidebar-background would erase
+    // the sidebar's boundary entirely with the whole suite still green.
+    expect(contrastRatio(dark["--royal-check"], dark["--sidebar-background"]))
+      .toBeGreaterThanOrEqual(1.15);
+
+    // The header and footer rules, which are real and visible — just not the
+    // vertical edge this test is named for.
     expect(contrastRatio(dark["--sidebar-border"], dark["--sidebar-background"]))
       .toBeGreaterThanOrEqual(1.5);
   });
