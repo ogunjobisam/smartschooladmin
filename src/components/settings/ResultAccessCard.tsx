@@ -25,7 +25,7 @@ export function ResultAccessCard({ schoolId, canManage }: ResultAccessCardProps)
     queryFn: async () => {
       const { data, error } = await supabase
         .from("schools")
-        .select("id, withhold_results_until_paid")
+        .select("id, withhold_results_until_paid, withhold_overdue_only")
         .eq("id", schoolId!)
         .single();
       if (error) throw error;
@@ -34,20 +34,30 @@ export function ResultAccessCard({ schoolId, canManage }: ResultAccessCardProps)
     enabled: !!schoolId,
   });
 
+  type Change = { withhold_results_until_paid: boolean } | { withhold_overdue_only: boolean };
+
   const save = useMutation({
-    mutationFn: async (withhold: boolean) => {
+    mutationFn: async (change: Change) => {
       // .select() so a write that row-level security quietly blocked shows up
       // as zero rows instead of a false "saved".
       const { data, error } = await supabase
         .from("schools")
-        .update({ withhold_results_until_paid: withhold })
+        .update(change)
         .eq("id", schoolId!)
         .select("id");
       if (error) throw error;
       if (!data?.length) throw new Error("You do not have permission to change this setting");
     },
-    onSuccess: (_, withhold) => {
-      toast.success(withhold ? "Results will be held until fees are paid" : "Results are visible to all families");
+    onSuccess: (_, change) => {
+      toast.success(
+        "withhold_overdue_only" in change
+          ? change.withhold_overdue_only
+            ? "Only overdue bills will hold back results"
+            : "Every unpaid bill will hold back results"
+          : change.withhold_results_until_paid
+            ? "Results will be held until fees are paid"
+            : "Results are visible to all families"
+      );
       queryClient.invalidateQueries({ queryKey: ["school-result-access"] });
       queryClient.invalidateQueries({ queryKey: ["withheld-results"] });
     },
@@ -80,9 +90,25 @@ export function ResultAccessCard({ schoolId, canManage }: ResultAccessCardProps)
           <Switch
             checked={school.withhold_results_until_paid}
             disabled={!canManage || save.isPending}
-            onCheckedChange={(checked) => save.mutate(checked)}
+            onCheckedChange={(checked) => save.mutate({ withhold_results_until_paid: checked })}
           />
         </div>
+        {school.withhold_results_until_paid && (
+          <div className="mt-3 flex items-start justify-between gap-4 rounded-lg border p-3">
+            <div>
+              <p className="text-sm font-medium">Only count bills that are overdue</p>
+              <p className="text-xs text-muted-foreground">
+                A bill does not hold back results until its due date has passed, so releasing reports
+                the week fees go out does not hide every child's. Bills with no due date always count.
+              </p>
+            </div>
+            <Switch
+              checked={school.withhold_overdue_only}
+              disabled={!canManage || save.isPending}
+              onCheckedChange={(checked) => save.mutate({ withhold_overdue_only: checked })}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

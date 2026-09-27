@@ -283,6 +283,20 @@ export function canReleaseResults(role: string | null): boolean {
 }
 
 /**
+ * Roles that may approve a waiver, discount or scholarship — the people who run
+ * the school, not the people who take its money. Mirrors
+ * can_approve_adjustments() in SQL, which enforces it along with the rule that
+ * nobody approves their own request.
+ */
+const ADJUSTMENT_APPROVERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal",
+];
+
+export function canApproveAdjustments(role: string | null): boolean {
+  return ADJUSTMENT_APPROVERS.includes((role || "") as AppRole);
+}
+
+/**
  * Roles that may write CBT questions and tests. Mirrors can_author_cbt() in SQL:
  * academic managers and teachers, an allowlist rather than the staff denylist,
  * because an answer key is no business of the bursar or the school office.

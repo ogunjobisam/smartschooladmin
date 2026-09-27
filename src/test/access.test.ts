@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, canAuthorCbt, CBT_AUTHORS, canManageStudents, canManageTermReports, canReleaseResults, RESULT_RELEASERS, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
+import { canAccessPath, canApproveAdjustments, canAuthorCbt, CBT_AUTHORS, canManageStudents, canManageTermReports, canReleaseResults, RESULT_RELEASERS, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
 import { ROLES } from "@/lib/roles";
 import fs from "node:fs";
 import path from "node:path";
@@ -199,6 +199,26 @@ describe("canManageTermReports", () => {
     expect(canManageTermReports("bursar")).toBe(false);
     expect(canManageTermReports("teacher")).toBe(false);
     expect(canManageTermReports(null)).toBe(false);
+  });
+});
+
+describe("canApproveAdjustments", () => {
+  it("names exactly the roles can_approve_adjustments() admits", () => {
+    const dir = path.resolve(__dirname, "../../supabase/migrations");
+    const definitions = fs.readdirSync(dir).sort()
+      .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+      .flatMap((sql) => sql.match(/FUNCTION public\.can_approve_adjustments[\s\S]*?\$\$;/g) ?? []);
+    expect(definitions.length).toBeGreaterThan(0);
+    const sqlRoles = [...definitions[definitions.length - 1].matchAll(/'([a-z_]+)'::app_role/g)].map((m) => m[1]);
+    const expected = new Set([...sqlRoles, "super_admin"]);
+    for (const { value } of ROLES) {
+      expect(canApproveAdjustments(value), value).toBe(expected.has(value));
+    }
+  });
+
+  it("leaves out the bursar, who asks for adjustments but does not grant them", () => {
+    expect(canApproveAdjustments("bursar")).toBe(false);
+    expect(canApproveAdjustments("finance_officer")).toBe(false);
   });
 });
 

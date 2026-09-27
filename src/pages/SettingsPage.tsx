@@ -15,6 +15,8 @@ import { NoticesCard } from "@/components/settings/NoticesCard";
 import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
 import { AppearanceCard } from "@/components/settings/AppearanceCard";
+import { ReportTraitsCard } from "@/components/settings/ReportTraitsCard";
+import { canManageTermReports } from "@/lib/access";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -405,6 +407,7 @@ export default function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
+          <TabsTrigger value="report-card">Report card</TabsTrigger>
           <TabsTrigger value="fees">Fee Categories</TabsTrigger>
           <TabsTrigger value="academic">Academic Years</TabsTrigger>
           <TabsTrigger value="admissions">Admissions</TabsTrigger>
@@ -646,6 +649,11 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ── Report card Tab ── */}
+        <TabsContent value="report-card" className="space-y-6 pt-4">
+          <ReportTraitsCard schoolId={schoolId} canManage={canManageTermReports(userRole)} />
         </TabsContent>
 
         {/* ── Subjects Tab ── */}
@@ -1655,6 +1663,9 @@ interface OutboxSenderState {
   email_configured: boolean;
   sender: string;
   sender_is_default: boolean;
+  /** "sandbox" when SMS is simulated, a provider name when live, null when off. */
+  sms_provider: string | null;
+  sms_delivers: boolean;
 }
 
 function MessageOutboxCard({ canManage }: { canManage: boolean }) {
@@ -1689,11 +1700,18 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
         email_configured: !!data.email_configured,
         sender: data.sender ?? "",
         sender_is_default: !!data.sender_is_default,
+        sms_provider: data.sms_provider ?? null,
+        sms_delivers: !!data.sms_delivers,
       });
 
+      if (data.simulated > 0) {
+        toast.warning(`${data.simulated} SMS simulated, not delivered`, {
+          description: "SMS is in sandbox mode: the texts were checked and priced but no parent received them.",
+        });
+      }
       if (data.sent > 0) toast.success(`Sent ${data.sent} message${data.sent === 1 ? "" : "s"}`);
       if (data.failed > 0) toast.error(`${data.failed} message${data.failed === 1 ? "" : "s"} could not be delivered`);
-      if (data.sent === 0 && data.failed === 0) {
+      if (data.sent === 0 && data.failed === 0 && !(data.simulated > 0)) {
         toast.info(
           !data.email_configured
             ? "No email provider is configured yet, so messages are still waiting."
@@ -1760,6 +1778,20 @@ function MessageOutboxCard({ canManage }: { canManage: boolean }) {
                 </div>
               ))}
             </div>
+
+            {senderState && (
+              <p
+                className={`rounded-lg border p-3 text-xs ${
+                  senderState.sms_delivers ? "bg-muted/40" : "border-warning/40 bg-warning/5"
+                }`}
+              >
+                {senderState.sms_provider === "sandbox"
+                  ? "SMS is in sandbox mode: texts are checked, priced and marked “simulated”, but none reach parents and no credits are spent."
+                  : senderState.sms_delivers
+                    ? `SMS is live through ${senderState.sms_provider}. Each text costs one credit per part.`
+                    : "SMS is not connected yet. Texts stay queued, with nothing lost, until a provider is added."}
+              </p>
+            )}
 
             {senderState && (
               <div
