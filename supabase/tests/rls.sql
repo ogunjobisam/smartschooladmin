@@ -2057,6 +2057,132 @@ SELECT public.assert((SELECT status FROM outbound_message_queue WHERE id = 'f300
   'a manager can no longer requeue a failed message');
 
 -- ---------------------------------------------------------------------------
+-- Teachers write only the exams of classes they teach; the office writes no
+-- grade bands (20260928000200)
+-- ---------------------------------------------------------------------------
+-- The maths teacher (d1000000…01) is teacher-only and teaches JSS1 (555…555).
+-- The plain teacher (deeeeeee…) is teacher-only at the same school and teaches
+-- nothing. Exam 777…777 is whole-school (no class). Each refusal below has a
+-- positive control showing someone can make that same change.
+INSERT INTO classes (id, school_id, name)
+  VALUES ('55555555-5555-5555-5555-5555555555e9', '22222222-2222-2222-2222-222222222222', 'JSS3 exam scope');
+INSERT INTO exams (id, school_id, academic_period_id, class_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-7777777777e1', '22222222-2222-2222-2222-222222222222',
+          '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'JSS1 quiz', 20);
+INSERT INTO exam_grade_bands (id, exam_id, label, min_percent)
+  VALUES ('e9000000-0000-0000-0000-0000000000b1', '77777777-7777-7777-7777-7777777777e1', 'A', 70);
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the unassigned teacher fixture is not teacher-only, so the narrowed clause is never reached');
+SELECT public.assert((SELECT count(*) FROM exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 1,
+  'the unassigned teacher cannot even see the JSS1 exam, so the write refusals below would be vacuous');
+-- Deletes are governed by USING alone, so a hole there shows up here.
+DELETE FROM exams WHERE id IN ('77777777-7777-7777-7777-7777777777e1', '77777777-7777-7777-7777-777777777777');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 1,
+  'a teacher deleted an exam for a class they do not teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 1,
+  'a teacher deleted a whole-school exam');
+-- An update is refused either silently (USING) or loudly (WITH CHECK); both count.
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE exams SET name = 'hijacked' WHERE id = '77777777-7777-7777-7777-7777777777e1';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    UPDATE exams SET max_score = 1 WHERE id = '77777777-7777-7777-7777-777777777777';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+SELECT public.assert((SELECT name FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 'JSS1 quiz',
+  'a teacher renamed an exam for a class they do not teach');
+SELECT public.assert((SELECT max_score FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 100,
+  'a teacher changed a whole-school exam');
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO exams (school_id, class_id, name)
+      VALUES ('22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', 'Sneaky');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher created an exam for a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- The class's own teacher: can write that exam, but not a whole-school one,
+-- and cannot move theirs into a class they do not teach.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the maths teacher fixture is not teacher-only, so the narrowed clause is never reached');
+UPDATE exams SET name = 'JSS1 quiz (edited)' WHERE id = '77777777-7777-7777-7777-7777777777e1';
+INSERT INTO exams (id, school_id, class_id, name)
+  VALUES ('77777777-7777-7777-7777-7777777777e2', '22222222-2222-2222-2222-222222222222',
+          '55555555-5555-5555-5555-555555555555', 'JSS1 quiz 2');
+DELETE FROM exams WHERE id = '77777777-7777-7777-7777-777777777777';
+COMMIT;
+SELECT public.assert((SELECT name FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 'JSS1 quiz (edited)',
+  'a teacher cannot edit an exam for a class they teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e2') = 1,
+  'a teacher cannot create an exam for a class they teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 1,
+  'a class teacher deleted a whole-school exam');
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE exams SET class_id = '55555555-5555-5555-5555-5555555555e9'
+      WHERE id = '77777777-7777-7777-7777-7777777777e2';
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher moved an exam into a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO exams (school_id, class_id, name)
+      VALUES ('22222222-2222-2222-2222-222222222222', NULL, 'Whole school by a teacher');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher created a whole-school exam';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- A principal still writes any exam in the school, whole-school included.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+UPDATE exams SET max_score = 90 WHERE id = '77777777-7777-7777-7777-777777777777';
+COMMIT;
+SELECT public.assert((SELECT max_score FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 90,
+  'a principal can no longer edit a whole-school exam');
+UPDATE exams SET max_score = 100 WHERE id = '77777777-7777-7777-7777-777777777777';
+
+-- Grade bands decide every pupil's grade: the office neither reads nor writes them.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 1,
+  'a principal cannot see the grade band fixture, so the support staff check below would be vacuous');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000a';
+SELECT public.assert(public.is_support_staff_only(auth.uid()),
+  'the support staff fixture is not support-staff-only, so the exclusion is never reached');
+SELECT public.assert((SELECT count(*) FROM exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 0,
+  'support staff can read exam grade bands');
+UPDATE exam_grade_bands SET min_percent = 1 WHERE id = 'e9000000-0000-0000-0000-0000000000b1';
+COMMIT;
+SELECT public.assert((SELECT min_percent FROM public.exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 70,
+  'support staff changed an exam''s grade bands');
+
+-- ---------------------------------------------------------------------------
 -- Computer-based testing (20260928000300)
 -- ---------------------------------------------------------------------------
 -- Fixture state reaching here: Ada (666…, user dbbbbbbb…) is enrolled in JSS1
