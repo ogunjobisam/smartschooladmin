@@ -1463,4 +1463,124 @@ BEGIN
     'the released report card does not carry the trait list as it was at release');
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- Only overdue fees withhold results; a manual hold withholds regardless
+-- ---------------------------------------------------------------------------
+-- Kemi is billed 30,000 for the term. With the school withholding results,
+-- a bill that is not yet due must not hide her marks — otherwise releasing
+-- reports the week fees go out would hide nearly every child's. Once it is
+-- past due, or if the school turns overdue-only off, it does.
+UPDATE schools SET withhold_results_until_paid = true WHERE id = '22222222-2222-2222-2222-222222222222';
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, amount_paid, status, due_date)
+  VALUES ('aaaaaaaa-0000-0000-0000-00000000000d', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+          'INV-KEMI-T1', 30000, 0, 'pending', current_date + 14);
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') > 0,
+  'a bill that is not yet due withheld the child''s results');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('a3000000-0000-0000-0000-000000000001')) = 0,
+  'a bill that is not yet due was reported as withholding results');
+COMMIT;
+
+-- The school chooses to count every bill, due or not.
+UPDATE schools SET withhold_overdue_only = false WHERE id = '22222222-2222-2222-2222-222222222222';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') = 0,
+  'with overdue-only off, an unpaid bill not yet due did not withhold results');
+COMMIT;
+UPDATE schools SET withhold_overdue_only = true WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- Past due: withheld, and the notice reports the overdue amount.
+UPDATE invoices SET due_date = current_date - 1 WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000d';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = 'a3000000-0000-0000-0000-000000000001') = 0,
+  'an overdue bill did not withhold results');
+SELECT public.assert((SELECT outstanding FROM public.withheld_results('a3000000-0000-0000-0000-000000000001')) = 30000,
+  'the notice does not report the overdue amount');
+COMMIT;
+UPDATE invoices SET amount_paid = 30000, status = 'paid' WHERE id = 'aaaaaaaa-0000-0000-0000-00000000000d';
+UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- A manual hold: Zainab owes nothing and the fee switch is off, yet the school
+-- holds her results for a reason of its own. The bursar may place it; a
+-- teacher may not; the family sees the school's message, never the reason.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) > 0,
+  'Zainab cannot see her marks before any hold, so the hold assertions prove nothing');
+COMMIT;
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO result_holds (school_id, student_id, reason)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003', 'Because');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher placed a hold on a pupil''s results';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000b';
+INSERT INTO result_holds (school_id, student_id, reason, family_message)
+  VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003',
+          'Library books not returned', 'Please see the principal.');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.result_holds) = 1, 'the bursar could not place a hold');
+
+-- A payment-plan release is about fees; it must not lift a hold.
+INSERT INTO result_releases (school_id, student_id, academic_period_id, reason)
+  VALUES ('22222222-2222-2222-2222-222222222222', 'a3000000-0000-0000-0000-000000000003',
+          '44444444-4444-4444-4444-444444444444', 'Payment plan');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) = 0,
+  'a pupil on a manual hold can still read their marks');
+SELECT public.assert((SELECT count(*) FROM result_holds) = 0,
+  'a pupil can read the holds table and its reasons');
+SELECT public.assert(
+  (SELECT held AND message = 'Please see the principal.' AND note IS NULL
+   FROM public.withheld_results('a3000000-0000-0000-0000-000000000003') LIMIT 1),
+  'the held pupil is not told the school''s message, or is told the internal reason');
+COMMIT;
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000004', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 0,
+    'a pupil on a manual hold still receives their term report');
+
+  -- Staff see the hold, reason included.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  PERFORM public.assert(
+    (SELECT held AND note = 'Library books not returned'
+     FROM public.withheld_results('a3000000-0000-0000-0000-000000000003') LIMIT 1),
+    'staff are not shown why a pupil''s results are held');
+END $$;
+
+-- Lifting it brings everything back.
+DELETE FROM result_holds WHERE student_id = 'a3000000-0000-0000-0000-000000000003';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000004';
+SELECT public.assert((SELECT count(*) FROM student_scores) > 0,
+  'lifting a hold did not give the pupil their marks back');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;
