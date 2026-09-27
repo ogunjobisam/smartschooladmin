@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, schoolThemeVars } from "@/lib/theme";
+import { useThemeMode } from "@/hooks/use-theme-mode";
 import { setDocumentSchoolProfile } from "@/lib/document-theme";
 
 interface SchoolBranding {
@@ -100,23 +101,25 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
   // belong to the school. A school that has chosen nothing gets the navy and
   // gold defaults, which are exactly the values already in :root.
   //
-  // These are light-mode values. Nothing in the app sets .dark today; when
-  // something does, this needs a dark branch, and inline styles would win over
-  // the .dark class until it has one — hence the guard.
+  // These are inline styles, so they beat the .dark class selector — which is
+  // why the mode has to be an input here rather than something the stylesheet
+  // is left to settle. React runs the cleanup and the new effect in one commit,
+  // and both modes produce the same set of keys (asserted in theme.test.ts), so
+  // a flip cannot strand a stale token or paint a frame half-lit.
   const primaryColor = preview?.primaryColor ?? branding.primaryColor;
   const accentColor = preview?.accentColor ?? branding.accentColor;
+  const { mode } = useThemeMode();
 
   useEffect(() => {
     const root = document.documentElement;
-    if (root.classList.contains("dark")) return;
-    const vars = schoolThemeVars(primaryColor, accentColor);
+    const vars = schoolThemeVars(primaryColor, accentColor, mode);
     for (const [token, value] of Object.entries(vars)) {
       root.style.setProperty(token, value);
     }
     return () => {
       for (const token of Object.keys(vars)) root.style.removeProperty(token);
     };
-  }, [primaryColor, accentColor]);
+  }, [primaryColor, accentColor, mode]);
 
   // Printed and emailed documents are generated outside React, so they read the
   // school's letterhead from this module-level publisher rather than from

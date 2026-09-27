@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { useThemeMode } from "@/hooks/use-theme-mode";
 import {
   BRAND_PRESETS,
   DEFAULT_ACCENT,
@@ -15,6 +16,7 @@ import {
   hexToHsl,
   isBrandColor,
   schoolThemeVars,
+  type ThemeMode,
 } from "@/lib/theme";
 
 interface BrandColorsCardProps {
@@ -35,6 +37,7 @@ interface BrandColorsCardProps {
  */
 export function BrandColorsCard({ onSave }: BrandColorsCardProps) {
   const { branding, loading, previewColors } = useSchoolBranding();
+  const { mode } = useThemeMode();
 
   const [primary, setPrimary] = useState(branding.primaryColor);
   const [accent, setAccent] = useState(branding.accentColor);
@@ -144,7 +147,7 @@ export function BrandColorsCard({ onSave }: BrandColorsCardProps) {
           />
         </div>
 
-        <ContrastNote primary={primary} accent={accent} valid={valid} />
+        <ContrastNote primary={primary} accent={accent} valid={valid} mode={mode} />
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleSave} disabled={saving || !valid || !dirty}>
@@ -218,14 +221,19 @@ function ContrastNote({
   primary,
   accent,
   valid,
+  mode,
 }: {
   primary: string;
   accent: string;
   valid: boolean;
+  mode: ThemeMode;
 }) {
   if (!valid) return null;
 
-  const vars = schoolThemeVars(primary, accent);
+  // The active mode, not the light one. This is the single component whose job
+  // is showing what you are about to get; showing the wrong mode's swatches
+  // would be worse than showing none.
+  const vars = schoolThemeVars(primary, accent, mode);
   const p = hexToHsl(primary);
   const a = hexToHsl(accent);
   const separation = contrastRatio(hsl(p.h, p.s, p.l), hsl(a.h, a.s, a.l));

@@ -20,8 +20,11 @@ export type Tone = "navy" | "gold" | "green" | "blue" | "rose" | "violet";
 export const TONE: Record<Tone, string> = {
   // Both of these pair the brand's two colours against each other, so both use
   // the gold that is measured against --primary rather than against cream.
-  navy: "bg-primary text-gold-on-primary",
-  gold: "bg-gold-on-primary text-primary",
+  // --tile, not --primary: the plaque has to stay a dark square in dark mode,
+  // where --primary inverts to a pale colour so that `text-primary` stays
+  // legible on a card.
+  navy: "bg-tile text-gold-on-primary",
+  gold: "bg-gold-on-primary text-tile",
   blue: "bg-chart-1 text-white",
   rose: "bg-chart-3 text-white",
   violet: "bg-chart-4 text-white",

@@ -8,19 +8,42 @@ import {
   DEFAULT_PRIMARY,
   hexToHsl,
   schoolThemeVars,
+  THEME_MODES,
+  type ThemeMode,
 } from "@/lib/theme";
 
-/** The `:root { … }` block of the stylesheet, as `{ "--token": "h s% l%" }`. */
-function rootTokens(): Record<string, string> {
+/** The `:root { … }` or `.dark { … }` block, as `{ "--token": "h s% l%" }`. */
+function blockTokens(mode: ThemeMode): Record<string, string> {
   const css = readFileSync(resolve(__dirname, "../index.css"), "utf8");
-  const block = css.match(/:root\s*\{([\s\S]*?)\n\s*\}/);
-  if (!block) throw new Error("no :root block in src/index.css");
+  const selector = mode === "dark" ? /\.dark\s*\{([\s\S]*?)\n\s*\}/ : /:root\s*\{([\s\S]*?)\n\s*\}/;
+  const block = css.match(selector);
+  if (!block) throw new Error(`no ${mode} block in src/index.css`);
   const out: Record<string, string> = {};
-  for (const [, name, value] of block[1].matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
+  // [a-z0-9-], not [a-z-]: the narrower class silently skipped --chart-1..5,
+  // so the whole chart ramp was invisible to this parser and to every check
+  // built on it.
+  for (const [, name, value] of block[1].matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) {
     out[name] = value.trim();
   }
   return out;
 }
+
+/**
+ * Stylesheet tokens the derivation deliberately does not produce: they carry
+ * meaning, or the product's own brand, rather than a school's.
+ */
+const UNBRANDED = new Set([
+  "--radius",
+  "--destructive", "--destructive-foreground", "--destructive-ink",
+  "--success", "--success-foreground", "--success-ink",
+  "--warning", "--warning-foreground", "--warning-ink",
+  "--tint-paid", "--tint-owing",
+  "--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5",
+  "--gold-foreground", "--brand-ice", "--brand-mint",
+  "--coral", "--coral-foreground",
+  "--teal", "--teal-foreground",
+  "--violet", "--violet-foreground",
+]);
 
 describe("hexToHsl", () => {
   it("reads a six-digit hex", () => {
@@ -41,17 +64,40 @@ describe("hexToHsl", () => {
 });
 
 describe("schoolThemeVars", () => {
-  it("reproduces the :root block from the two default brand colours", () => {
-    // The point of the whole exercise: the stylesheet's defaults and the
-    // derivation are the same thing, so a school that has not chosen colours
-    // renders byte-identically to the hard-coded palette. If this fails,
-    // either index.css or theme.ts moved without the other.
-    const root = rootTokens();
-    const derived = schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT);
-    for (const [token, value] of Object.entries(derived)) {
-      expect(root[token], `${token} missing from :root`).toBeDefined();
-      expect(value, `${token} drifted from :root`).toBe(root[token]);
-    }
+  for (const mode of THEME_MODES) {
+    const where = mode === "dark" ? ".dark" : ":root";
+
+    it(`reproduces the ${where} block from the two default brand colours`, () => {
+      // The point of the whole exercise: the stylesheet's defaults and the
+      // derivation are the same thing, so a school that has not chosen colours
+      // renders byte-identically to the hard-coded palette. If this fails,
+      // either index.css or theme.ts moved without the other.
+      const block = blockTokens(mode);
+      const derived = schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, mode);
+      for (const [token, value] of Object.entries(derived)) {
+        expect(block[token], `${token} missing from ${where}`).toBeDefined();
+        expect(value, `${token} drifted from ${where}`).toBe(block[token]);
+      }
+    });
+
+    it(`has nothing in ${where} the derivation does not account for`, () => {
+      // The reverse direction, which did not exist before — and is exactly how
+      // .dark drifted into setting --primary and --gold-on-primary to the same
+      // colour. Without it a hand-edit is invisible forever.
+      const derived = schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, mode);
+      const unaccounted = Object.keys(blockTokens(mode))
+        .filter((t) => !(t in derived) && !UNBRANDED.has(t));
+      expect(unaccounted, "add it to the derivation or to UNBRANDED").toEqual([]);
+    });
+  }
+
+  it("produces the same set of tokens in both modes", () => {
+    // The runtime writes these as inline styles and rewrites them on a mode
+    // flip. Identical key sets are what make "no stale token survives a flip"
+    // a fact rather than a hope.
+    const light = Object.keys(schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "light")).sort();
+    const dark = Object.keys(schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "dark")).sort();
+    expect(dark).toEqual(light);
   });
 
   it("leaves the status and ledger tokens alone", () => {
@@ -122,8 +168,6 @@ describe("schoolThemeVars", () => {
  * sidebar active item that failed AA.
  */
 describe("contrast holds across brands", () => {
-  const WHITE = "0 0% 100%";
-
   const BRANDS: [string, string, string][] = [
     ["navy & gold (the default)", DEFAULT_PRIMARY, DEFAULT_ACCENT],
     ["maroon & olive", "#5b1520", "#8a7a2f"],
@@ -140,28 +184,121 @@ describe("contrast holds across brands", () => {
     ),
   ];
 
-  // [what it is, ink token, ground token (null = a white card), minimum].
+  // [what it is, ink token, ground token, minimum]. The ground is "--card"
+  // rather than a literal white: in dark a card is not white, and measuring
+  // gold against #fff there would fail for entirely the wrong reason.
   // 3 is WCAG 1.4.11 for a boundary or an icon; 4.5 is AA for small text.
-  const PAIRS: [string, string, string | null, number][] = [
-    ["the gold glyph on a navy tile", "--gold-on-primary", "--primary", 3],
-    ["the navy glyph on a gold tile", "--primary", "--gold-on-primary", 3],
-    ["a gold rule on cream", "--gold", "--background", 3],
-    ["a gold rule on a white card", "--gold", null, 3],
+  const PAIRS: [string, string, string, number][] = [
+    ["the gold glyph on the icon plaque", "--gold-on-primary", "--tile", 3],
+    ["the plaque's own colour as a glyph on gold", "--tile", "--gold-on-primary", 3],
+    // The plaque must stay a DARK square in both modes, or the navy-tile-with-
+    // a-gold-emblem the design is built on stops reading as one thing.
+    ["the plaque against a card", "--tile", "--card", 1.5],
+    ["a gold rule on the page", "--gold", "--background", 3],
+    ["a gold rule on a card", "--gold", "--card", 3],
     ["the gold eyebrow on a panel band", "--gold-ink", "--panel-band", 4.5],
-    ["the gold eyebrow on a white card", "--gold-ink", null, 4.5],
-    ["body text on cream", "--foreground", "--background", 4.5],
-    ["pale text on navy", "--primary-foreground", "--primary", 4.5],
+    ["the gold eyebrow on a card", "--gold-ink", "--card", 4.5],
+    ["body text on the page", "--foreground", "--background", 4.5],
+    ["text on a card", "--card-foreground", "--card", 4.5],
+    ["the primary's own ink on it", "--primary-foreground", "--primary", 4.5],
+    // Only bites in dark, where --primary inverts from a fill into a pale
+    // colour that `text-primary` sets on a card — 30 call sites do that.
+    ["the primary as text on a card", "--primary", "--card", 4.5],
+    ["the focus ring on a card", "--ring", "--card", 3],
+    ["muted text on the muted ground", "--muted-foreground", "--muted", 4.5],
+    ["secondary ink on secondary", "--secondary-foreground", "--secondary", 4.5],
     ["sidebar text", "--sidebar-foreground", "--sidebar-background", 4.5],
     ["the sidebar's active item", "--sidebar-primary-foreground", "--sidebar-primary", 4.5],
+    // Text, at four call sites in AppSidebar, and nothing was checking it.
+    ["sidebar secondary text", "--sidebar-muted", "--sidebar-background", 4.5],
     ["ink on the accent", "--accent-foreground", "--accent", 4.5],
   ];
 
-  for (const [brand, primary, accent] of BRANDS) {
-    describe(brand, () => {
-      const vars = schoolThemeVars(primary, accent);
+  for (const mode of THEME_MODES) {
+    describe(mode, () => {
+      for (const [brand, primary, accent] of BRANDS) {
+        describe(brand, () => {
+          const vars = schoolThemeVars(primary, accent, mode);
+          for (const [what, ink, ground, min] of PAIRS) {
+            it(`${what} clears ${min}:1`, () => {
+              const ratio = contrastRatio(vars[ink], vars[ground]);
+              expect(Number(ratio.toFixed(2))).toBeGreaterThanOrEqual(min);
+            });
+          }
+        });
+      }
+    });
+  }
+});
+
+/**
+ * Some pairings are about being *perceptible* rather than about WCAG — a
+ * card's edge against the page, a border against a card. Rather than invent a
+ * threshold, hold dark to what light already achieves: if the light design
+ * reads, and dark separates at least as well, dark reads too.
+ */
+describe("dark separates its surfaces at least as well as light", () => {
+  const SEPARATIONS: [string, string, string][] = [
+    ["a card against the page", "--card", "--background"],
+    ["a border against a card", "--border", "--card"],
+    ["the sidebar's border against the sidebar", "--sidebar-border", "--sidebar-background"],
+    ["a gold wash against a card", "--gold-soft", "--card"],
+    ["the panel band against a card", "--panel-band", "--card"],
+  ];
+
+  const light = schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "light");
+  const dark = schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "dark");
+
+  for (const [what, a, b] of SEPARATIONS) {
+    it(what, () => {
+      expect(contrastRatio(dark[a], dark[b]))
+        .toBeGreaterThanOrEqual(contrastRatio(light[a], light[b]) * 0.95);
+    });
+  }
+
+  it("does not pretend the sidebar keeps its light-mode separation", () => {
+    // The one pairing deliberately exempt. In light the sidebar is a dark
+    // island on cream at ~16:1; in dark there is nowhere for it to go, and its
+    // edge is carried by --sidebar-border and the royal-check texture instead.
+    expect(contrastRatio(dark["--sidebar-background"], dark["--background"])).toBeLessThan(2);
+    expect(contrastRatio(dark["--sidebar-border"], dark["--sidebar-background"]))
+      .toBeGreaterThanOrEqual(1.5);
+  });
+});
+
+/**
+ * The tokens the derivation deliberately leaves alone — status colours and the
+ * ledger row tints — still have to be legible. They are constants, so they need
+ * no brand loop, and nothing was checking them at all: `text-warning` measured
+ * 2.48:1 on a card in light mode, which is every "pending" badge in the app.
+ */
+describe("the unbranded status tokens are legible in both modes", () => {
+  // [what it is, ink token, ground token, minimum]
+  const PAIRS: [string, string, string, number][] = [
+    ["overdue text on a card", "--destructive-ink", "--card", 4.5],
+    ["overdue text on an owing row", "--destructive-ink", "--tint-owing", 4.5],
+    ["overdue text on the page", "--destructive-ink", "--background", 4.5],
+    ["paid text on a card", "--success-ink", "--card", 4.5],
+    ["paid text on a paid row", "--success-ink", "--tint-paid", 4.5],
+    ["paid text on the page", "--success-ink", "--background", 4.5],
+    ["pending text on a card", "--warning-ink", "--card", 4.5],
+    ["pending text on the muted ground", "--warning-ink", "--muted", 4.5],
+    // The fills carry their own foreground, which is the other half of the job
+    // the single token used to be doing badly.
+    ["white on a destructive fill", "--destructive-foreground", "--destructive", 4.5],
+    ["ink on a warning fill", "--warning-foreground", "--warning", 4.5],
+    // The tints are a wash, not text: they only have to be visible as a wash.
+    ["an owing row against a card", "--tint-owing", "--card", 1.1],
+    ["a paid row against a card", "--tint-paid", "--card", 1.1],
+  ];
+
+  for (const mode of THEME_MODES) {
+    describe(mode, () => {
+      const vars = blockTokens(mode);
       for (const [what, ink, ground, min] of PAIRS) {
         it(`${what} clears ${min}:1`, () => {
-          const ratio = contrastRatio(vars[ink], ground ? vars[ground] : WHITE);
+          expect(vars[ink], `${ink} missing from the ${mode} block`).toBeDefined();
+          const ratio = contrastRatio(vars[ink], vars[ground]);
           expect(Number(ratio.toFixed(2))).toBeGreaterThanOrEqual(min);
         });
       }

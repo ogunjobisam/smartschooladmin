@@ -14,6 +14,17 @@ export default {
       },
     },
     extend: {
+      // text-* on these three resolves to the ink, bg-* and border-* to the
+      // fill. A status colour has to be both a filled badge carrying white text
+      // and ink legible on a pale card, and one value cannot do both — the same
+      // split --gold and --gold-ink already make. Doing it here rather than at
+      // 171 call sites means the readable value is what you get by default.
+      textColor: ({ theme }: { theme: (path: string) => Record<string, string> }) => ({
+        ...theme("colors"),
+        destructive: { ...theme("colors.destructive"), DEFAULT: "hsl(var(--destructive-ink))" },
+        success: { ...theme("colors.success"), DEFAULT: "hsl(var(--success-ink))" },
+        warning: { ...theme("colors.warning"), DEFAULT: "hsl(var(--warning-ink))" },
+      }),
       fontFamily: {
         // Inter leads because it is the face the app actually loads and the
         // one `body` sets; Plus Jakarta Sans stays in the stack so `font-sans`
@@ -37,6 +48,8 @@ export default {
         },
         // The validated accent ramp — chart series and coloured icon tiles draw
         // from the same five. Fixed order; see the note in src/index.css.
+        // The icon plaque. Dark in both modes — see tones.ts.
+        tile: "hsl(var(--tile))",
         chart: {
           1: "hsl(var(--chart-1))",
           2: "hsl(var(--chart-2))",
@@ -66,14 +79,17 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          ink: "hsl(var(--destructive-ink))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          ink: "hsl(var(--success-ink))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          ink: "hsl(var(--warning-ink))",
         },
         coral: {
           DEFAULT: "hsl(var(--coral))",
@@ -118,8 +134,10 @@ export default {
       boxShadow: {
         // Cards sit on cream, not grey, so the shadow needs a warm cast and
         // less spread than shadcn's default or it reads as dirt.
-        royal: "0 1px 2px hsl(var(--primary) / 0.04), 0 8px 24px -12px hsl(var(--primary) / 0.18)",
-        tile: "0 4px 12px -4px hsl(var(--primary) / 0.35)",
+        // --shadow-color, not --primary: --primary inverts to a pale colour in
+        // dark mode, which would turn every one of these into a halo.
+        royal: "0 1px 2px hsl(var(--shadow-color) / 0.04), 0 8px 24px -12px hsl(var(--shadow-color) / 0.18)",
+        tile: "0 4px 12px -4px hsl(var(--shadow-color) / 0.35)",
       },
       borderRadius: {
         brand: "14px",

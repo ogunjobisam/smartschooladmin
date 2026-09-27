@@ -7,6 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function TopBar() {
   const { schools, schoolId, setSchoolId, orgs, orgId, setOrgId } = useAuth();
@@ -31,7 +32,7 @@ export function TopBar() {
       ) : (
         <span
           aria-hidden
-          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-gold-on-primary ring-1 ring-gold/50"
+          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-tile text-sm font-bold text-gold-on-primary ring-1 ring-gold/50"
         >
           {(branding.name || "S").charAt(0)}
         </span>
@@ -92,6 +93,8 @@ export function TopBar() {
       >
         <Search className="h-4 w-4 text-gold-ink" />
       </Button>
+
+      <ThemeToggle />
 
       <NotificationBell />
     </header>

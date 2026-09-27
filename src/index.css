@@ -40,6 +40,16 @@
     --accent: 44 64% 45%;
     --accent-foreground: 226 60% 15%;
 
+    /* Status text needs its own value, for the same reason --gold does: one
+       colour cannot be both a fill carrying white text and ink readable on a
+       pale card. `text-warning` measured 2.48:1 on a card — every "pending"
+       badge in the app — and `text-success` 3.96. The fills below are
+       unchanged; Tailwind maps text-* to these and bg-* to the fills, so no
+       call site had to move. */
+    --destructive-ink: 0 68% 47%;
+    --success-ink: 152 58% 30%;
+    --warning-ink: 38 88% 30%;
+
     --destructive: 0 68% 47%;
     --destructive-foreground: 0 0% 100%;
 
@@ -51,9 +61,16 @@
 
     --border: 44 28% 85%;
     --input: 44 28% 85%;
-    --ring: 44 64% 45%;
+    /* The boundary gold, not the brighter accent: a focus ring is a UI
+       component and owes 3:1, which the accent managed only 2.81 of on a
+       white card (2.14 for an amber school). */
+    --ring: 44 64% 40%;
 
     --radius: 0.875rem;
+
+    /* What box-shadow is built from. Its own token because --primary inverts
+       in dark mode, and a pale primary would turn every shadow into a halo. */
+    --shadow-color: 226 63% 22%;
 
     /* ---- Royal extensions -------------------------------------------------
        Tokens the shadcn set has no equivalent for, carrying the parts of the
@@ -76,6 +93,7 @@
        primary leaves the two nearly equal in brightness and the icon invisible.
        This one is lifted until it measures 3:1 against --primary. For the navy
        default that needs no lifting, so it matches --gold exactly. */
+    --tile: 226 63% 22%;
     --gold-on-primary: 44 64% 40%;
     --gold-ink: 40 72% 32%;
     --gold-soft: 44 70% 88%;
@@ -147,68 +165,74 @@
     --sidebar-accent-foreground: 44 40% 92%;
     --sidebar-border: 226 45% 24%;
     --sidebar-ring: 44 64% 48%;
-    --sidebar-muted: 226 30% 34%;
+    /* Text — the group label, the role line, the user's email, four call
+       sites in AppSidebar. At 34% it measured 1.94:1 and had been failing AA
+       since the sidebar went navy. */
+    --sidebar-muted: 226 30% 60%;
   }
 
-  /* Dormant: nothing in the app sets .dark today. Kept in step with the light
-     palette so switching it on later is a decision, not an archaeology
-     exercise. */
+  /* Live: ThemeProvider sets .dark, and SchoolBrandingContext writes the
+     school's own derived values over these at runtime. */
   .dark {
-    --background: 226 45% 8%;
+    /* Derived, not hand-written: exactly
+       schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "dark"), which
+       src/test/theme.test.ts asserts — so this block cannot drift from the
+       derivation the way the hand-kept one did. It had --primary and
+       --gold-on-primary set to the same colour: 1.00:1, an invisible glyph
+       on every icon tile, and nothing caught it because nothing set .dark. */
+    --background: 226 45% 7%;
     --foreground: 44 25% 92%;
-
     --card: 226 42% 12%;
-    --card-foreground: 44 25% 92%;
-
     --popover: 226 42% 12%;
+    --card-foreground: 44 25% 92%;
     --popover-foreground: 44 25% 92%;
-
-    --primary: 44 64% 52%;
-    --primary-foreground: 226 60% 12%;
-
+    --primary: 226 63% 62%;
+    --primary-foreground: 226 60% 10%;
     --secondary: 226 35% 18%;
     --secondary-foreground: 44 25% 88%;
-
     --muted: 226 30% 18%;
-    --muted-foreground: 44 12% 62%;
-
+    --muted-foreground: 44 12% 64%;
     --accent: 44 64% 52%;
     --accent-foreground: 226 60% 12%;
+    --border: 226 30% 26%;
+    --input: 226 30% 26%;
+    --ring: 44 64% 46%;
+    --gold: 44 64% 46%;
+    --tile: 226 63% 32%;
+    --gold-on-primary: 44 64% 50%;
+    --gold-ink: 40 72% 60%;
+    --gold-soft: 44 50% 22%;
+    --royal-check: 226 55% 22%;
+    --panel-band: 226 40% 14%;
+    --sidebar-background: 226 60% 15%;
+    --sidebar-foreground: 44 20% 84%;
+    --sidebar-primary: 44 64% 52%;
+    --sidebar-primary-foreground: 226 60% 10%;
+    --sidebar-accent: 226 45% 21%;
+    --sidebar-accent-foreground: 44 25% 90%;
+    --sidebar-border: 226 40% 30%;
+    --sidebar-ring: 44 64% 52%;
+    --sidebar-muted: 44 12% 68%;
+    --shadow-color: 226 0% 0%;
 
+    /* Not derived: these carry meaning, or the product's own brand, rather
+       than a school's, so a school's colours must not repaint them. */
+    --destructive-ink: 0 62% 65%;
+    --success-ink: 152 50% 43%;
+    --warning-ink: 38 80% 50%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-
     --success: 152 50% 40%;
     --success-foreground: 0 0% 100%;
-
     --warning: 38 80% 50%;
     --warning-foreground: 38 92% 12%;
-
-    --border: 226 30% 22%;
-    --input: 226 30% 22%;
-    --ring: 44 64% 52%;
-
-    --gold: 44 64% 52%;
-    --gold-on-primary: 44 64% 52%;
-    --gold-ink: 44 70% 66%;
-    --gold-soft: 226 40% 22%;
-    --royal-check: 226 40% 16%;
-    --panel-band: 226 40% 14%;
     --tint-paid: 152 30% 14%;
     --tint-owing: 0 35% 16%;
-
-    /* Dark steps are *chosen*, not an automatic flip of the light ones: the
-       same five hues re-stepped and re-validated against the dark card, since
-       the lightness band and the contrast reference both move.
-
-         node scripts/validate_palette.js \
-           "#1069da,#b88a06,#c5293d,#9554d2,#069253" --mode dark --surface "#12182b" */
     --chart-1: 214 86% 46%;
     --chart-2: 44 94% 37%;
     --chart-3: 352 66% 47%;
     --chart-4: 271 58% 58%;
     --chart-5: 153 92% 30%;
-
     --gold-foreground: 226 60% 12%;
     --brand-ice: 176 40% 18%;
     --brand-mint: 171 60% 46%;
@@ -218,16 +242,6 @@
     --teal-foreground: 178 59% 8%;
     --violet: 270 55% 60%;
     --violet-foreground: 0 0% 100%;
-
-    --sidebar-background: 226 50% 7%;
-    --sidebar-foreground: 44 20% 78%;
-    --sidebar-primary: 44 64% 52%;
-    --sidebar-primary-foreground: 226 60% 10%;
-    --sidebar-accent: 226 38% 14%;
-    --sidebar-accent-foreground: 44 25% 90%;
-    --sidebar-border: 226 32% 16%;
-    --sidebar-ring: 44 64% 52%;
-    --sidebar-muted: 226 22% 26%;
   }
 }
 

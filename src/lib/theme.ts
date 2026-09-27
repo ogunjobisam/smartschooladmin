@@ -147,25 +147,52 @@ function liftUntil(bg: string, h: number, s: number, from: number, min: number):
   return hsl(h, Math.min(s, 30), 96);
 }
 
+/** The same hue, darkened step by step until it clears `min` against `bg`. */
+function darkenUntil(bg: string, h: number, s: number, from: number, min: number): string {
+  for (let l = Math.round(from); l >= 6; l -= 2) {
+    const candidate = hsl(h, s, l);
+    if (contrastRatio(candidate, bg) >= min) return candidate;
+  }
+  return hsl(h, Math.min(s, 30), 4);
+}
+
+export type ThemeMode = "light" | "dark";
+export const THEME_MODES: readonly ThemeMode[] = ["light", "dark"];
+
 /**
- * The tokens a school's colours drive, as `{ "--token": "h s% l%" }`.
- *
- * Pure, so it can be asserted against the stylesheet in a test instead of
- * being eyeballed in a browser.
+ * The two hue families a school's colours resolve to, before either mode
+ * decides what to do with them. Shared so light and dark cannot disagree about
+ * what the school's colours *are*, only about how to light them.
  */
-export function schoolThemeVars(primaryHex: string, accentHex: string): Record<string, string> {
+interface BrandFamily {
+  /** Cool: ink and chrome in light, the grounds in dark. */
+  coolH: number;
+  /** Warm: gold, pale grounds and borders in light, the ink in dark. */
+  warmH: number;
+  groundH: number;
+  warmS: number;
+  primary: Hsl;
+  accent: Hsl;
+}
+
+function brandFamily(primaryHex: string, accentHex: string): BrandFamily {
   const primary = hexToHsl(primaryHex, DEFAULT_PRIMARY);
   const accent = hexToHsl(accentHex, DEFAULT_ACCENT);
+  return {
+    coolH: primary.h,
+    warmH: accent.h,
+    // The pale grounds sit two degrees warm of the accent, which is what keeps
+    // cream reading as cream rather than as a tint of the gold.
+    groundH: (accent.h + 2) % 360,
+    // A grey accent would leave the gold rules and edge bars below the 3:1 that
+    // WCAG 1.4.11 asks of a UI boundary, and a fully saturated one would shout.
+    warmS: clamp(accent.s, 20, 90),
+    primary,
+    accent,
+  };
+}
 
-  const coolH = primary.h;
-  const warmH = accent.h;
-  // The pale grounds sit two degrees warm of the accent, which is what keeps
-  // cream reading as cream rather than as a tint of the gold.
-  const groundH = (warmH + 2) % 360;
-
-  // A grey accent would leave the gold rules and edge bars below the 3:1 that
-  // WCAG 1.4.11 asks of a UI boundary, and a fully saturated one would shout.
-  const warmS = clamp(accent.s, 20, 90);
+function lightTokens({ coolH, warmH, groundH, warmS, primary, accent }: BrandFamily): Record<string, string> {
   // `--primary` is a *background* for pale text, so its lightness is bounded
   // however light a colour the school chose.
   const coolL = clamp(primary.l, 8, 42);
@@ -176,19 +203,31 @@ export function schoolThemeVars(primaryHex: string, accentHex: string): Record<s
 
   const primaryToken = hsl(coolH, primary.s, coolL);
   const accentToken = hsl(warmH, accent.s, accent.l);
+  const goldToken = hsl(warmH, warmS, goldL);
+  const mutedGround = hsl(warmH, 30, 92);
 
   // The sidebar's active item is the accent bar carrying a dark label. A fixed
   // 48% lightness suited the gold and left a copper or a grey too close to its
   // own text, so the bar brightens until the label clears AA on it.
   const sidebarInk = hsl(coolH, 60, 13);
   const sidebarPrimary = liftUntil(sidebarInk, warmH, warmS, 48, 4.6);
+  const sidebarBg = hsl(coolH, clamp(primary.s + 3, 8, 90), 15);
+  // The sidebar's second line — the group label, the role, the user's email.
+  // It is text, at four call sites, and a flat 34% measured 1.91-2.26:1 on the
+  // sidebar for every brand. Lifted until it is actually readable.
+  const sidebarMuted = liftUntil(sidebarBg, coolH, 30, 34, 4.6);
 
-  // The glyph on a navy icon tile, and the fill of a gold one. That gold is
-  // pinned dark enough for the cream ground, which for a mid-dark primary
-  // leaves the two almost the same brightness — the tile's icon then vanishes.
-  // So this one is lifted until it measures 3:1 against the primary rather
-  // than being assumed to.
-  const goldOnPrimary = liftUntil(primaryToken, warmH, warmS, goldL, 3.2);
+  // The icon plaque — a dark square carrying a gold emblem. Its own token
+  // because --primary inverts to a PALE colour in dark mode for text reasons,
+  // and a plaque that inverts with it stops being a plaque. In light the two
+  // are the same value, so nothing moves.
+  const tile = primaryToken;
+
+  // The glyph on that plaque, and the fill of a gold one. The gold is pinned
+  // dark enough for the cream ground, which for a mid-dark primary leaves the
+  // two almost the same brightness and the icon vanishes — so it is lifted
+  // until it measures 3:1 against the plaque rather than being assumed to.
+  const goldOnPrimary = liftUntil(tile, warmH, warmS, goldL, 3.2);
 
   // Ink is chosen by measurement, not by a lightness threshold: whether navy
   // or cream reads better on a given accent depends on its hue as much as its
@@ -212,6 +251,11 @@ export function schoolThemeVars(primaryHex: string, accentHex: string): Record<s
     "--background": hsl(groundH, 56, 95),
     "--foreground": hsl(coolH, 55, 16),
 
+    // White here, but derived rather than literal so both modes produce the
+    // SAME set of keys — which is what lets the runtime overwrite every
+    // property on a mode flip with no stale value surviving.
+    "--card": "0 0% 100%",
+    "--popover": "0 0% 100%",
     "--card-foreground": hsl(coolH, 55, 16),
     "--popover-foreground": hsl(coolH, 55, 16),
 
@@ -221,17 +265,24 @@ export function schoolThemeVars(primaryHex: string, accentHex: string): Record<s
     "--secondary": hsl(warmH, 40, 91),
     "--secondary-foreground": hsl(coolH, 50, 20),
 
-    "--muted": hsl(warmH, 30, 92),
-    "--muted-foreground": hsl(coolH, 14, 42),
+    "--muted": mutedGround,
+    // Darkened until it clears AA on its own ground rather than assumed to: a
+    // flat 42% measured 3.95:1 for a copper or an amber accent, and
+    // `.status-void` puts exactly this pair together.
+    "--muted-foreground": darkenUntil(mutedGround, coolH, 14, 42, 4.6),
 
     "--accent": accentToken,
     "--accent-foreground": accentInk,
 
     "--border": hsl(warmH, 28, 85),
     "--input": hsl(warmH, 28, 85),
-    "--ring": accentToken,
+    // A focus ring is a UI component and owes 3:1, which the raw accent did not
+    // manage on white (2.81 for the default gold, 2.14 for an amber). The
+    // boundary gold already does, and is the same brand colour.
+    "--ring": goldToken,
 
-    "--gold": hsl(warmH, warmS, goldL),
+    "--gold": goldToken,
+    "--tile": tile,
     "--gold-on-primary": goldOnPrimary,
     "--gold-ink": hsl((warmH + 356) % 360, clamp(warmS + 8, 28, 80), 32),
     "--gold-soft": hsl(warmH, 70, 88),
@@ -239,7 +290,7 @@ export function schoolThemeVars(primaryHex: string, accentHex: string): Record<s
     "--royal-check": hsl(coolH, 55, 26),
     "--panel-band": hsl(groundH, 52, 96),
 
-    "--sidebar-background": hsl(coolH, clamp(primary.s + 3, 8, 90), 15),
+    "--sidebar-background": sidebarBg,
     "--sidebar-foreground": hsl(warmH, 25, 82),
     "--sidebar-primary": sidebarPrimary,
     "--sidebar-primary-foreground": sidebarInk,
@@ -247,6 +298,146 @@ export function schoolThemeVars(primaryHex: string, accentHex: string): Record<s
     "--sidebar-accent-foreground": hsl(warmH, 40, 92),
     "--sidebar-border": hsl(coolH, 45, 24),
     "--sidebar-ring": sidebarPrimary,
-    "--sidebar-muted": hsl(coolH, 30, 34),
+    "--sidebar-muted": sidebarMuted,
+
+    // Shadows come off this rather than off --primary, which inverts in dark:
+    // a pale primary would turn every card shadow into a halo.
+    "--shadow-color": hsl(coolH, primary.s, coolL),
   };
+}
+
+/**
+ * Dark mode, chosen rather than flipped.
+ *
+ * Both hue families cross over. In light, grounds are warm and pale and ink is
+ * cool and dark; in dark, grounds take the COOL hue and go near-black, and ink
+ * takes the WARM hue and goes pale. A dark ground built on the warm accent
+ * reads as brown mud rather than unlit paper, and a pale ink built on the cool
+ * hue reads as cold grey beside the gold. Keeping that warm/cool tension —
+ * inverted — is what makes this the same design at night rather than a
+ * greyscale of it.
+ *
+ * The one true inversion is `--primary`. In light it is a dark FILL carrying
+ * pale text. In dark it cannot be both that and legible as `text-primary` on a
+ * card: measured against the dark card, 62% lightness reads as text at 4.62
+ * but carries pale text at only 3.65, and there is no value where both hold.
+ * So it becomes the pale member of the pair and `--primary-foreground` becomes
+ * the dark ink — the conventional shadcn inversion, which keeps all ~78 call
+ * sites correct with no markup change.
+ *
+ * The hand-written block this replaces set `--primary` and `--gold-on-primary`
+ * to the same colour, so the two headline pairings measured 1.00:1. Nothing
+ * caught it because nothing ever set `.dark`.
+ */
+function darkTokens({ coolH, warmH, groundH, warmS, primary, accent }: BrandFamily): Record<string, string> {
+  // Saturation is clamped from the school's own, never a constant: a constant
+  // hands the school that picked black (s = 0) a dark red page.
+  const coolS = primary.s;
+  const page = hsl(coolH, clamp(coolS, 0, 45), 7);
+  const card = hsl(coolH, clamp(coolS, 0, 42), 12);
+  const panelBand = hsl(coolH, clamp(coolS, 0, 40), 14);
+  const mutedGround = hsl(coolH, clamp(coolS, 0, 30), 18);
+
+  // Pale enough to read as text on the card, with a ceiling as well as a floor:
+  // without the ceiling a white brand colour lands at l = 100, liftUntil never
+  // runs, and nothing can sit on the result.
+  const primaryToken = liftUntil(card, coolH, clamp(coolS, 25, 70), clamp(primary.l, 58, 70), 4.6);
+  const primaryInk = pickInk(
+    primaryToken, 4.5,
+    hsl(coolH, 60, 10), hsl(groundH, 60, 97), hsl(coolH, 0, 0), hsl(groundH, 0, 100),
+  );
+
+  // The gold clamps flip from ceiling to floor, because the grounds did. Gold
+  // is measured against the card — the lightest surface it draws a boundary on
+  // — the mirror of light mode, where white was the hard case.
+  const gold = liftUntil(card, warmH, warmS, Math.max(accent.l, 46), 3.2);
+  const goldInk = liftUntil(panelBand, (warmH + 356) % 360, clamp(warmS + 8, 28, 80), Math.max(accent.l, 60), 4.6);
+
+  // The plaque stays a dark square here even though --primary has gone pale,
+  // so the navy-tile-with-a-gold-emblem that the whole design is built on still
+  // reads as one. Lifted off the card so its edge is visible against it.
+  const tile = liftUntil(card, coolH, clamp(coolS, 25, 70), 26, 1.6);
+  const goldOnPrimary = liftUntil(tile, warmH, warmS, Math.max(accent.l, 50), 3.2);
+
+  const accentToken = hsl(warmH, accent.s, Math.max(accent.l, 52));
+  const accentInk = pickInk(
+    accentToken, 4.5,
+    hsl(coolH, 60, 12), hsl(groundH, 60, 97), hsl(coolH, 0, 0), hsl(groundH, 0, 100),
+  );
+
+  // The sidebar does not invert: it is already a dark island in light mode, at
+  // 15% against a 95% page. It holds that 15% here, which now makes it slightly
+  // LIGHTER than the 7% page — the separation carries on, just reversed.
+  const sidebarBg = hsl(coolH, clamp(coolS + 3, 8, 60), 15);
+  const sidebarInk = hsl(coolH, 60, 10);
+  const sidebarPrimary = liftUntil(sidebarInk, warmH, warmS, 52, 4.6);
+
+  return {
+    "--background": page,
+    "--foreground": hsl(warmH, 25, 92),
+
+    "--card": card,
+    "--popover": card,
+    "--card-foreground": hsl(warmH, 25, 92),
+    "--popover-foreground": hsl(warmH, 25, 92),
+
+    "--primary": primaryToken,
+    "--primary-foreground": primaryInk,
+
+    "--secondary": hsl(coolH, clamp(coolS, 0, 35), 18),
+    "--secondary-foreground": hsl(warmH, 25, 88),
+
+    "--muted": mutedGround,
+    "--muted-foreground": liftUntil(mutedGround, warmH, 12, 64, 4.6),
+
+    "--accent": accentToken,
+    "--accent-foreground": accentInk,
+
+    "--border": hsl(coolH, clamp(coolS, 0, 30), 26),
+    "--input": hsl(coolH, clamp(coolS, 0, 30), 26),
+    "--ring": gold,
+
+    "--gold": gold,
+    "--tile": tile,
+    "--gold-on-primary": goldOnPrimary,
+    "--gold-ink": goldInk,
+    // Warm, not the cool wash the hand-written block had: that measured 1.30:1
+    // against the card and was invisible behind an active preset tile.
+    "--gold-soft": liftUntil(card, warmH, clamp(warmS, 20, 50), 20, 1.8),
+
+    // Anchored to the sidebar, its only call site, rather than to the primary,
+    // which no longer sits behind it.
+    "--royal-check": hsl(coolH, clamp(coolS, 20, 55), 22),
+    "--panel-band": panelBand,
+
+    "--sidebar-background": sidebarBg,
+    "--sidebar-foreground": hsl(warmH, 20, 84),
+    "--sidebar-primary": sidebarPrimary,
+    "--sidebar-primary-foreground": sidebarInk,
+    "--sidebar-accent": hsl(coolH, clamp(coolS, 8, 45), 21),
+    "--sidebar-accent-foreground": hsl(warmH, 25, 90),
+    "--sidebar-border": hsl(coolH, clamp(coolS, 8, 40), 30),
+    "--sidebar-ring": sidebarPrimary,
+    // Text, at four call sites in AppSidebar, so it owes AA — which the
+    // hand-written 26% did not come close to.
+    "--sidebar-muted": liftUntil(sidebarBg, warmH, 12, 68, 4.6),
+
+    "--shadow-color": hsl(coolH, 0, 0),
+  };
+}
+
+/**
+ * The tokens a school's colours drive, as `{ "--token": "h s% l%" }`.
+ *
+ * Pure, so it can be asserted against the stylesheet in a test instead of being
+ * eyeballed in a browser — `src/test/theme.test.ts` checks both modes against
+ * `:root` and `.dark`, and measures every pairing the chrome relies on.
+ */
+export function schoolThemeVars(
+  primaryHex: string,
+  accentHex: string,
+  mode: ThemeMode = "light",
+): Record<string, string> {
+  const family = brandFamily(primaryHex, accentHex);
+  return mode === "dark" ? darkTokens(family) : lightTokens(family);
 }

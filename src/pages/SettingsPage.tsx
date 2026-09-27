@@ -13,6 +13,7 @@ import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsT
 import { NoticesCard } from "@/components/settings/NoticesCard";
 import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
+import { AppearanceCard } from "@/components/settings/AppearanceCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -451,6 +452,8 @@ export default function SettingsPage() {
               {/* No mock preview card: the app itself repaints as the colours
                   change, which is a truer preview than a swatch of a sidebar
                   header could ever be. */}
+              <AppearanceCard />
+
               <BrandColorsCard onSave={handleSaveColors} />
 
               <Card>

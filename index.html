@@ -8,6 +8,22 @@
     <meta name="author" content="SmartSchoolAdmin" />
     <meta name="theme-color" content="#0F766E" />
 
+    <!-- Set the mode before the bundle loads, or the first frame is light and
+         the app visibly flips. Reads the same "theme" key next-themes writes;
+         see THEME_STORAGE_KEY in src/hooks/use-theme-mode.ts. -->
+    <script>
+      try {
+        var stored = localStorage.getItem("theme");
+        var dark = stored === "dark" ||
+          ((!stored || stored === "system") &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
+      } catch (e) {
+        /* Private mode, or storage blocked: the light default is correct. */
+      }
+    </script>
+
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico" sizes="any" />
     <link rel="manifest" href="/manifest.webmanifest" />
