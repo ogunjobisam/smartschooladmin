@@ -248,14 +248,14 @@ describe("runExport", () => {
 });
 
 describe("who can export", () => {
-  it("lets owners and school admins in", () => {
-    for (const role of ["super_admin", "proprietor", "group_admin", "school_admin"]) {
+  it("lets owners, school admins, principals and bursars in", () => {
+    for (const role of ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar"]) {
       expect(canAccessPath(role, "/settings/data-export"), role).toBe(true);
     }
   });
 
   it("keeps everyone else out", () => {
-    for (const role of ["principal", "bursar", "finance_officer", "hr_admin", "support_staff", "teacher", "parent", "student"]) {
+    for (const role of ["finance_officer", "hr_admin", "support_staff", "teacher", "parent", "student"]) {
       expect(canAccessPath(role, "/settings/data-export"), role).toBe(false);
     }
   });
