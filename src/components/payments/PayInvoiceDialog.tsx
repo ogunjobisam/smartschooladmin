@@ -37,7 +37,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
   const outstanding = invoice.total_amount - invoice.amount_paid;
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [amount, setAmount] = useState(outstanding.toString());
-  const [gateway, setGateway] = useState("mock");
+  const [gateway, setGateway] = useState("");
   const [status, setStatus] = useState<"idle" | "processing" | "success">("idle");
 
   // Only gateways the school has switched on are offered.
@@ -55,10 +55,33 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
     enabled: !!orgId && open,
   });
 
+  // The simulated gateway marks the invoice paid and sends the family a
+  // receipt with no money moved, so it exists only inside demo sandboxes.
+  // Same query key as DemoBanner, so the answer is usually already cached.
+  const { data: demo } = useQuery({
+    queryKey: ["demo-org", orgId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organisation_groups")
+        .select("is_demo, demo_expires_at")
+        .eq("id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+  const gatewayOptions = [
+    ...(demo?.is_demo ? ["mock"] : []),
+    ...activeGateways.filter((g) => g === "paystack" || g === "flutterwave"),
+  ];
+  const selectedGateway = gatewayOptions.includes(gateway) ? gateway : gatewayOptions[0] ?? "";
+
   const payAmount = paymentType === "full" ? outstanding : Math.min(parseInt(amount) || 0, outstanding);
 
   const handlePay = async () => {
-    if (payAmount <= 0 || !user) return;
+    if (payAmount <= 0 || !user || !selectedGateway) return;
+    const gateway = selectedGateway;
     setStatus("processing");
 
     const reference = generatePaymentReference();
@@ -222,11 +245,19 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
 
             <div className="space-y-2">
               <Label>Payment Gateway</Label>
-              <RadioGroup value={gateway} onValueChange={setGateway}>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="mock" id="mock" />
-                  <Label htmlFor="mock" className="font-normal">Demo Payment (Simulated)</Label>
-                </div>
+              {gatewayOptions.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No online payment gateway is switched on for this school. Record the payment
+                  from Payments once the money has been received.
+                </p>
+              )}
+              <RadioGroup value={selectedGateway} onValueChange={setGateway}>
+                {gatewayOptions.includes("mock") && (
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="mock" id="mock" />
+                    <Label htmlFor="mock" className="font-normal">Demo Payment (Simulated)</Label>
+                  </div>
+                )}
                 {activeGateways.includes("paystack") && (
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="paystack" id="paystack" />
@@ -242,7 +273,7 @@ export function PayInvoiceDialog({ open, onOpenChange, invoice }: PayInvoiceDial
               </RadioGroup>
             </div>
 
-            <Button onClick={handlePay} disabled={status === "processing" || payAmount <= 0} className="w-full">
+            <Button onClick={handlePay} disabled={status === "processing" || payAmount <= 0 || !selectedGateway} className="w-full">
               {status === "processing" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {status === "processing" ? "Processing…" : `Pay ${formatMoney(payAmount)}`}
             </Button>
