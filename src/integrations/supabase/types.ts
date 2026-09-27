@@ -499,7 +499,7 @@ export type Database = {
           id: string
           new_values: Json | null
           old_values: Json | null
-          org_id: string
+          org_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -511,7 +511,7 @@ export type Database = {
           id?: string
           new_values?: Json | null
           old_values?: Json | null
-          org_id: string
+          org_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -523,7 +523,7 @@ export type Database = {
           id?: string
           new_values?: Json | null
           old_values?: Json | null
-          org_id?: string
+          org_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -3794,6 +3794,7 @@ export type Database = {
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
       is_school_manager: { Args: { _user_id: string }; Returns: boolean }
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
+      is_support_staff_only: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
       my_ai_entitlement: {
         Args: never
@@ -3907,6 +3908,7 @@ export type Database = {
         | "parent"
         | "school_admin"
         | "student"
+        | "support_staff"
       application_status:
         | "new"
         | "reviewing"
@@ -4101,6 +4103,7 @@ export const Constants = {
         "parent",
         "school_admin",
         "student",
+        "support_staff",
       ],
       application_status: [
         "new",
