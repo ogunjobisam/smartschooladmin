@@ -31,6 +31,8 @@ import { AchievementHighlights } from "@/components/achievements/AchievementHigh
 import { ChildAchievements } from "@/components/achievements/ChildAchievements";
 import { StatementDialog } from "@/components/finance/StatementDialog";
 import { ReleasedTermReports } from "@/components/exams/ReleasedTermReports";
+import { WithheldResultsNotice } from "@/components/students/WithheldResultsNotice";
+import { useWithheldResults } from "@/hooks/use-withheld-results";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -81,6 +83,10 @@ function ChildDocumentsAndTeachers({ studentId }: { studentId: string }) {
     },
   });
 
+  const { data: withheld = [] } = useWithheldResults(studentId);
+  // A report card for a withheld term would print with no marks on it.
+  const currentWithheld = !!currentPeriod && withheld.some((w) => w.academic_period_id === currentPeriod.id);
+
   const download = async (periodId?: string, periodName?: string) => {
     await printStudentTranscript(studentId, periodId ? { periodId, periodName } : undefined);
   };
@@ -91,7 +97,7 @@ function ChildDocumentsAndTeachers({ studentId }: { studentId: string }) {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => download()}>
           <FileText className="h-3.5 w-3.5" /> Transcript
         </Button>
-        {currentPeriod && (
+        {currentPeriod && !currentWithheld && (
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => download(currentPeriod.id, currentPeriod.name)}>
             <Printer className="h-3.5 w-3.5" /> Report card — {currentPeriod.name}
           </Button>
@@ -392,6 +398,7 @@ export default function ParentDashboard() {
                 <TabsContent key={child.id} value={child.id} className="mt-4 space-y-4">
                   {/* The register and the marks themselves, then the analysis
                       staff see for the same child. */}
+                  <WithheldResultsNotice studentId={child.id} audience="parent" />
                   <ReleasedTermReports
                     studentId={child.id!}
                     studentName={`${child.first_name} ${child.last_name}`}

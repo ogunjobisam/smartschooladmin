@@ -20,6 +20,12 @@
 --    A school can now keep its own; a school with none keeps the defaults.
 --    Ratings refer to a trait by key, so renaming a trait keeps its ratings.
 --
+-- It must run after 20260927190200_term_reports_respect_withheld_results:
+-- term_report() is replaced here, and the version below keeps that
+-- migration's rule — a family owing fees for the term, or an earlier one,
+-- gets nothing of their child's report unless the school has released that
+-- pupil's results for the term.
+--
 -- Safe to run twice: every policy is dropped before it is created, and every
 -- other statement is IF NOT EXISTS, CREATE OR REPLACE or DROP ... IF EXISTS.
 
@@ -245,8 +251,9 @@ UPDATE public.term_report_releases SET snapshot = NULL WHERE snapshot IS NULL;
 -- ---------------------------------------------------------------------------
 --   * staff (as for scores): the live report, plus the snapshot and when it was
 --     taken, so the page can show what has changed since release;
---   * a pupil or parent: their own child's part of the snapshot, and nothing at
---     all before release;
+--   * a pupil or parent: their own child's part of the snapshot — nothing before
+--     release, and nothing while results_withheld() holds the child's results
+--     back for unpaid fees (checked live, so paying brings them straight back);
 --   * anyone else: an empty report.
 CREATE OR REPLACE FUNCTION public.term_report(_class_id uuid, _period_id uuid)
 RETURNS jsonb
@@ -293,8 +300,9 @@ BEGIN
 
   SELECT array_agg((x->>'student_id')::uuid) INTO mine
   FROM jsonb_array_elements(release.snapshot->'students') x
-  WHERE (x->>'student_id')::uuid = public.my_student_id()
-     OR public.is_my_child((x->>'student_id')::uuid);
+  WHERE ((x->>'student_id')::uuid = public.my_student_id()
+          OR public.is_my_child((x->>'student_id')::uuid))
+    AND NOT public.results_withheld((x->>'student_id')::uuid, _period_id);
 
   IF mine IS NULL THEN
     RETURN empty;

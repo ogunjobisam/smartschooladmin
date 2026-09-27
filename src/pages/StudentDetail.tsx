@@ -5,12 +5,13 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { WithheldResultsNotice } from "@/components/students/WithheldResultsNotice";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoUpload } from "@/components/common/PhotoUpload";
 import { schoolPhotoPath } from "@/lib/photos";
-import { canManageStudents } from "@/lib/access";
+import { canManageStudents, canReleaseResults } from "@/lib/access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
 import { LetterDialog } from "@/components/letters/LetterDialog";
@@ -478,7 +479,13 @@ export default function StudentDetail() {
           />
         </TabsContent>
 
-        <TabsContent value="grades" className="mt-4">
+        <TabsContent value="grades" className="mt-4 space-y-4">
+          <WithheldResultsNotice
+            studentId={student.id}
+            audience="staff"
+            canRelease={canReleaseResults(userRole)}
+            schoolId={student.school_id}
+          />
           <div className="rounded-lg border bg-card">
             <Table>
               <TableHeader>

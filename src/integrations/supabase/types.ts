@@ -2488,6 +2488,58 @@ export type Database = {
           },
         ]
       }
+      result_releases: {
+        Row: {
+          academic_period_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          released_by: string | null
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          academic_period_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          released_by?: string | null
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          academic_period_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          released_by?: string | null
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_releases_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_releases_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_releases_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -2802,6 +2854,7 @@ export type Database = {
           admissions_open: boolean
           admissions_slug: string | null
           created_at: string
+          custom_domain: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -2811,6 +2864,7 @@ export type Database = {
           primary_color: string | null
           tagline: string | null
           updated_at: string
+          withhold_results_until_paid: boolean
         }
         Insert: {
           accent_color?: string | null
@@ -2819,6 +2873,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2828,6 +2883,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_results_until_paid?: boolean
         }
         Update: {
           accent_color?: string | null
@@ -2836,6 +2892,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2845,6 +2902,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_results_until_paid?: boolean
         }
         Relationships: [
           {
@@ -3964,6 +4022,7 @@ export type Database = {
         Args: { _class_id: string; _subject_id: string }
         Returns: boolean
       }
+      can_release_results: { Args: { _school_id: string }; Returns: boolean }
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       can_view_own_recognition_photo: {
         Args: { _name: string }
@@ -4034,6 +4093,10 @@ export type Database = {
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
       is_support_staff_only: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
+      markable_subjects: {
+        Args: { _class_id: string; _subject_ids: string[] }
+        Returns: string[]
+      }
       my_ai_entitlement: {
         Args: never
         Returns: {
@@ -4042,10 +4105,6 @@ export type Database = {
           monthly_limit: number
           used: number
         }[]
-      }
-      markable_subjects: {
-        Args: { _class_id: string; _subject_ids: string[] }
-        Returns: string[]
       }
       my_guardian_id: { Args: never; Returns: string }
       my_outbox_summary: {
@@ -4102,6 +4161,15 @@ export type Database = {
           school_id: string
         }[]
       }
+      reserved_school_slugs: { Args: never; Returns: string[] }
+      results_outstanding: {
+        Args: { _period_id: string; _student_id: string }
+        Returns: number
+      }
+      results_withheld: {
+        Args: { _period_id: string; _student_id: string }
+        Returns: boolean
+      }
       role_rank: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
@@ -4122,6 +4190,10 @@ export type Database = {
         }[]
       }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
+      score_withheld_from_family: {
+        Args: { _exam_id: string; _student_id: string }
+        Returns: boolean
+      }
       split_class_arm: {
         Args: { _name: string }
         Returns: {
@@ -4154,6 +4226,14 @@ export type Database = {
           full_name: string
           person_id: string
           subject_type: string
+        }[]
+      }
+      withheld_results: {
+        Args: { _student_id: string }
+        Returns: {
+          academic_period_id: string
+          outstanding: number
+          period_name: string
         }[]
       }
     }

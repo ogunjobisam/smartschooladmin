@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
+import { ResultAccessCard } from "@/components/settings/ResultAccessCard";
 import { NoticesCard } from "@/components/settings/NoticesCard";
 import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
@@ -667,6 +668,7 @@ export default function SettingsPage() {
 
         {/* ── Fee Categories Tab ── */}
         <TabsContent value="fees" className="space-y-6 pt-4">
+          <ResultAccessCard schoolId={schoolId} canManage={canManage} />
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base"><Receipt className="h-4 w-4" /> Fee Categories</CardTitle>

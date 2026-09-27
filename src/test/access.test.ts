@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, canManageStudents, canManageTermReports, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
+import { canAccessPath, canManageStudents, canManageTermReports, canReleaseResults, RESULT_RELEASERS, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
 import { ROLES } from "@/lib/roles";
 import fs from "node:fs";
 import path from "node:path";
@@ -247,5 +247,24 @@ describe("the role → nav map", () => {
     // But the office does need the people and the day.
     expect(canAccessPath("support_staff", "/students")).toBe(true);
     expect(canAccessPath("support_staff", "/timetable")).toBe(true);
+  });
+});
+
+describe("canReleaseResults", () => {
+  it("matches public.can_release_results() in the migration", () => {
+    const sql = fs.readFileSync(
+      path.resolve(__dirname, "../../supabase/migrations/20260927190100_withhold_results_until_paid.sql"),
+      "utf8",
+    );
+    const body = sql.match(/FUNCTION public\.can_release_results\([\s\S]*?\$\$([\s\S]*?)\$\$/)![1];
+    const inSql = [...body.matchAll(/has_role\(auth\.uid\(\), '([a-z_]+)'::app_role\)/g)].map((m) => m[1]);
+    expect(inSql.length).toBeGreaterThan(0);
+    expect(["super_admin", ...inSql].sort()).toEqual([...RESULT_RELEASERS].sort());
+  });
+
+  it("keeps teachers, support staff and families out", () => {
+    for (const role of ["teacher", "support_staff", "hr_admin", "parent", "student", null]) {
+      expect(canReleaseResults(role), String(role)).toBe(false);
+    }
   });
 });
