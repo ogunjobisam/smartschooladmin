@@ -1314,4 +1314,64 @@ COMMIT;
 
 UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
 
+-- ---------------------------------------------------------------------------
+-- Platform billing is the service role's alone
+-- ---------------------------------------------------------------------------
+-- activate_subscription, add_sms_credits and charge_sms are SECURITY DEFINER
+-- and check nobody: they trust the webhook that calls them to have verified a
+-- payment first. They were executable by anon, so the public key alone could
+-- hand any organisation a premium plan or unlimited SMS credits, or drain
+-- another organisation's balance.
+SELECT public.assert(NOT has_function_privilege('anon', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE'),
+  'anon can call activate_subscription');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE'),
+  'a signed-in user can call activate_subscription');
+SELECT public.assert(NOT has_function_privilege('anon', 'public.add_sms_credits(uuid, integer)', 'EXECUTE'),
+  'anon can call add_sms_credits');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.add_sms_credits(uuid, integer)', 'EXECUTE'),
+  'a signed-in user can call add_sms_credits');
+SELECT public.assert(NOT has_function_privilege('anon', 'public.charge_sms(uuid, uuid, text)', 'EXECUTE'),
+  'anon can call charge_sms');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.charge_sms(uuid, uuid, text)', 'EXECUTE'),
+  'a signed-in user can call charge_sms');
+-- Positive control: the webhook still can.
+SELECT public.assert(has_function_privilege('service_role', 'public.add_sms_credits(uuid, integer)', 'EXECUTE')
+    AND has_function_privilege('service_role', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE')
+    AND has_function_privilege('service_role', 'public.charge_sms(uuid, uuid, text)', 'EXECUTE'),
+  'the service role can no longer call the billing functions');
+
+-- The subscription webhook trusts the platform_payments row for the price, the
+-- plan and the credit count. An owner who could insert that row could pair a
+-- one-naira payment reference with ten million credits.
+INSERT INTO auth.users (id, email) VALUES ('d3000000-0000-0000-0000-000000000001', 'owner@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id)
+  VALUES ('d3000000-0000-0000-0000-000000000001', 'proprietor', '11111111-1111-1111-1111-111111111111', NULL);
+INSERT INTO platform_payments (org_id, gateway, gateway_reference, amount, purpose, plan_code)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'paystack', 'SUB-FIXTURE', 45000, 'subscription', 'premium');
+
+-- Positive control: the owner can see their organisation's payments, so the
+-- refusal below is about writing, not about the owner being the wrong role.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM platform_payments WHERE gateway_reference = 'SUB-FIXTURE') = 1,
+  'an owner cannot see their own organisation''s platform payments');
+COMMIT;
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd3000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO platform_payments (org_id, gateway, gateway_reference, amount, purpose, sms_credits)
+      VALUES ('11111111-1111-1111-1111-111111111111', 'paystack', 'PAY-FORGED', 1, 'sms_bundle', 10000000);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an owner can insert their own platform payment and set its price';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET ROLE;
+END $$;
+SELECT public.assert(NOT EXISTS (SELECT 1 FROM platform_payments WHERE gateway_reference = 'PAY-FORGED'),
+  'a forged platform payment was written');
+
 SELECT 'rls behaviour tests passed' AS result;

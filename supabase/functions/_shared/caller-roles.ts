@@ -162,6 +162,24 @@ export function administers(
 }
 
 /**
+ * The target user's role rows that this caller may manage: those in the
+ * caller's own organisation, or all of them for a super_admin.
+ *
+ * invite-user acts on another user's roles with the service role, so nothing
+ * but this stands between an admin and a user in a different organisation. It
+ * used to check only rank, and its writes matched on user_id alone, so a
+ * proprietor of any organisation — including a throwaway demo one — could make
+ * a user in someone else's school a group_admin there. The handler must treat
+ * an empty result as "not your user", and scope its writes to the caller's
+ * organisation so a user who belongs to two keeps the other one's roles.
+ */
+export function targetRolesInScope<T extends RoleRow>(caller: RoleRow, target: readonly T[]): T[] {
+  if (ORG_LESS_ROLES.has(caller.role)) return target.slice();
+  if (!caller.org_id) return [];
+  return target.filter((r) => r.org_id === caller.org_id);
+}
+
+/**
  * The caller's own most senior role, for the handlers that are not told which
  * organisation to act on and have to pick one.
  *
