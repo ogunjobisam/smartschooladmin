@@ -250,6 +250,25 @@ export default function ExamDetail() {
     [classSubjectList, configMap]
   );
 
+  // Which of these subjects this user may write marks for. A teacher whose
+  // subject has its own teacher in this class gets it read-only; row-level
+  // security refuses the write either way, so the sheet just says so up front.
+  const subjectIds = useMemo(() => subjects.map((s) => s.id), [subjects]);
+  const { data: markable, isLoading: markableLoading } = useQuery({
+    queryKey: ["markable-subjects", exam?.class_id, subjectIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("markable_subjects", {
+        _class_id: exam!.class_id!,
+        _subject_ids: subjectIds,
+      });
+      if (error) throw error;
+      return new Set(data ?? []);
+    },
+    enabled: !!exam?.class_id && subjectIds.length > 0,
+  });
+  const canMark = (subjectId: string) => markable?.has(subjectId) ?? false;
+  const lockedSubjects = markableLoading ? [] : subjects.filter((s) => !canMark(s.id));
+
   const maxFor = (subjectId: string) => Number(configMap.get(subjectId)?.max_score ?? exam?.max_score ?? 100);
   const weightFor = (subjectId: string) => Number(configMap.get(subjectId)?.weight ?? 1);
   const gradeFor = (score: number | null, max: number) => gradeScoreFromRubric(score, max, rubric);
@@ -371,7 +390,17 @@ export default function ExamDetail() {
     if (!id || !user) return;
     setSaving(true);
 
-    const entries = Array.from(scores.values()).filter((s) => s.score !== "");
+    // Only what changed, and only in subjects this user may mark. Saving used to
+    // delete the whole exam's scores and re-insert them, which for a subject
+    // teacher would delete their own rows and then fail on everyone else's.
+    const original = new Map(
+      existingScores.map((s) => [`${s.student_id}-${s.subject_id}`, s.score != null ? String(s.score) : ""])
+    );
+    const changed = Array.from(scores.values()).filter(
+      (e) => canMark(e.subjectId) && e.score !== (original.get(`${e.studentId}-${e.subjectId}`) ?? "")
+    );
+    const entries = changed.filter((e) => e.score !== "");
+    const clearedIds = changed.filter((e) => e.score === "" && e.existingId).map((e) => e.existingId!);
 
     const records = entries.map((e) => ({
       exam_id: id,
@@ -384,21 +413,24 @@ export default function ExamDetail() {
       updated_at: new Date().toISOString(),
     }));
 
-    // Delete existing and re-insert (upsert pattern)
-    await supabase.from("student_scores").delete().eq("exam_id", id);
-    const { error } = await supabase.from("student_scores").insert(records);
+    const { error: upsertError } = records.length > 0
+      ? await supabase.from("student_scores").upsert(records, { onConflict: "exam_id,student_id,subject_id" })
+      : { error: null };
+    const { error } = upsertError || clearedIds.length === 0
+      ? { error: upsertError }
+      : await supabase.from("student_scores").delete().in("id", clearedIds);
 
     setSaving(false);
     if (error) toast.error("Failed to save scores: " + error.message);
     else {
-      toast.success(`Saved scores for ${entries.length} entries`);
+      toast.success(`Saved ${changed.length} ${changed.length === 1 ? "change" : "changes"}`);
       setDirty(false);
       if (orgId && schoolId) {
         notifySchoolAdmins({
           orgId,
           schoolId,
           area: "exam_results",
-          summary: `${entries.length} results were entered for ${exam?.name ?? "an exam"}.`,
+          summary: `${changed.length} results were entered for ${exam?.name ?? "an exam"}.`,
           link: `/exams/${id}`,
           entityType: "exam",
           entityId: id,
@@ -644,6 +676,13 @@ export default function ExamDetail() {
         </Card>
       ) : (
         <Card>
+          {lockedSubjects.length > 0 && (
+            <p className="border-b px-4 py-2 text-xs text-muted-foreground">
+              {lockedSubjects.length === subjects.length
+                ? "You are not assigned any subject in this class, so this sheet is read-only."
+                : `Read-only here: ${lockedSubjects.map((s) => s.short_code || s.name).join(", ")}. Their subject teachers enter those marks.`}
+            </p>
+          )}
           <CardContent className="overflow-x-auto p-0">
             <Table>
               <TableHeader>
@@ -682,6 +721,7 @@ export default function ExamDetail() {
                             className="h-8 w-full text-center text-sm"
                             value={getScore(student.id, sub.id)}
                             onChange={(e) => updateScore(student.id, sub.id, e.target.value)}
+                            disabled={!canMark(sub.id)}
                             placeholder="—"
                           />
                         </TableCell>

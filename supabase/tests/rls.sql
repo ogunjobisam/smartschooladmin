@@ -539,4 +539,179 @@ SELECT public.assert((SELECT count(*) FROM exam_subjects) = 1,
   'nobody can see the exam_subjects fixture, so the support-staff assertion is vacuous');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- A subject teacher marks their own subject, and nobody else's
+-- ---------------------------------------------------------------------------
+-- Mark entry used to be scoped to the class: anyone in class_teachers could
+-- write every subject's score for every pupil in it. subject_teachers narrows
+-- that. Once a subject has a teacher in a class, only that teacher writes its
+-- marks there; a subject nobody has been given stays with the class's teachers,
+-- so a school that has not assigned anything yet keeps working as before.
+--
+-- Fresh users, because two of the teachers above are promoted or spread across
+-- schools later in this file, and either would measure the wrong thing.
+INSERT INTO subjects (id, school_id, name)
+  VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', '22222222-2222-2222-2222-222222222222', 'English');
+INSERT INTO student_scores (id, exam_id, student_id, subject_id, score)
+  VALUES ('88888888-8888-8888-8888-888888888889', '77777777-7777-7777-7777-777777777777',
+          '66666666-6666-6666-6666-666666666666', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 60);
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-777777777779', '22222222-2222-2222-2222-222222222222',
+          '44444444-4444-4444-4444-444444444444', 'End of term', 100);
+
+INSERT INTO auth.users (id, email) VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'maths.teacher@example.test'),
+  ('d1000000-0000-0000-0000-000000000002', 'form.teacher@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('d1000000-0000-0000-0000-000000000001', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d1000000-0000-0000-0000-000000000002', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+INSERT INTO staff (id, school_id, user_id, first_name, last_name) VALUES
+  ('f1111111-0000-0000-0000-000000000006', '22222222-2222-2222-2222-222222222222',
+   'd1000000-0000-0000-0000-000000000001', 'Bola', 'Maths'),
+  ('f1111111-0000-0000-0000-000000000007', '22222222-2222-2222-2222-222222222222',
+   'd1000000-0000-0000-0000-000000000002', 'Funmi', 'Form');
+-- The form teacher holds the class; the maths teacher holds only Maths in it,
+-- with no class_teachers row, which is how a subject specialist is set up.
+INSERT INTO class_teachers (class_id, staff_id, is_form_teacher)
+  VALUES ('55555555-5555-5555-5555-555555555555', 'f1111111-0000-0000-0000-000000000007', true);
+INSERT INTO subject_teachers (class_id, subject_id, staff_id)
+  VALUES ('55555555-5555-5555-5555-555555555555', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'f1111111-0000-0000-0000-000000000006');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the maths teacher fixture is not teacher-only, so the narrowed clause is never reached');
+-- Teaching one subject in a class is teaching the class: they need the register.
+SELECT public.assert((SELECT count(*) FROM students) = 1,
+  'a subject teacher cannot see the pupils of a class they teach a subject in');
+SELECT public.assert((SELECT count(*) FROM classes WHERE id = '55555555-5555-5555-5555-555555555555') = 1,
+  'a subject teacher cannot see a class they teach a subject in');
+UPDATE student_scores SET score = 75 WHERE id = '88888888-8888-8888-8888-888888888888';
+UPDATE student_scores SET score = 99 WHERE id = '88888888-8888-8888-8888-888888888889';
+INSERT INTO student_scores (exam_id, student_id, subject_id, score)
+  VALUES ('77777777-7777-7777-7777-777777777779', '66666666-6666-6666-6666-666666666666',
+          'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 81);
+SELECT public.assert(
+  public.markable_subjects('55555555-5555-5555-5555-555555555555',
+    ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[])
+  = ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb']::uuid[],
+  'markable_subjects does not give the maths teacher exactly Maths, so the screen and RLS disagree');
+COMMIT;
+
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 75,
+  'a subject teacher cannot correct a mark in their own subject');
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888889') = 60,
+  'a subject teacher changed a mark in a subject they do not teach');
+SELECT public.assert(
+  (SELECT count(*) FROM public.student_scores
+   WHERE exam_id = '77777777-7777-7777-7777-777777777779' AND score = 81) = 1,
+  'a subject teacher cannot enter a new mark in their own subject');
+
+-- A new mark in someone else's subject is refused outright, not filtered.
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO student_scores (exam_id, student_id, subject_id, score)
+      VALUES ('77777777-7777-7777-7777-777777777779', '66666666-6666-6666-6666-666666666666',
+              'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd', 12);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a subject teacher entered a new mark in a subject they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000002';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the form teacher fixture is not teacher-only, so the narrowed clause is never reached');
+-- Maths has its own teacher now, so the form teacher loses it...
+UPDATE student_scores SET score = 10 WHERE id = '88888888-8888-8888-8888-888888888888';
+-- ...but keeps English, which nobody has been given.
+UPDATE student_scores SET score = 64 WHERE id = '88888888-8888-8888-8888-888888888889';
+-- Compiling the report card needs every subject, so reading stays class-wide.
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE student_id = '66666666-6666-6666-6666-666666666666') = 3,
+  'a form teacher cannot read every subject''s marks for their own class');
+SELECT public.assert(
+  public.markable_subjects('55555555-5555-5555-5555-555555555555',
+    ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[])
+  = ARRAY['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd']::uuid[],
+  'markable_subjects does not give the form teacher exactly the unassigned subject');
+-- A teacher must not be able to hand themselves a subject.
+UPDATE subject_teachers SET staff_id = 'f1111111-0000-0000-0000-000000000007';
+COMMIT;
+
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 75,
+  'a form teacher overwrote a mark in a subject that has its own teacher');
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888889') = 64,
+  'a form teacher lost a subject nobody has been assigned — schools without assignments would stop working');
+SELECT public.assert(
+  (SELECT staff_id FROM public.subject_teachers
+   WHERE class_id = '55555555-5555-5555-5555-555555555555') = 'f1111111-0000-0000-0000-000000000006',
+  'a teacher reassigned a subject to themselves');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000002', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO subject_teachers (class_id, subject_id, staff_id)
+      VALUES ('55555555-5555-5555-5555-555555555555', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd',
+              'f1111111-0000-0000-0000-000000000007');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher assigned themselves a subject';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- Someone above teacher still writes every subject: the narrowing is for
+-- teachers only. The admin-who-teaches from earlier holds a teacher row too.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dccccccc-0000-0000-0000-00000000000c';
+SELECT public.assert(NOT public.is_teacher_only(auth.uid()),
+  'the admin fixture is teacher-only, so this proves nothing');
+UPDATE student_scores SET score = 76 WHERE id = '88888888-8888-8888-8888-888888888888';
+COMMIT;
+SELECT public.assert((SELECT score FROM public.student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 76,
+  'an administrator lost the ability to correct a subject teacher''s mark');
+
+-- ---------------------------------------------------------------------------
+-- Arms are a field, not part of the name
+-- ---------------------------------------------------------------------------
+-- Ranking by class across arms groups on level_name; ranking by arm groups on
+-- the class row. Anything that inserts a class without saying which is which —
+-- onboarding, the demo seeder, an old screen — gets both split from the name.
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('JSS1A')) = 'JSS1'
+                 AND (SELECT arm FROM public.split_class_arm('JSS1A')) = 'A',
+  'JSS1A did not split into JSS1 / A');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('Primary 4 b')) = 'Primary 4'
+                 AND (SELECT arm FROM public.split_class_arm('Primary 4 b')) = 'B',
+  'Primary 4 b did not split into Primary 4 / B');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('SS2-C')) = 'SS2'
+                 AND (SELECT arm FROM public.split_class_arm('SS2-C')) = 'C',
+  'SS2-C did not split into SS2 / C');
+SELECT public.assert((SELECT level_name FROM public.split_class_arm('Nursery 1')) = 'Nursery 1'
+                 AND (SELECT arm FROM public.split_class_arm('Nursery 1')) IS NULL,
+  'a class with no arm was given one');
+SELECT public.assert((SELECT arm FROM public.split_class_arm('JSS1 Annexe')) IS NULL,
+  'a word after the level was mistaken for an arm');
+
+INSERT INTO classes (id, school_id, name) VALUES
+  ('55555555-5555-5555-5555-555555555557', '22222222-2222-2222-2222-222222222222', 'JSS2B');
+INSERT INTO classes (id, school_id, name, level_name, arm) VALUES
+  ('55555555-5555-5555-5555-555555555558', '22222222-2222-2222-2222-222222222222', 'JSS2 Gold', 'JSS2', 'Gold');
+SELECT public.assert(
+  (SELECT level_name = 'JSS2' AND arm = 'B' FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555557'),
+  'a class inserted by name alone did not get its level and arm filled in');
+SELECT public.assert(
+  (SELECT level_name = 'JSS2' AND arm = 'Gold' FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555558'),
+  'an explicit level and arm were overwritten by the name split');
+SELECT public.assert(
+  (SELECT level_name FROM public.classes WHERE id = '55555555-5555-5555-5555-555555555555') = 'JSS1',
+  'a class with no arm has no level, so it drops out of class-wide ranking');
+
 SELECT 'rls behaviour tests passed' AS result;
