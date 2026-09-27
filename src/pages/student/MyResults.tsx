@@ -4,6 +4,8 @@ import { Download, GraduationCap, Printer } from "lucide-react";
 
 import { ReleasedTermReports } from "@/components/exams/ReleasedTermReports";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { WithheldResultsNotice } from "@/components/students/WithheldResultsNotice";
+import { useWithheldResults } from "@/hooks/use-withheld-results";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +79,7 @@ export default function MyResults() {
   const studentId = me?.id ?? null;
 
   const { scores, isLoading } = useStudentPerformanceData(studentId ?? undefined);
+  const { data: withheld = [] } = useWithheldResults(studentId);
   const periods = useMemo(() => groupByPeriod(scores), [scores]);
 
   const download = async (periodId?: string, periodName?: string) => {
@@ -105,6 +108,8 @@ export default function MyResults() {
         </Button>
       </PageHeader>
 
+      {studentId && <WithheldResultsNotice studentId={studentId} audience="student" />}
+
       {me && (
         <ReleasedTermReports
           studentId={me.id}
@@ -113,7 +118,7 @@ export default function MyResults() {
         />
       )}
 
-      {periods.length === 0 ? (
+      {periods.length === 0 && withheld.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
           title="No results yet"

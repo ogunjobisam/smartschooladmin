@@ -993,4 +993,325 @@ SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 1,
   'after release a parent cannot see their child''s ratings');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- A web address for each school (20260927190000)
+-- ---------------------------------------------------------------------------
+-- The slug and custom domain are validated by a trigger, not row-level
+-- security, but the question is the same: can a signed-in school lead do more
+-- than they should? A custom domain is a paid extra and points traffic at us,
+-- so a principal must not be able to grant themselves one.
+INSERT INTO auth.users (id, email) VALUES
+  ('f1000000-0000-0000-0000-00000000000a', 'principal@example.test'),
+  ('f1000000-0000-0000-0000-00000000000b', 'platform@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('f1000000-0000-0000-0000-00000000000a', 'principal', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('f1000000-0000-0000-0000-00000000000b', 'super_admin', NULL, NULL);
+
+-- A slug saved before these rules existed, too short to pass them now. Written
+-- with the trigger off, which is the only way live data like this could exist.
+ALTER TABLE schools DISABLE TRIGGER schools_validate_web_address;
+UPDATE schools SET admissions_slug = 'ga' WHERE id = '22222222-2222-2222-2222-222222222222';
+ALTER TABLE schools ENABLE TRIGGER schools_validate_web_address;
+
+CREATE OR REPLACE FUNCTION pg_temp.update_rejected(sql text) RETURNS boolean
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE sql;
+  RETURN false;
+EXCEPTION WHEN check_violation OR insufficient_privilege THEN
+  RETURN true;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+-- Positive control first: the principal can write to their school at all, or
+-- every "rejected" below would be row-level security and prove nothing.
+UPDATE schools SET phone = '0800 000 000' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT phone FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = '0800 000 000',
+  'a principal cannot update their own school, so the web-address assertions are vacuous');
+-- A school whose slug predates the rules can still save the admissions
+-- settings, which re-send the slug unchanged beside the intro. That is the
+-- reason this is a trigger comparing OLD and NEW rather than a CHECK. (A phone
+-- update alone proves nothing here: the trigger is UPDATE OF admissions_slug
+-- and never fires for it.)
+UPDATE schools SET admissions_slug = 'ga', admissions_intro = 'Admissions open'
+  WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT admissions_intro FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'Admissions open',
+  'a school with a pre-existing short slug cannot save its admissions settings');
+
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'portal.grace.com.ng' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a principal can give their school a custom domain');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'login' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can take the slug of an app route');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'www' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can take a reserved hostname as its slug');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'x' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can save a one-character slug');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'grace--academy' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can save a slug with a double hyphen');
+
+UPDATE schools SET admissions_slug = 'Grace-Academy' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT admissions_slug FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'grace-academy',
+  'a valid slug was not saved, or not lowercased');
+COMMIT;
+
+-- The platform edits schools from outside row-level security (the super_admin
+-- row carries no org, so no school policy admits it as a client). What is under
+-- test here is the trigger, so run as the table owner with the uid set.
+BEGIN;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000b';
+UPDATE schools SET custom_domain = 'Portal.Grace.com.ng.' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT custom_domain FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'portal.grace.com.ng',
+  'a super_admin cannot set a custom domain, or it was not normalised');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'https://grace.com.ng/portal' WHERE id = '22222222-2222-2222-2222-222222222223'$q$),
+  'a custom domain can carry a scheme and a path');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'kingsqueens.smartschooladmin.app' WHERE id = '22222222-2222-2222-2222-222222222223'$q$),
+  'a custom domain can claim one of our own subdomains');
+COMMIT;
+
+-- Two schools cannot share a host, whatever the case.
+SELECT public.assert(pg_temp.update_rejected(
+  $q$DO $d$ BEGIN
+       UPDATE schools SET custom_domain = 'PORTAL.grace.com.ng' WHERE id = '22222222-2222-2222-2222-222222222223';
+     EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION USING ERRCODE = 'check_violation';
+     END $d$$q$),
+  'two schools can share a custom domain');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+-- Once set, the school cannot move or drop it either.
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = NULL WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a principal can remove their school''s custom domain');
+-- …and still edits everything else.
+UPDATE schools SET phone = '0800 111 111' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT phone FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = '0800 111 111',
+  'a school with a custom domain can no longer edit its own profile');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- Results withheld until fees are paid (20260927190100)
+-- ---------------------------------------------------------------------------
+-- Fixture state reaching here: Ada (student 666…) has a score (888…888) in the
+-- Mid-term (777…) for Term 1 (444…), and one unpaid invoice INV-1 for 1000 in
+-- the same term. A parent is linked now. Assertions name that score rather than
+-- counting Ada's scores: other sections add more of hers, and an exact count
+-- here broke the first time one did.
+INSERT INTO auth.users (id, email) VALUES
+  ('f2000000-0000-0000-0000-00000000000a', 'parent@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('f2000000-0000-0000-0000-00000000000a', 'parent', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+UPDATE guardians SET user_id = 'f2000000-0000-0000-0000-00000000000a'
+  WHERE id = '99999999-9999-9999-9999-999999999999';
+INSERT INTO student_guardians (student_id, guardian_id)
+  VALUES ('66666666-6666-6666-6666-666666666666', '99999999-9999-9999-9999-999999999999');
+UPDATE invoices SET status = 'pending', amount_paid = 0, total_amount = 1000
+  WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+-- Switch off: the positive control. If the family cannot see the score now,
+-- every "withheld" assertion below would pass for the wrong reason.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'the student cannot see their own score even with withholding off');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f2000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'the parent cannot see their child''s score even with withholding off');
+COMMIT;
+
+UPDATE schools SET withhold_results_until_paid = true WHERE id = '22222222-2222-2222-2222-222222222222';
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 0,
+  'a student with unpaid fees can see the term''s scores');
+SELECT public.assert((SELECT outstanding FROM public.withheld_results('66666666-6666-6666-6666-666666666666')) = 1000,
+  'a student whose results are withheld is not told why or how much is owed');
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f2000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 0,
+  'a parent with unpaid fees can see their child''s scores');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('66666666-6666-6666-6666-666666666666')) = 1,
+  'a parent whose child''s results are withheld is not told');
+COMMIT;
+
+-- Staff are untouched: somebody has to enter the scores.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'withholding results from families hid them from the principal too');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('66666666-6666-6666-6666-666666666666')) = 1,
+  'the principal cannot see which of a pupil''s terms are withheld');
+COMMIT;
+
+-- A teacher cannot see invoices, so must not learn what a family owes this way.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the fixture user is not teacher-only, so this proves nothing');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('66666666-6666-6666-6666-666666666666')) = 0,
+  'a teacher can learn what a family owes through withheld_results()');
+COMMIT;
+
+-- Releasing is an allowlist. Tested with people who CAN see the pupil — a
+-- teacher who cannot is stopped by the "pupil belongs to this school" check
+-- before the role is ever looked at, which is how this assertion first passed
+-- for the wrong reason.
+CREATE OR REPLACE FUNCTION pg_temp.release_rejected() RETURNS boolean
+LANGUAGE plpgsql AS $$
+BEGIN
+  INSERT INTO result_releases (school_id, student_id, academic_period_id)
+  VALUES ('22222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444');
+  DELETE FROM result_releases;
+  RETURN false;
+EXCEPTION WHEN insufficient_privilege THEN
+  RETURN true;
+END $$;
+GRANT EXECUTE ON FUNCTION pg_temp.release_rejected() TO authenticated;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM students WHERE id = '66666666-6666-6666-6666-666666666666') = 1,
+  'support staff cannot see the pupil, so the release assertion below is vacuous');
+SELECT public.assert(pg_temp.release_rejected(), 'support staff can release a pupil''s withheld results');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f2000000-0000-0000-0000-00000000000a';
+SELECT public.assert(pg_temp.release_rejected(), 'a parent can release their own child''s withheld results');
+COMMIT;
+
+-- The internals answer for anyone, so nobody signed in may call them.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(pg_temp.update_rejected($q$
+  DO $d$ BEGIN
+    PERFORM public.results_outstanding('66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444');
+  EXCEPTION WHEN others THEN RAISE EXCEPTION USING ERRCODE = 'insufficient_privilege';
+  END $d$$q$),
+  'any signed-in user can ask what any pupil owes');
+COMMIT;
+
+-- A principal releases this term for this pupil: the family sees it again.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+INSERT INTO result_releases (school_id, student_id, academic_period_id, reason)
+  VALUES ('22222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666',
+          '44444444-4444-4444-4444-444444444444', 'Payment plan agreed');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f2000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'a released term is still withheld from the parent');
+SELECT public.assert((SELECT count(*) FROM public.withheld_results('66666666-6666-6666-6666-666666666666')) = 0,
+  'a released term is still reported as withheld');
+COMMIT;
+DELETE FROM result_releases;
+
+-- Paying up releases it too — but only once earlier terms are clear as well.
+INSERT INTO academic_periods (id, academic_year_id, name, start_date, end_date, is_current)
+  VALUES ('44444444-4444-4444-4444-444444444440', '33333333-3333-3333-3333-333333333333', 'Term 0',
+          current_date - 200, current_date - 100, false);
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, status)
+  VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa0', '22222222-2222-2222-2222-222222222222',
+          '66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444440', 'INV-0', 500, 'pending');
+UPDATE invoices SET amount_paid = 1000, status = 'paid' WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 0,
+  'paying this term releases results while last term is still owed');
+COMMIT;
+
+-- A void invoice is not a debt.
+UPDATE invoices SET status = 'void' WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa0';
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'a fully paid family still cannot see results (or a void invoice counts as owed)');
+COMMIT;
+
+UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
+-- ---------------------------------------------------------------------------
+-- Term reports obey the fees gate (20260927190200)
+-- ---------------------------------------------------------------------------
+-- By here JSS3A's Term 1 report is released and Kemi's parent (d2…003) can
+-- read her report, two comments and one rating — the term report section above
+-- asserts exactly that, which is this block's positive control. Kemi has no
+-- invoices yet. Give her family a debt and switch withholding on.
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, status)
+  VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'INV-K1', 800, 'pending');
+UPDATE schools SET withhold_results_until_paid = true WHERE id = '22222222-2222-2222-2222-222222222222';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(coalesce(jsonb_array_length(r->'students'), 0) = 0
+    AND coalesce(jsonb_array_length(r->'subjects'), 0) = 0,
+    'a family with unpaid fees can read the released term report');
+
+  -- Staff are not affected: the principal still sees the whole arm.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 3,
+    'withholding from a family hid the term report from the principal');
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 0,
+  'a family with unpaid fees can read the report card comments');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 0,
+  'a family with unpaid fees can read the report card ratings');
+COMMIT;
+
+-- Paid: everything comes back.
+UPDATE invoices SET amount_paid = 800, status = 'paid' WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3';
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1,
+    'a family that has paid still cannot read the released term report');
+END $$;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
+  'a family that has paid still cannot read the report card comments');
+COMMIT;
+
+UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
 SELECT 'rls behaviour tests passed' AS result;

@@ -132,6 +132,46 @@ export function admissionsUrl(slug: string, origin: string): string {
   return `${origin.replace(/\/$/, "")}/apply/${slug}`;
 }
 
+/**
+ * Slugs no school may take. Mirrors public.reserved_school_slugs() in
+ * supabase/migrations/20260927190000_school_web_address.sql, which is what
+ * actually enforces it; this copy only lets the settings page say so before
+ * Save. src/test/admissions.test.ts fails if the two drift, or if a top-level
+ * route in src/App.tsx is missing — the beta address is smartschooladmin.app/<slug>,
+ * so a school called "login" would sit on top of the login page.
+ */
+export const RESERVED_SLUGS: readonly string[] = [
+  // hostnames
+  "www", "app", "admin", "api", "mail", "demo",
+  "assets", "auth", "blog", "cdn", "docs", "ftp", "help", "static",
+  "status", "support", "smtp", "staging", "test",
+  // top-level routes in src/App.tsx
+  "achievements", "admissions", "announcements", "apply", "approvals",
+  "arrears", "attendance", "audit-log", "billing", "dashboard", "events",
+  "exams", "fees", "forgot-password", "group-overview", "guardians",
+  "invoices", "login", "message-delivery", "my-pay",
+  "notification-settings", "notification-templates", "notifications",
+  "onboarding", "parent", "payments", "payroll", "performance", "pricing",
+  "privacy", "reports", "reset-password", "roles", "school-profile",
+  "settings", "signup", "staff", "staff-portal", "student", "students",
+  "terms", "timetable", "transport", "users", "wall",
+];
+
+const RESERVED = new Set(RESERVED_SLUGS);
+
+/**
+ * Why a cleaned slug cannot be saved, or null if it can. Same rules as the
+ * database trigger. The slug a school already has is always acceptable: rules
+ * apply to changes, so a school saved before them is not locked out of Save.
+ */
+export function slugProblem(slug: string, saved?: string | null): string | null {
+  if (slug === (saved ?? null)) return null;
+  if (slug.length < 3) return "Use at least 3 characters.";
+  if (slug.length > 60) return "Use 60 characters or fewer.";
+  if (RESERVED.has(slug)) return `"${slug}" is reserved. Try your school's name instead.`;
+  return null;
+}
+
 /** Turn a school name into a usable slug. */
 export function toSlug(value: string): string {
   return value

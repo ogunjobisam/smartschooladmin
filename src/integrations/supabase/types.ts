@@ -2450,6 +2450,58 @@ export type Database = {
           },
         ]
       }
+      result_releases: {
+        Row: {
+          academic_period_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          released_by: string | null
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          academic_period_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          released_by?: string | null
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          academic_period_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          released_by?: string | null
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_releases_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_releases_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_releases_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -2764,6 +2816,7 @@ export type Database = {
           admissions_open: boolean
           admissions_slug: string | null
           created_at: string
+          custom_domain: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -2773,6 +2826,7 @@ export type Database = {
           primary_color: string | null
           tagline: string | null
           updated_at: string
+          withhold_results_until_paid: boolean
         }
         Insert: {
           accent_color?: string | null
@@ -2781,6 +2835,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2790,6 +2845,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_results_until_paid?: boolean
         }
         Update: {
           accent_color?: string | null
@@ -2798,6 +2854,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2807,6 +2864,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_results_until_paid?: boolean
         }
         Relationships: [
           {
@@ -4109,6 +4167,14 @@ export type Database = {
           full_name: string
           person_id: string
           subject_type: string
+        }[]
+      }
+      withheld_results: {
+        Args: { _student_id: string }
+        Returns: {
+          academic_period_id: string
+          outstanding: number
+          period_name: string
         }[]
       }
     }
