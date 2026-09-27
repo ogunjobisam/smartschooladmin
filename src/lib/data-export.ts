@@ -81,6 +81,8 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "exam_grade_bands", scope: via("exams") },
       { table: "student_scores", scope: via("students") },
       { table: "result_releases", scope: school },
+      { table: "result_holds", scope: school },
+      { table: "report_traits", scope: school },
       { table: "term_report_comments", scope: via("students") },
       { table: "term_report_ratings", scope: via("students") },
       { table: "term_report_releases", scope: via("classes") },
