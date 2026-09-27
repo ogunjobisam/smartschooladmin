@@ -2354,6 +2354,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_hits: {
+        Row: {
+          hits: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          hits?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          hits?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       receipts: {
         Row: {
           amount: number
@@ -4171,6 +4189,10 @@ export type Database = {
         Args: { _class_id: string; _subject_id: string }
         Returns: boolean
       }
+      can_notify: {
+        Args: { _org_id: string; _recipient: string }
+        Returns: boolean
+      }
       can_release_results: { Args: { _school_id: string }; Returns: boolean }
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       can_view_own_recognition_photo: {
@@ -4197,6 +4219,10 @@ export type Database = {
         Returns: {
           full_name: string
         }[]
+      }
+      consume_rate_limit: {
+        Args: { _key: string; _limit: number; _window_seconds: number }
+        Returns: boolean
       }
       create_demo_org: {
         Args: { _hours?: number; _label?: string }
@@ -4330,6 +4356,20 @@ export type Database = {
           _reason: string
         }
         Returns: string
+      }
+      reserve_ai_analysis: {
+        Args: {
+          _analysis_type: string
+          _limit: number
+          _model: string
+          _org_id: string
+          _school_id: string
+          _user_id: string
+        }
+        Returns: {
+          event_id: string
+          used: number
+        }[]
       }
       reserved_school_slugs: { Args: never; Returns: string[] }
       results_outstanding: {
