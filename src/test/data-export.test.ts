@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import {
-  EXPORT_DATASETS, EXCLUDED_TABLES, EXPORT_PAGE_SIZE,
+  EXPORT_DATASETS, EXCLUDED_TABLES, EXPORT_PAGE_SIZE, PARENT_ID_CHUNK,
   csvCell, rowsToCsv, fetchTableRows, runExport,
   type ExportClient, type ExportQuery,
 } from "@/lib/data-export";
@@ -43,6 +43,13 @@ describe("which tables an export covers", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
+  it("reaches scores through the exam_id index, not a join to students", () => {
+    // A join-side filter left row-level security checking every score on the
+    // platform (~1 ms a row) and the export hit the statement timeout.
+    expect(exported.find((t) => t.table === "student_scores")!.scope)
+      .toEqual({ kind: "via", parent: "exams", fk: "exam_id", chunk: 1 });
+  });
+
   it("never exports bank details or payment secrets", () => {
     const names = exported.map((t) => t.table);
     for (const secret of ["staff_bank_details", "payment_gateway_config", "email_unsubscribe_tokens"]) {
@@ -56,7 +63,12 @@ describe("which tables an export covers", () => {
       expect(cols, `${table} has no id to page by`).toContain("id");
       if (scope.kind === "org") expect(cols, table).toContain("org_id");
       if (scope.kind === "school") expect(cols, table).toContain("school_id");
-      if (scope.kind === "via") expect(columns.get(scope.parent), `${table} → ${scope.parent}`).toContain(scope.column);
+      if (scope.kind === "via") {
+        expect(cols, `${table} has no ${scope.fk}`).toContain(scope.fk);
+        const parent = exported.find((t) => t.table === scope.parent);
+        expect(parent, `${table} → ${scope.parent} is not exported itself`).toBeDefined();
+        expect(parent!.scope.kind, `${scope.parent} must be scoped directly, not through another table`).not.toBe("via");
+      }
     }
   });
 });
@@ -116,6 +128,10 @@ function fakeClient(tables: Record<string, Record<string, unknown>[]>, calls: Ca
           const after = call.ops.find((o) => o[0] === "gt")?.[2] as string | undefined;
           const limit = (call.ops.find((o) => o[0] === "limit")?.[1] as number | undefined) ?? Infinity;
           const rows = (tables[table] ?? [])
+            .filter((r) => call.ops.every(([op, col, val]) =>
+              op === "eq" ? r[col as string] === undefined || r[col as string] === val
+              : op === "in" ? r[col as string] === undefined || (val as unknown[]).includes(r[col as string])
+              : true))
             .filter((r) => after === undefined || String(r.id) > after)
             .sort((a, b) => String(a.id).localeCompare(String(b.id)))
             .slice(0, limit)
@@ -150,14 +166,39 @@ describe("fetchTableRows", () => {
     expect(calls[1].ops).toContainEqual(["in", "school_id", ["school-1"]]);
   });
 
-  it("scopes child tables through their parent and strips the join from each row", async () => {
+  it("scopes child tables by their own foreign key, never through a join", async () => {
     const calls: Call[] = [];
     const rows = await fetchTableRows(
-      fakeClient({ invoice_items: [{ id: "a", amount: 5, invoices: { school_id: "school-1" } }] }, calls),
-      { table: "invoice_items", scope: { kind: "via", parent: "invoices", column: "school_id" } }, ctx);
-    expect(calls[0].ops).toContainEqual(["select", "*, invoices!inner(school_id)"]);
-    expect(calls[0].ops).toContainEqual(["in", "invoices.school_id", ["school-1"]]);
-    expect(rows).toEqual([{ id: "a", amount: 5 }]);
+      fakeClient({ invoice_items: [
+        { id: "a", invoice_id: "inv-1", amount: 5 },
+        { id: "b", invoice_id: "someone-elses", amount: 9 },
+      ] }, calls),
+      { table: "invoice_items", scope: { kind: "via", parent: "invoices", fk: "invoice_id" } },
+      { ...ctx, parentIds: async () => ["inv-1"] });
+    expect(calls[0].ops).toContainEqual(["select", "*"]);
+    expect(calls[0].ops).toContainEqual(["in", "invoice_id", ["inv-1"]]);
+    expect(calls.flatMap((c) => c.ops).some((o) => String(o[1]).includes("."))).toBe(false);
+    expect(rows).toEqual([{ id: "a", invoice_id: "inv-1", amount: 5 }]);
+  });
+
+  it("splits a long parent id list into several requests", async () => {
+    const calls: Call[] = [];
+    const parents = Array.from({ length: PARENT_ID_CHUNK * 2 + 1 }, (_, i) => `s-${i}`);
+    await fetchTableRows(fakeClient({}, calls),
+      { table: "enrolments", scope: { kind: "via", parent: "students", fk: "student_id" } },
+      { ...ctx, parentIds: async () => parents });
+    const chunks = calls.map((c) => c.ops.find((o) => o[0] === "in")![2] as string[]);
+    expect(chunks.map((c) => c.length)).toEqual([PARENT_ID_CHUNK, PARENT_ID_CHUNK, 1]);
+    expect(chunks.flat()).toEqual(parents);
+  });
+
+  it("asks for no children when the parent has no rows", async () => {
+    const calls: Call[] = [];
+    const rows = await fetchTableRows(fakeClient({ enrolments: ids(3) }, calls),
+      { table: "enrolments", scope: { kind: "via", parent: "students", fk: "student_id" } },
+      { ...ctx, parentIds: async () => [] });
+    expect(rows).toEqual([]);
+    expect(calls).toHaveLength(0);
   });
 
   it("asks for nothing school-scoped when the organisation has no schools", async () => {
@@ -218,8 +259,12 @@ describe("runExport", () => {
     const calls: Call[] = [];
     const client = fakeClient({
       schools: [{ id: "school-1", name: "Grace Academy" }],
-      students: ids(3),
+      students: [{ id: "st-1", school_id: "school-1" }, { id: "st-2", school_id: "school-1" }, { id: "st-3", school_id: "school-1" }],
       guardians: ids(2),
+      enrolments: [
+        { id: "e-1", student_id: "st-1" },
+        { id: "e-2", student_id: "st-from-another-org" },
+      ],
     }, calls);
     const progress: string[] = [];
     const result = await runExport({
@@ -231,7 +276,12 @@ describe("runExport", () => {
     const people = EXPORT_DATASETS.find((d) => d.key === "people")!;
     expect([...files.keys()]).toEqual(["manifest.json", ...people.tables.map((t) => `people/${t.table}.csv`)]);
     expect(result.counts.students).toBe(3);
-    expect(result.totalRows).toBe(5);
+    expect(result.counts.enrolments).toBe(1);
+    expect(result.totalRows).toBe(6);
+    const enrolmentCall = calls.find((c) => c.table === "enrolments")!;
+    expect(enrolmentCall.ops).toContainEqual(["in", "student_id", ["st-1", "st-2", "st-3"]]);
+    // The parent's ids are read once, however many tables hang off it.
+    expect(calls.filter((c) => c.table === "students" && c.ops.some((o) => o[0] === "select" && o[1] === "id"))).toHaveLength(2);
     expect(calls[0].ops).toContainEqual(["eq", "org_id", "org-1"]);
     expect(calls.some((c) => c.table === "invoices")).toBe(false);
     expect(progress).toContain("students");
@@ -239,7 +289,7 @@ describe("runExport", () => {
     const manifest = JSON.parse(files.get("manifest.json")!);
     expect(manifest.schools).toEqual([{ id: "school-1", name: "Grace Academy" }]);
     expect(manifest.exported_by).toBe("owner@example.com");
-    expect(manifest.total_rows).toBe(5);
+    expect(manifest.total_rows).toBe(6);
   });
 
   it("refuses an empty selection", async () => {

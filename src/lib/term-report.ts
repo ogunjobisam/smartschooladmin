@@ -42,8 +42,27 @@ export interface TermSubjectResult {
   scores: Record<string, number>;
 }
 
-export interface TermReport {
-  released: boolean;
+export interface TermCommentRow {
+  student_id: string;
+  kind: "class_teacher" | "principal";
+  body: string;
+}
+
+export interface TermRatingRow {
+  student_id: string;
+  domain: RatingDomain;
+  trait: string;
+  rating: number;
+}
+
+export interface TraitRow {
+  domain: RatingDomain;
+  key: string;
+  label: string;
+}
+
+/** The part of a term report that a release freezes. */
+export interface TermReportBody {
   components: TermComponent[];
   arm_size?: number;
   arm_average?: number | null;
@@ -51,6 +70,28 @@ export interface TermReport {
   level_average?: number | null;
   students: TermStudentResult[];
   subjects: TermSubjectResult[];
+  comments?: TermCommentRow[];
+  ratings?: TermRatingRow[];
+  /** The school's own traits; null when it uses the defaults. */
+  traits?: TraitRow[] | null;
+}
+
+export interface TermReport {
+  released: boolean;
+  /** When the report was last released. */
+  released_at?: string | null;
+  /** Staff only: the report as families currently see it. */
+  snapshot?: TermReportBody | null;
+  components: TermComponent[];
+  arm_size?: number;
+  arm_average?: number | null;
+  level_size?: number;
+  level_average?: number | null;
+  students: TermStudentResult[];
+  subjects: TermSubjectResult[];
+  comments?: TermCommentRow[];
+  ratings?: TermRatingRow[];
+  traits?: TraitRow[] | null;
 }
 
 export const EMPTY_TERM_REPORT: TermReport = { released: false, components: [], students: [], subjects: [] };
@@ -134,6 +175,41 @@ export const RATING_SCALE: { value: number; label: string }[] = [
 
 export type RatingDomain = "affective" | "psychomotor";
 
+export interface TraitLists {
+  affective: RatingTrait[];
+  psychomotor: RatingTrait[];
+}
+
+export const DEFAULT_TRAITS: TraitLists = { affective: AFFECTIVE_TRAITS, psychomotor: PSYCHOMOTOR_TRAITS };
+
+/**
+ * A school's traits, falling back to the defaults for any domain it has not
+ * customised — a school that only edits the affective list keeps the default
+ * psychomotor one rather than losing it.
+ */
+export function traitLists(rows: Pick<TraitRow, "domain" | "key" | "label">[] | null | undefined): TraitLists {
+  const pick = (domain: RatingDomain) => {
+    const own = (rows ?? []).filter((r) => r.domain === domain).map((r) => ({ key: r.key, label: r.label }));
+    return own.length > 0 ? own : DEFAULT_TRAITS[domain];
+  };
+  return { affective: pick("affective"), psychomotor: pick("psychomotor") };
+}
+
+/**
+ * A stable key for a new trait. Ratings refer to a trait by key, so the key
+ * never changes when the label is edited; it only has to be unique within the
+ * school's list for that domain.
+ */
+export function traitKey(label: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  const base = label.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 50) || "trait";
+  if (!used.has(base)) return base;
+  for (let n = 2; ; n++) {
+    const candidate = `${base}_${n}`;
+    if (!used.has(candidate)) return candidate;
+  }
+}
+
 export interface TermRating {
   domain: RatingDomain;
   trait: string;
@@ -151,6 +227,68 @@ export interface ReportCardPupil {
   idNumber?: string | null;
 }
 
+/** One thing that is different now from what families were given. */
+export interface ReleaseChange {
+  studentId: string;
+  /** What changed, in words a teacher reads: "Mathematics", "Average", "Position", "Class teacher's comment". */
+  what: string;
+  subjectId?: string;
+  before: string;
+  after: string;
+}
+
+/**
+ * Everything that differs between the live report and the released snapshot:
+ * subject totals, averages, positions and comments. Staff see this list until
+ * someone releases again; families keep the snapshot meanwhile.
+ */
+export function releaseChanges(
+  live: Pick<TermReportBody, "students" | "subjects" | "comments">,
+  released: Pick<TermReportBody, "students" | "subjects" | "comments"> | null | undefined,
+  subjectNames: Map<string, string> = new Map(),
+): ReleaseChange[] {
+  if (!released) return [];
+  const changes: ReleaseChange[] = [];
+  const num = (v: number | undefined) => (v === undefined ? "—" : Number(v).toFixed(1));
+
+  const subjectKey = (s: { student_id: string; subject_id: string }) => `${s.student_id}:${s.subject_id}`;
+  const was = new Map(released.subjects.map((s) => [subjectKey(s), s]));
+  const now = new Map(live.subjects.map((s) => [subjectKey(s), s]));
+  for (const key of new Set([...was.keys(), ...now.keys()])) {
+    const before = was.get(key)?.percent;
+    const after = now.get(key)?.percent;
+    if (before !== undefined && after !== undefined && Number(before) === Number(after)) continue;
+    const [studentId, subjectId] = key.split(":");
+    changes.push({ studentId, subjectId, what: subjectNames.get(subjectId) ?? "Subject", before: num(before), after: num(after) });
+  }
+
+  const wasPupil = new Map(released.students.map((s) => [s.student_id, s]));
+  for (const s of live.students) {
+    const before = wasPupil.get(s.student_id);
+    if (!before) continue;
+    if (Number(before.average) !== Number(s.average)) {
+      changes.push({ studentId: s.student_id, what: "Average", before: num(before.average), after: num(s.average) });
+    }
+    if (Number(before.arm_position) !== Number(s.arm_position)) {
+      changes.push({ studentId: s.student_id, what: "Position", before: ordinal(before.arm_position), after: ordinal(s.arm_position) });
+    }
+  }
+
+  const label = { class_teacher: "Class teacher's comment", principal: "Principal's comment" } as const;
+  const commentKey = (c: TermCommentRow) => `${c.student_id}:${c.kind}`;
+  const wasComment = new Map((released.comments ?? []).map((c) => [commentKey(c), c.body]));
+  const nowComment = new Map((live.comments ?? []).map((c) => [commentKey(c), c.body]));
+  for (const key of new Set([...wasComment.keys(), ...nowComment.keys()])) {
+    const before = wasComment.get(key) ?? "";
+    const after = nowComment.get(key) ?? "";
+    if (before === after) continue;
+    const [studentId, kind] = key.split(":") as [string, TermCommentRow["kind"]];
+    changes.push({ studentId, what: label[kind], before: before || "—", after: after || "—" });
+  }
+
+  return changes;
+}
+
 export interface ReportCardInput {
   school: DocumentSchool;
   className: string;
@@ -163,6 +301,8 @@ export interface ReportCardInput {
   ratings: Map<string, TermRating[]>;
   attendance?: Map<string, { present: number; total: number }>;
   nextTermBegins?: string | null;
+  /** The school's traits. Defaults when not given. */
+  traits?: TraitLists;
 }
 
 const fmt = (n: number | null | undefined, dp = 1) =>
@@ -261,8 +401,8 @@ function pupilPage(input: ReportCardInput, pupil: ReportCardPupil): string {
   </div>
 
   <div class="grid-2" style="margin-top:18px">
-    ${ratingsTable("Affective", AFFECTIVE_TRAITS, ratings, "affective")}
-    ${ratingsTable("Psychomotor", PSYCHOMOTOR_TRAITS, ratings, "psychomotor")}
+    ${ratingsTable("Affective", (input.traits ?? DEFAULT_TRAITS).affective, ratings, "affective")}
+    ${ratingsTable("Psychomotor", (input.traits ?? DEFAULT_TRAITS).psychomotor, ratings, "psychomotor")}
   </div>
   <p class="muted" style="font-size:10.5px;margin-top:6px">${RATING_SCALE.map((r) => `${r.value} ${esc(r.label)}`).join(" · ")}</p>
 
@@ -295,4 +435,25 @@ export function termReportHtml(input: ReportCardInput): string {
       @media print { .report-page + .report-page { margin-top: 0; } }
     `,
   });
+}
+
+/** Comments from a term report's rows, keyed by pupil. */
+export function commentsByStudent(rows: TermCommentRow[] | undefined): Map<string, TermComments> {
+  const map = new Map<string, TermComments>();
+  for (const c of rows ?? []) {
+    const entry = map.get(c.student_id) ?? {};
+    if (c.kind === "principal") entry.principal = c.body;
+    else entry.classTeacher = c.body;
+    map.set(c.student_id, entry);
+  }
+  return map;
+}
+
+/** Ratings from a term report's rows, keyed by pupil. */
+export function ratingsByStudent(rows: TermRatingRow[] | undefined): Map<string, TermRating[]> {
+  const map = new Map<string, TermRating[]>();
+  for (const r of rows ?? []) {
+    map.set(r.student_id, [...(map.get(r.student_id) ?? []), { domain: r.domain, trait: r.trait, rating: r.rating }]);
+  }
+  return map;
 }

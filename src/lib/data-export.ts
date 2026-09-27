@@ -21,8 +21,11 @@ import { buildZip, type ZipEntry } from "@/lib/zip";
 export type ExportScope =
   | { kind: "org" }
   | { kind: "school" }
-  /** Through a parent table, joined with PostgREST's !inner embedding. */
-  | { kind: "via"; parent: string; column: "org_id" | "school_id" };
+  /**
+   * Through a parent table: rows whose `fk` is one of the parent's ids, the
+   * parent itself having been read under its own org or school scope.
+   */
+  | { kind: "via"; parent: string; fk: string; chunk?: number };
 
 export interface ExportTable {
   table: string;
@@ -38,8 +41,8 @@ export interface ExportDataset {
 
 const org = { kind: "org" } as const;
 const school = { kind: "school" } as const;
-const via = (parent: string, column: "org_id" | "school_id" = "school_id"): ExportScope =>
-  ({ kind: "via", parent, column });
+const via = (parent: string, fk: string, chunk?: number): ExportScope =>
+  (chunk === undefined ? { kind: "via", parent, fk } : { kind: "via", parent, fk, chunk });
 
 export const EXPORT_DATASETS: ExportDataset[] = [
   {
@@ -50,10 +53,10 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "schools", scope: org },
       { table: "campuses", scope: school },
       { table: "academic_years", scope: org },
-      { table: "academic_periods", scope: via("academic_years", "org_id") },
+      { table: "academic_periods", scope: via("academic_years", "academic_year_id") },
       { table: "classes", scope: school },
       { table: "subjects", scope: school },
-      { table: "class_subjects", scope: via("classes") },
+      { table: "class_subjects", scope: via("classes", "class_id") },
     ],
   },
   {
@@ -62,13 +65,13 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     description: "Pupil records, enrolments, guardians and who they look after, staff and their positions.",
     tables: [
       { table: "students", scope: school },
-      { table: "enrolments", scope: via("students") },
+      { table: "enrolments", scope: via("students", "student_id") },
       { table: "guardians", scope: org },
-      { table: "student_guardians", scope: via("students") },
+      { table: "student_guardians", scope: via("students", "student_id") },
       { table: "staff", scope: school },
-      { table: "staff_positions", scope: via("staff") },
-      { table: "class_teachers", scope: via("classes") },
-      { table: "subject_teachers", scope: via("classes") },
+      { table: "staff_positions", scope: via("staff", "staff_id") },
+      { table: "class_teachers", scope: via("classes", "class_id") },
+      { table: "subject_teachers", scope: via("classes", "class_id") },
     ],
   },
   {
@@ -77,13 +80,18 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     description: "Exams, grade bands, every score entered, report card comments and ratings, awards.",
     tables: [
       { table: "exams", scope: school },
-      { table: "exam_subjects", scope: via("exams") },
-      { table: "exam_grade_bands", scope: via("exams") },
-      { table: "student_scores", scope: via("students") },
+      { table: "exam_subjects", scope: via("exams", "exam_id") },
+      { table: "exam_grade_bands", scope: via("exams", "exam_id") },
+      // One exam per request. Row-level security on scores costs about a
+      // millisecond a row, so a request must not span more rows than fit in the
+      // 8-second statement timeout; one exam is pupils × subjects.
+      { table: "student_scores", scope: via("exams", "exam_id", 1) },
       { table: "result_releases", scope: school },
-      { table: "term_report_comments", scope: via("students") },
-      { table: "term_report_ratings", scope: via("students") },
-      { table: "term_report_releases", scope: via("classes") },
+      { table: "result_holds", scope: school },
+      { table: "report_traits", scope: school },
+      { table: "term_report_comments", scope: via("students", "student_id") },
+      { table: "term_report_ratings", scope: via("students", "student_id") },
+      { table: "term_report_releases", scope: via("classes", "class_id") },
       { table: "student_awards", scope: school },
       { table: "recognitions", scope: org },
     ],
@@ -107,9 +115,10 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "fee_categories", scope: org },
       { table: "fee_schedules", scope: school },
       { table: "invoices", scope: school },
-      { table: "invoice_items", scope: via("invoices") },
+      { table: "invoice_items", scope: via("invoices", "invoice_id") },
+      { table: "invoice_adjustments", scope: via("invoices", "invoice_id") },
       { table: "payments", scope: school },
-      { table: "payment_allocations", scope: via("payments") },
+      { table: "payment_allocations", scope: via("payments", "payment_id") },
       { table: "payment_transactions", scope: school },
       { table: "receipts", scope: school },
     ],
@@ -119,9 +128,9 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Payroll",
     description: "Salary profiles, payroll runs, payslip lines and salary change requests. Bank details are never exported.",
     tables: [
-      { table: "payroll_profiles", scope: via("staff") },
+      { table: "payroll_profiles", scope: via("staff", "staff_id") },
       { table: "payroll_runs", scope: school },
-      { table: "payroll_run_items", scope: via("payroll_runs") },
+      { table: "payroll_run_items", scope: via("payroll_runs", "payroll_run_id") },
       { table: "salary_change_requests", scope: school },
       { table: "approval_requests", scope: org },
     ],
@@ -153,8 +162,8 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     description: "Routes, stops and which pupils ride them.",
     tables: [
       { table: "transport_routes", scope: school },
-      { table: "transport_stops", scope: via("transport_routes") },
-      { table: "student_transport", scope: via("students") },
+      { table: "transport_stops", scope: via("transport_routes", "route_id") },
+      { table: "student_transport", scope: via("students", "student_id") },
     ],
   },
   {
@@ -211,13 +220,36 @@ export interface ExportClient {
   from(table: string): ExportQuery;
 }
 
-interface ScopeContext {
+export interface ScopeContext {
   orgId: string;
   schoolIds: string[];
+  /** Ids of a parent table's rows in this organisation, for "via" scopes. */
+  parentIds?: (parent: string) => Promise<string[]>;
+}
+
+/**
+ * Parent ids per request for "via" tables. Small enough that the URL stays a
+ * few kilobytes; large enough that a 1,000-pupil school is ten requests.
+ */
+export const PARENT_ID_CHUNK = 100;
+
+/** The scope a parent table is itself exported under. */
+function parentTable(parent: string): ExportTable {
+  const found = EXPORT_DATASETS.flatMap((d) => d.tables).find((t) => t.table === parent);
+  if (!found || found.scope.kind === "via") throw new Error(`${parent} cannot scope another table`);
+  return found;
 }
 
 /**
  * Reads every row of one table the caller may see within the organisation.
+ *
+ * Every filter is a plain equality or IN on an indexed column of the table
+ * itself. That matters more than it looks: Postgres checks row-level security
+ * on each row it reads, and student_scores' policies cost about a millisecond
+ * a row. Filtering through a PostgREST !inner join to the parent did not
+ * narrow the rows first, so it checked every score on the platform and hit the
+ * statement timeout; filtering on exam_id uses the index and checks only this
+ * organisation's.
  *
  * Pages by primary key rather than by offset: it cannot skip or repeat a row
  * when something is written mid-export, and it does not depend on the server's
@@ -228,33 +260,36 @@ export async function fetchTableRows(
   { table, scope }: ExportTable,
   ctx: ScopeContext,
   onPage?: (fetched: number) => void,
+  columns = "*",
 ): Promise<Record<string, unknown>[]> {
-  const needsSchools = scope.kind === "school" || (scope.kind === "via" && scope.column === "school_id");
-  if (needsSchools && ctx.schoolIds.length === 0) return [];
-
   const rows: Record<string, unknown>[] = [];
-  let lastId: unknown = null;
 
-  for (;;) {
-    const columns = scope.kind === "via" ? `*, ${scope.parent}!inner(${scope.column})` : "*";
-    let query = client.from(table).select(columns);
-
-    if (scope.kind === "org") query = query.eq("org_id", ctx.orgId);
-    else if (scope.kind === "school") query = query.in("school_id", ctx.schoolIds);
-    else if (scope.column === "org_id") query = query.eq(`${scope.parent}.org_id`, ctx.orgId);
-    else query = query.in(`${scope.parent}.school_id`, ctx.schoolIds);
-
-    if (lastId !== null) query = query.gt("id", lastId);
-    const { data, error } = await query.order("id", { ascending: true }).limit(EXPORT_PAGE_SIZE);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    for (const row of data) {
-      if (scope.kind === "via") delete row[scope.parent];
-      rows.push(row);
+  const readAll = async (filter: (q: ExportQuery) => ExportQuery) => {
+    let lastId: unknown = null;
+    for (;;) {
+      let query = filter(client.from(table).select(columns));
+      if (lastId !== null) query = query.gt("id", lastId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(EXPORT_PAGE_SIZE);
+      if (error) throw new Error(`${table}: ${error.message}`);
+      if (!data || data.length === 0) return;
+      rows.push(...data);
+      lastId = data[data.length - 1].id;
+      onPage?.(rows.length);
     }
-    lastId = data[data.length - 1].id;
-    onPage?.(rows.length);
+  };
+
+  if (scope.kind === "org") {
+    await readAll((q) => q.eq("org_id", ctx.orgId));
+  } else if (scope.kind === "school") {
+    if (ctx.schoolIds.length > 0) await readAll((q) => q.in("school_id", ctx.schoolIds));
+  } else {
+    if (!ctx.parentIds) throw new Error(`${table}: no parent ids to scope by`);
+    const ids = await ctx.parentIds(scope.parent);
+    const size = scope.chunk ?? PARENT_ID_CHUNK;
+    for (let i = 0; i < ids.length; i += size) {
+      const chunk = ids.slice(i, i + size);
+      await readAll((q) => q.in(scope.fk, chunk));
+    }
   }
 
   return rows;
@@ -332,6 +367,14 @@ export async function runExport(options: {
   const { data: schools, error } = await client.from("schools").select("id, name").eq("org_id", orgId);
   if (error) throw new Error(`schools: ${error.message}`);
   const ctx: ScopeContext = { orgId, schoolIds: (schools ?? []).map((s) => String(s.id)) };
+  const parentCache = new Map<string, Promise<string[]>>();
+  ctx.parentIds = (parent) => {
+    if (!parentCache.has(parent)) {
+      parentCache.set(parent, fetchTableRows(client, parentTable(parent), ctx, undefined, "id")
+        .then((rows) => rows.map((r) => String(r.id))));
+    }
+    return parentCache.get(parent)!;
+  };
 
   const work = datasets.flatMap((d) => d.tables.map((t) => ({ dataset: d, table: t })));
   const encoder = new TextEncoder();

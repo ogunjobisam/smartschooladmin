@@ -25,6 +25,9 @@ const STATUS_STYLES: Record<string, string> = {
   queued: "bg-muted text-muted-foreground",
   sent: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
   failed: "bg-destructive/10 text-destructive",
+  // SMS through the sandbox: recorded, never delivered. Styled as a warning so
+  // nobody reads it as texts that reached parents.
+  simulated: "bg-warning/15 text-warning",
 };
 
 /**
@@ -73,11 +76,12 @@ export default function MessageDelivery() {
   }, [messages, search]);
 
   const counts = useMemo(() => {
-    const tally = { queued: 0, sent: 0, failed: 0 };
+    const tally = { queued: 0, sent: 0, failed: 0, simulated: 0 };
     for (const m of messages) {
       if (m.status === "queued") tally.queued++;
       else if (m.status === "sent") tally.sent++;
       else if (m.status === "failed") tally.failed++;
+      else if (m.status === "simulated") tally.simulated++;
     }
     return tally;
   }, [messages]);
@@ -200,11 +204,14 @@ export default function MessageDelivery() {
         </div>
       </PageHeader>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className={`grid gap-3 ${counts.simulated > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         {[
           { label: "Queued", value: counts.queued, icon: Clock },
           { label: "Sent", value: counts.sent, icon: Send },
           { label: "Failed", value: counts.failed, icon: AlertCircle },
+          ...(counts.simulated > 0
+            ? [{ label: "Simulated SMS (not delivered)", value: counts.simulated, icon: Smartphone }]
+            : []),
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -237,6 +244,7 @@ export default function MessageDelivery() {
                 <SelectItem value="queued">Queued</SelectItem>
                 <SelectItem value="sent">Sent</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="simulated">Simulated</SelectItem>
               </SelectContent>
             </Select>
             <Select value={channel} onValueChange={setChannel}>
@@ -281,7 +289,12 @@ export default function MessageDelivery() {
                         </span>
                       </TableCell>
                       <TableCell className="max-w-[240px]">
-                        <p className="truncate text-sm">{m.subject || "—"}</p>
+                        <p className="truncate text-sm">
+                          {m.subject || (m.channel === "sms" ? m.body : "—")}
+                        </p>
+                        {m.channel === "sms" && m.sms_parts && m.sms_parts > 1 && (
+                          <p className="text-xs text-muted-foreground">{m.sms_parts} texts long</p>
+                        )}
                         {m.error_message && (
                           <p className="truncate text-xs text-destructive" title={m.error_message}>
                             {m.error_message}
@@ -300,11 +313,13 @@ export default function MessageDelivery() {
                         {format(parseISO(m.created_at), "d MMM, HH:mm")}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {m.status === "sent" && m.processed_at
-                          ? format(parseISO(m.processed_at), "d MMM, HH:mm")
-                          : m.status === "sent"
-                            ? "Sent"
-                            : "Not sent yet"}
+                        {m.status === "simulated"
+                          ? "Simulated, not delivered"
+                          : m.status === "sent" && m.processed_at
+                            ? format(parseISO(m.processed_at), "d MMM, HH:mm")
+                            : m.status === "sent"
+                              ? "Sent"
+                              : "Not sent yet"}
                       </TableCell>
                       <TableCell className="hidden whitespace-nowrap text-xs text-muted-foreground lg:table-cell">
                         {m.scheduled_for ? format(parseISO(m.scheduled_for), "d MMM, HH:mm") : "—"}
