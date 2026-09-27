@@ -2764,6 +2764,7 @@ export type Database = {
           admissions_open: boolean
           admissions_slug: string | null
           created_at: string
+          custom_domain: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -2781,6 +2782,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2798,6 +2800,7 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
+          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -4061,6 +4064,7 @@ export type Database = {
           school_id: string
         }[]
       }
+      reserved_school_slugs: { Args: never; Returns: string[] }
       role_rank: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
