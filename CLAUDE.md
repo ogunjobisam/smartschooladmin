@@ -105,7 +105,7 @@ Write the assertion, watch it fail, then fix the code.
 ## Before pushing
 
 ```
-npx tsc --noEmit
+npm run typecheck        # tsc -b; plain `npx tsc --noEmit` checks nothing here
 npx vitest run           # 997 tests
 npx eslint .             # 0 errors; 67 pre-existing warnings
 npx vite build

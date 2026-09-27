@@ -466,7 +466,7 @@ function ReportCardEditor({
   const save = async () => {
     setSaving(true);
     try {
-      const writes = [];
+      const writes: Promise<void>[] = [];
       const comment = async (kind: "class_teacher" | "principal", body: string, before?: string | null) => {
         if (body.trim() === (before ?? "").trim()) return;
         const { error } = body.trim()
