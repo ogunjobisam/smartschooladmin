@@ -1792,4 +1792,86 @@ SELECT public.assert(
   'a parent cannot see the credits on their child''s invoice');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- Scores: each per-user check runs once per query, and nobody's reach changes
+-- ---------------------------------------------------------------------------
+-- The score policies called is_self_service_role(auth.uid()) and five siblings
+-- bare, so Postgres re-ran every one for every row it read: about 1.3 ms a row
+-- on the live database, enough that reading one organisation's marks through a
+-- join ran past the 8-second statement timeout. Their inputs are constant for
+-- the whole statement, so wrapped in (SELECT ...) each becomes an InitPlan and
+-- runs once. The answers cannot change; the assertions after the structural one
+-- prove the reach did not either.
+DO $$
+DECLARE bad text;
+BEGIN
+  SELECT string_agg(policyname, ', ' ORDER BY policyname) INTO bad
+  FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'student_scores'
+    AND (coalesce(qual, '') || ' ' || coalesce(with_check, ''))
+        ~ '(?<!SELECT )(is_self_service_role|is_support_staff_only|is_teacher_only|get_user_org_id|my_student_id)\(';
+  PERFORM public.assert(bad IS NULL,
+    'student_scores policies re-run a per-user check on every row instead of once per query: ' || coalesce(bad, ''));
+
+  -- For a non-pupil, "student_id = NULL AND NOT score_withheld_from_family()"
+  -- still runs the expensive second half (NULL AND false is false). The pupil
+  -- policy must open with a guard that is plainly false for everyone else.
+  PERFORM public.assert(
+    (SELECT qual FROM pg_policies WHERE schemaname = 'public' AND tablename = 'student_scores'
+       AND policyname = 'Students can view their own scores')
+      ~ '^\(\(\( SELECT my_student_id\(\) AS my_student_id\) IS NOT NULL\) AND ',
+    'the pupil score policy no longer short-circuits for staff, so every staff read runs score_withheld_from_family on every row');
+END $$;
+
+-- A third organisation with one score, and a proprietor for each side. Fresh
+-- users: earlier sections promote their fixtures into other roles.
+INSERT INTO organisation_groups (id, name) VALUES ('f5c00000-0000-0000-0000-000000000001', 'Third Org');
+INSERT INTO schools (id, org_id, name)
+  VALUES ('f5c00000-0000-0000-0000-000000000002', 'f5c00000-0000-0000-0000-000000000001', 'Third School');
+INSERT INTO academic_years (id, org_id, name, start_date, end_date)
+  VALUES ('f5c00000-0000-0000-0000-000000000003', 'f5c00000-0000-0000-0000-000000000001', '2026', current_date, current_date + 300);
+INSERT INTO academic_periods (id, academic_year_id, name, start_date, end_date, is_current)
+  VALUES ('f5c00000-0000-0000-0000-000000000004', 'f5c00000-0000-0000-0000-000000000003', 'Term 1', current_date, current_date + 100, true);
+INSERT INTO students (id, school_id, first_name, last_name)
+  VALUES ('f5c00000-0000-0000-0000-000000000005', 'f5c00000-0000-0000-0000-000000000002', 'Tobi', 'Ade');
+INSERT INTO subjects (id, school_id, name)
+  VALUES ('f5c00000-0000-0000-0000-000000000006', 'f5c00000-0000-0000-0000-000000000002', 'English');
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('f5c00000-0000-0000-0000-000000000007', 'f5c00000-0000-0000-0000-000000000002', 'f5c00000-0000-0000-0000-000000000004', 'Mid-term', 100);
+INSERT INTO student_scores (id, exam_id, student_id, subject_id, score)
+  VALUES ('f5c00000-0000-0000-0000-000000000008', 'f5c00000-0000-0000-0000-000000000007',
+          'f5c00000-0000-0000-0000-000000000005', 'f5c00000-0000-0000-0000-000000000006', 55);
+INSERT INTO auth.users (id, email) VALUES
+  ('f5c00000-0000-0000-0000-00000000000a', 'owner-one@example.test'),
+  ('f5c00000-0000-0000-0000-00000000000b', 'owner-three@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('f5c00000-0000-0000-0000-00000000000a', 'proprietor', '11111111-1111-1111-1111-111111111111', NULL),
+  ('f5c00000-0000-0000-0000-00000000000b', 'proprietor', 'f5c00000-0000-0000-0000-000000000001', NULL);
+
+-- The first organisation's owner: their own marks, and not the third's.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f5c00000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 1,
+  'a proprietor cannot read their own organisation''s scores');
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = 'f5c00000-0000-0000-0000-000000000008') = 0,
+  'a proprietor can read another organisation''s scores');
+UPDATE student_scores SET score = 1 WHERE id = 'f5c00000-0000-0000-0000-000000000008';
+COMMIT;
+SELECT public.assert((SELECT score FROM student_scores WHERE id = 'f5c00000-0000-0000-0000-000000000008') = 55,
+  'a proprietor changed another organisation''s score');
+
+-- The positive control: the third organisation's own owner reads and edits it.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f5c00000-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = 'f5c00000-0000-0000-0000-000000000008') = 1,
+  'a proprietor cannot read their own organisation''s scores (third org)');
+SELECT public.assert((SELECT count(*) FROM student_scores WHERE id = '88888888-8888-8888-8888-888888888888') = 0,
+  'the third organisation''s proprietor can read the first organisation''s scores');
+UPDATE student_scores SET score = 56 WHERE id = 'f5c00000-0000-0000-0000-000000000008';
+COMMIT;
+SELECT public.assert((SELECT score FROM student_scores WHERE id = 'f5c00000-0000-0000-0000-000000000008') = 56,
+  'a proprietor could not edit their own organisation''s score');
+
 SELECT 'rls behaviour tests passed' AS result;
