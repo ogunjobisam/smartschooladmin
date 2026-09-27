@@ -1,8 +1,11 @@
+import { Seo } from "@/components/seo/Seo";
 import { Link } from "react-router-dom";
 import { GraduationCap, ArrowLeft } from "lucide-react";
 
 export default function PrivacyPolicy() {
   return (
+    <>
+      <Seo title={"Privacy Policy"} description={"How SmartSchoolAdmin collects, stores and protects school, student and guardian data."} path="/privacy" />
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
@@ -78,7 +81,7 @@ export default function PrivacyPolicy() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">8. Contact Us</h2>
-            <p>If you have questions about this Privacy Policy, please contact us at <strong className="text-foreground">privacy@smartschooladmin.com</strong>.</p>
+            <p>If you have questions about this Privacy Policy, please contact us at <strong className="text-foreground">privacy@smartschooladmin.app</strong>.</p>
           </section>
         </div>
       </main>
@@ -89,5 +92,6 @@ export default function PrivacyPolicy() {
         </div>
       </footer>
     </div>
+    </>
   );
 }

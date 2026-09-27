@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, UserCog, Receipt,
   FileText, CreditCard, AlertTriangle, Calculator, CheckSquare,
   ClipboardList, Settings, Shield, Building2, ChevronDown, LogOut, UserPlus, BarChart3, CalendarCheck, BookOpen,
-  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox, Award, Medal
+  Megaphone, Bell, MessageSquareText, LineChart, CalendarDays, Bus, Inbox, Award, Medal, CalendarRange
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { navItemsForRole, portalPathForRole, profileLinkForRole, type NavGroup, type NavItem } from "@/lib/access";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
+import { Logo } from "@/components/brand/Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -27,6 +28,8 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   guardians: Users,
   staff: UserCog,
   attendance: CalendarCheck,
+  timetable: CalendarRange,
+  "my-timetable": CalendarRange,
   exams: BookOpen,
   performance: LineChart,
   achievements: Award,
@@ -45,6 +48,8 @@ const NAV_ICONS: Record<string, typeof LayoutDashboard> = {
   "group-overview": BarChart3,
   reports: ClipboardList,
   "audit-log": Shield,
+  "billing": Receipt,
+  "school-profile": Building2,
   settings: Settings,
   users: UserPlus,
 };
@@ -136,9 +141,7 @@ export function AppSidebar() {
               </AvatarFallback>
             </Avatar>
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-              <Building2 className="h-4 w-4 text-sidebar-primary-foreground" />
-            </div>
+            <Logo variant="mark" alt="" className="h-8 w-8 shrink-0 rounded-lg" />
           )}
           {!collapsed && (
             <div className="flex min-w-0 flex-col">

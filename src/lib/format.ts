@@ -12,6 +12,11 @@ const currencyLocaleMap: Record<string, string> = {
   INR: "en-IN",
   CAD: "en-CA",
   AUD: "en-AU",
+  AED: "en-AE",
+  EGP: "ar-EG",
+  TZS: "sw-TZ",
+  UGX: "en-UG",
+  RWF: "rw-RW",
 };
 
 const currencySymbolMap: Record<string, string> = {
@@ -25,6 +30,11 @@ const currencySymbolMap: Record<string, string> = {
   INR: "₹",
   CAD: "CA$",
   AUD: "A$",
+  AED: "AED ",
+  EGP: "E£",
+  TZS: "TSh",
+  UGX: "USh",
+  RWF: "FRw",
 };
 
 export function formatCurrency(value: number, currencyCode = "NGN"): string {

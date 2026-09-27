@@ -834,6 +834,27 @@ export type Database = {
           },
         ]
       }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          token?: string
+        }
+        Relationships: []
+      }
       enrolments: {
         Row: {
           academic_period_id: string
@@ -1596,6 +1617,51 @@ export type Database = {
           },
         ]
       }
+      org_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_id: string | null
+          org_id: string
+          plan_code: string
+          renews_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_id?: string | null
+          org_id: string
+          plan_code?: string
+          renews_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_id?: string | null
+          org_id?: string
+          plan_code?: string
+          renews_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscriptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_subscriptions_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       organisation_groups: {
         Row: {
           ai_addon_enabled: boolean
@@ -2035,11 +2101,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          paid_at: string | null
           period_label: string
           run_date: string
           school_id: string
           staff_count: number
           status: Database["public"]["Enums"]["payroll_status"]
+          submitted_at: string | null
+          submitted_by: string | null
           total_deductions: number
           total_gross: number
           total_net: number
@@ -2051,11 +2120,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          paid_at?: string | null
           period_label: string
           run_date?: string
           school_id: string
           staff_count?: number
           status?: Database["public"]["Enums"]["payroll_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_deductions?: number
           total_gross?: number
           total_net?: number
@@ -2067,11 +2139,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          paid_at?: string | null
           period_label?: string
           run_date?: string
           school_id?: string
           staff_count?: number
           status?: Database["public"]["Enums"]["payroll_status"]
+          submitted_at?: string | null
+          submitted_by?: string | null
           total_deductions?: number
           total_gross?: number
           total_net?: number
@@ -2083,6 +2158,68 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_payments: {
+        Row: {
+          academic_period_id: string | null
+          amount: number
+          created_at: string
+          currency: string
+          gateway: string
+          gateway_reference: string
+          id: string
+          org_id: string
+          payer_email: string | null
+          payer_name: string | null
+          plan_code: string | null
+          purpose: string
+          sms_credits: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          academic_period_id?: string | null
+          amount: number
+          created_at?: string
+          currency?: string
+          gateway: string
+          gateway_reference: string
+          id?: string
+          org_id: string
+          payer_email?: string | null
+          payer_name?: string | null
+          plan_code?: string | null
+          purpose: string
+          sms_credits?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          academic_period_id?: string | null
+          amount?: number
+          created_at?: string
+          currency?: string
+          gateway?: string
+          gateway_reference?: string
+          id?: string
+          org_id?: string
+          payer_email?: string | null
+          payer_name?: string | null
+          plan_code?: string | null
+          purpose?: string
+          sms_credits?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_payments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2672,6 +2809,64 @@ export type Database = {
           },
         ]
       }
+      sms_credit_balances: {
+        Row: {
+          balance: number
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_credit_balances_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_usage_log: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          queue_id: string | null
+          recipient: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          queue_id?: string | null
+          recipient: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          queue_id?: string | null
+          recipient?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_usage_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           created_at: string
@@ -3118,6 +3313,254 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          ai_enabled: boolean
+          code: string
+          multi_school: boolean
+          name: string
+          payroll_enabled: boolean
+          price_per_student_term: number
+          sort_order: number
+          storage_limit_mb: number
+          student_limit: number | null
+        }
+        Insert: {
+          ai_enabled?: boolean
+          code: string
+          multi_school?: boolean
+          name: string
+          payroll_enabled?: boolean
+          price_per_student_term?: number
+          sort_order?: number
+          storage_limit_mb?: number
+          student_limit?: number | null
+        }
+        Update: {
+          ai_enabled?: boolean
+          code?: string
+          multi_school?: boolean
+          name?: string
+          payroll_enabled?: boolean
+          price_per_student_term?: number
+          sort_order?: number
+          storage_limit_mb?: number
+          student_limit?: number | null
+        }
+        Relationships: []
+      }
+      timetable_entries: {
+        Row: {
+          academic_period_id: string
+          class_id: string
+          created_at: string
+          created_by: string | null
+          day_of_week: number
+          id: string
+          notes: string | null
+          room: string | null
+          school_id: string
+          staff_id: string | null
+          subject_id: string | null
+          timetable_period_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_period_id: string
+          class_id: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week: number
+          id?: string
+          notes?: string | null
+          room?: string | null
+          school_id: string
+          staff_id?: string | null
+          subject_id?: string | null
+          timetable_period_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_period_id?: string
+          class_id?: string
+          created_at?: string
+          created_by?: string | null
+          day_of_week?: number
+          id?: string
+          notes?: string | null
+          room?: string | null
+          school_id?: string
+          staff_id?: string | null
+          subject_id?: string | null
+          timetable_period_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_entries_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_entries_timetable_period_id_fkey"
+            columns: ["timetable_period_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_exceptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          entry_id: string
+          id: string
+          new_date: string | null
+          new_room: string | null
+          new_staff_id: string | null
+          new_timetable_period_id: string | null
+          reason: string | null
+          school_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          entry_id: string
+          id?: string
+          new_date?: string | null
+          new_room?: string | null
+          new_staff_id?: string | null
+          new_timetable_period_id?: string | null
+          reason?: string | null
+          school_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          entry_id?: string
+          id?: string
+          new_date?: string | null
+          new_room?: string | null
+          new_staff_id?: string | null
+          new_timetable_period_id?: string | null
+          reason?: string | null
+          school_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_exceptions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_exceptions_new_staff_id_fkey"
+            columns: ["new_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_exceptions_new_timetable_period_id_fkey"
+            columns: ["new_timetable_period_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_exceptions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timetable_periods: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_break: boolean
+          name: string
+          school_id: string
+          sort_order: number
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          is_break?: boolean
+          name: string
+          school_id: string
+          sort_order?: number
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_break?: boolean
+          name?: string
+          school_id?: string
+          sort_order?: number
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_periods_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transport_routes: {
         Row: {
           capacity: number | null
@@ -3264,6 +3707,14 @@ export type Database = {
       }
     }
     Functions: {
+      activate_subscription: {
+        Args: { _org_id: string; _period_id: string; _plan_code: string }
+        Returns: undefined
+      }
+      add_sms_credits: {
+        Args: { _credits: number; _org_id: string }
+        Returns: undefined
+      }
       ai_usage_this_month: { Args: { _org_id: string }; Returns: number }
       backfill_staff_id_numbers: {
         Args: { _school_id: string }
@@ -3282,13 +3733,37 @@ export type Database = {
         Args: { _name: string }
         Returns: boolean
       }
+      charge_sms: {
+        Args: { _org_id: string; _queue_id: string; _recipient: string }
+        Returns: boolean
+      }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
+      class_is_mine_or_my_childs: {
+        Args: { _class_id: string }
+        Returns: boolean
+      }
+      class_teacher_names: {
+        Args: { _class_id: string }
+        Returns: {
+          full_name: string
+        }[]
+      }
       create_demo_org: {
         Args: { _hours?: number; _label?: string }
         Returns: Json
       }
+      create_demo_org_large: {
+        Args: {
+          _hours?: number
+          _label?: string
+          _students?: number
+          _teachers?: number
+        }
+        Returns: Json
+      }
       delete_demo_org: { Args: { _org_id: string }; Returns: undefined }
       demo_org_row_counts: { Args: { _org_id: string }; Returns: Json }
+      drain_outbound_message_queue: { Args: never; Returns: undefined }
       exam_org_id: { Args: { _exam_id: string }; Returns: string }
       get_my_role: {
         Args: never
@@ -3339,6 +3814,23 @@ export type Database = {
       }
       my_staff_id: { Args: never; Returns: string }
       my_student_id: { Args: never; Returns: string }
+      my_subscription: {
+        Args: never
+        Returns: {
+          ai_enabled: boolean
+          current_period_id: string
+          multi_school: boolean
+          payroll_enabled: boolean
+          plan_code: string
+          plan_name: string
+          price_per_student_term: number
+          sms_balance: number
+          status: string
+          storage_limit_mb: number
+          student_count: number
+          student_limit: number
+        }[]
+      }
       next_application_reference: {
         Args: { _school_id: string }
         Returns: string
@@ -3347,6 +3839,7 @@ export type Database = {
         Args: { _entity: string; _school_id: string }
         Returns: string
       }
+      org_current_student_count: { Args: { _org_id: string }; Returns: number }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
@@ -3389,6 +3882,15 @@ export type Database = {
       sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
+      verify_queue_drain_token: { Args: { t: string }; Returns: boolean }
+      wall_recipient_names: {
+        Args: { _school_id: string }
+        Returns: {
+          full_name: string
+          person_id: string
+          subject_type: string
+        }[]
+      }
     }
     Enums: {
       app_role:
@@ -3436,6 +3938,8 @@ export type Database = {
         | "school_announcement"
         | "school_event"
         | "recognition_published"
+        | "attendance_alert"
+        | "results_published"
       payment_gateway: "paystack" | "flutterwave" | "manual"
       payment_method: "cash" | "bank_transfer" | "pos" | "online" | "cheque"
       payroll_status: "draft" | "pending" | "approved" | "paid" | "rejected"
@@ -3631,6 +4135,8 @@ export const Constants = {
         "school_announcement",
         "school_event",
         "recognition_published",
+        "attendance_alert",
+        "results_published",
       ],
       payment_gateway: ["paystack", "flutterwave", "manual"],
       payment_method: ["cash", "bank_transfer", "pos", "online", "cheque"],

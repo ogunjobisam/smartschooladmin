@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, subDays } from "date-fns";
 import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from "lucide-react";
@@ -7,6 +7,10 @@ import { BookOpen, CalendarCheck, ClipboardList, GraduationCap, Users } from "lu
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { SchoolSnapshot } from "@/components/dashboard/SchoolSnapshot";
+import { RecognitionsPanel } from "@/components/achievements/RecognitionsPanel";
+import { ClassPerformancePanel } from "@/components/teacher/ClassPerformancePanel";
+import { GuardianContactsPanel } from "@/components/teacher/GuardianContactsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +29,8 @@ import { displayClassName } from "@/lib/sections";
  * built for the office.
  */
 export default function StaffPortal() {
-  const { user, schoolId } = useAuth();
+  const { user, schoolId, orgId } = useAuth();
+  const navigate = useNavigate();
 
   const { data: staff, isLoading: staffLoading } = useQuery({
     queryKey: ["my-staff-basic", user?.id],
@@ -60,18 +65,47 @@ export default function StaffPortal() {
 
   const classIds = useMemo(() => myClasses.map((c) => c.id), [myClasses]);
 
-  const { data: enrolments = [] } = useQuery({
-    queryKey: ["my-class-enrolments", classIds],
+  // A pupil is enrolled once per term, so without pinning to the current term
+  // the same child is counted again for every past term.
+  const { data: currentPeriodId } = useQuery({
+    queryKey: ["staff-current-period", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, academic_years!inner(org_id)")
+        .eq("is_current", true)
+        .eq("academic_years.org_id", orgId!)
+        .maybeSingle();
+      return data?.id ?? null;
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: enrolments = [] } = useQuery({
+    queryKey: ["my-class-enrolments", classIds, currentPeriodId],
+    queryFn: async () => {
+      let query = supabase
         .from("enrolments")
         .select("id, class_id, student_id, students(first_name, last_name, student_id_number, status)")
         .in("class_id", classIds);
+      if (currentPeriodId) query = query.eq("academic_period_id", currentPeriodId);
+      const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      const seen = new Set<string>();
+      return (data || []).filter((row) => {
+        const key = `${row.class_id}|${row.student_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
     enabled: classIds.length > 0,
   });
+
+  const studentIds = useMemo(
+    () => Array.from(new Set(enrolments.map((e) => e.student_id))),
+    [enrolments]
+  );
 
   const since = useMemo(() => format(subDays(new Date(), 30), "yyyy-MM-dd"), []);
 
@@ -216,8 +250,18 @@ export default function StaffPortal() {
           icon={CalendarCheck}
           tone="green"
         />
-        <StatCard title="Recent exams" value={String(exams.length)} icon={ClipboardList} tone="gold" />
+        <StatCard
+          title="Recent exams"
+          value={String(exams.length)}
+          subtitle={`${scores.length} result${scores.length === 1 ? "" : "s"} entered`}
+          icon={ClipboardList}
+          tone="gold"
+        />
       </div>
+
+      {/* The same attendance and results figures the school dashboard shows,
+          narrowed by row-level security to the classes this teacher holds. */}
+      <SchoolSnapshot />
 
       {myClasses.length === 0 ? (
         <EmptyState
@@ -334,7 +378,7 @@ export default function StaffPortal() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">My students</CardTitle>
-              <CardDescription>Everyone enrolled in the classes you teach{schoolId ? "" : ""}.</CardDescription>
+              <CardDescription>Everyone enrolled in the classes you teach — tap a name for their full record.</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               {enrolments.length === 0 ? (
@@ -350,8 +394,12 @@ export default function StaffPortal() {
                   </TableHeader>
                   <TableBody>
                     {enrolments.map((e) => (
-                      <TableRow key={e.id}>
-                        <TableCell className="text-sm font-medium">
+                      <TableRow
+                        key={e.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/students/${e.student_id}`)}
+                      >
+                        <TableCell className="text-sm font-medium text-primary">
                           {e.students ? `${e.students.first_name} ${e.students.last_name}` : "—"}
                         </TableCell>
                         <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
@@ -365,6 +413,38 @@ export default function StaffPortal() {
               )}
             </CardContent>
           </Card>
+
+          <ClassPerformancePanel
+            classIds={classIds}
+            classNameById={Object.fromEntries(myClasses.map((c) => [c.id, c.name]))}
+          />
+
+          <GuardianContactsPanel
+            studentIds={studentIds}
+            classNameByStudentId={Object.fromEntries(enrolments.map((e) => [e.student_id, className(e.class_id)]))}
+          />
+
+          {enrolments.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold">Student recognitions</h2>
+                <p className="text-sm text-muted-foreground">What your students have been recognised for.</p>
+              </div>
+              {enrolments.slice(0, 10).map((e) =>
+                e.students ? (
+                  <div key={e.id}>
+                    <p className="mb-2 text-sm font-medium">{e.students.first_name} {e.students.last_name}</p>
+                    <RecognitionsPanel subjectType="student" personId={e.student_id} hideWhenEmpty />
+                  </div>
+                ) : null
+              )}
+              {enrolments.length > 10 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the first 10 students — open a student's record for the rest.
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

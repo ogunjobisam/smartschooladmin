@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DEFAULT_ACCENT, DEFAULT_PRIMARY, schoolThemeVars } from "@/lib/theme";
+import { setDocumentSchoolProfile } from "@/lib/document-theme";
 
 interface SchoolBranding {
   name: string;
@@ -9,14 +10,20 @@ interface SchoolBranding {
   primaryColor: string;
   accentColor: string;
   tagline: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
 }
 
 const defaultBranding: SchoolBranding = {
-  name: "Smart School Admin",
+  name: "SmartSchoolAdmin",
   logoUrl: null,
   primaryColor: DEFAULT_PRIMARY,
   accentColor: DEFAULT_ACCENT,
   tagline: null,
+  address: null,
+  phone: null,
+  email: null,
 };
 
 /** Candidate colours being tried out in Settings, not yet saved. */
@@ -59,7 +66,7 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from("schools")
-      .select("name, logo_url, primary_color, accent_color, tagline")
+      .select("name, logo_url, primary_color, accent_color, tagline, address, phone, email")
       .eq("id", schoolId)
       .maybeSingle();
 
@@ -70,6 +77,9 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
         primaryColor: data.primary_color || defaultBranding.primaryColor,
         accentColor: data.accent_color || defaultBranding.accentColor,
         tagline: data.tagline,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
       });
     } else {
       setBranding(defaultBranding);
@@ -107,6 +117,24 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
       for (const token of Object.keys(vars)) root.style.removeProperty(token);
     };
   }, [primaryColor, accentColor]);
+
+  // Printed and emailed documents are generated outside React, so they read the
+  // school's letterhead from this module-level publisher rather than from
+  // context. Kept separate from the theme effect above because it follows the
+  // *saved* branding: a colour being tried out in Settings should repaint the
+  // screen, not the next invoice someone prints.
+  useEffect(() => {
+    setDocumentSchoolProfile({
+      name: branding.name,
+      address: branding.address,
+      phone: branding.phone,
+      email: branding.email,
+      logoUrl: branding.logoUrl,
+      tagline: branding.tagline,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    });
+  }, [branding]);
 
   return (
     <SchoolBrandingContext.Provider

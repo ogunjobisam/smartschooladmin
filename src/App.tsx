@@ -45,7 +45,9 @@ const PayrollRunDetail = lazy(() => import("./pages/PayrollRunDetail"));
 const Approvals = lazy(() => import("./pages/Approvals"));
 const Reports = lazy(() => import("./pages/Reports"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
+const RolesAccess = lazy(() => import("./pages/RolesAccess"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
 const StudentPortal = lazy(() => import("./pages/StudentPortal"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -66,6 +68,12 @@ const Admissions = lazy(() => import("./pages/Admissions"));
 const Apply = lazy(() => import("./pages/Apply"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const NotificationTemplates = lazy(() => import("./pages/NotificationTemplates"));
+const MyResults = lazy(() => import("./pages/student/MyResults"));
+const MyAttendance = lazy(() => import("./pages/student/MyAttendance"));
+const MyTimetable = lazy(() => import("./pages/student/MyTimetable"));
+const Timetable = lazy(() => import("./pages/Timetable"));
+const Billing = lazy(() => import("./pages/Billing"));
+const Pricing = lazy(() => import("./pages/Pricing"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +121,7 @@ function AppRoutes() {
           <Route path="/terms" element={<TermsOfService />} />
           {/* A prospective parent is not a user of the app — no auth, no layout. */}
           <Route path="/apply/:slug" element={<Apply />} />
+          <Route path="/pricing" element={<Pricing />} />
 
           {/* Signed in, but before an organisation exists */}
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
@@ -138,10 +147,17 @@ function AppRoutes() {
           <Route path="/approvals" element={withLayout(<Approvals />)} />
           <Route path="/reports" element={withLayout(<Reports />)} />
           <Route path="/audit-log" element={withLayout(<AuditLog />)} />
+          <Route path="/billing" element={withLayout(<Billing />)} />
+          <Route path="/school-profile" element={withLayout(<SchoolProfile />)} />
           <Route path="/settings" element={withLayout(<SettingsPage />)} />
           <Route path="/users" element={withLayout(<UserManagement />)} />
+          <Route path="/roles" element={withLayout(<RolesAccess />)} />
           <Route path="/parent" element={withLayout(<ParentDashboard />)} />
           <Route path="/student" element={withLayout(<StudentPortal />)} />
+          <Route path="/student/results" element={withLayout(<MyResults />)} />
+          <Route path="/student/attendance" element={withLayout(<MyAttendance />)} />
+          <Route path="/student/timetable" element={withLayout(<MyTimetable />)} />
+          <Route path="/timetable" element={withLayout(<Timetable />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
           <Route path="/attendance" element={withLayout(<Attendance />)} />

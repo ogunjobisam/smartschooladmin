@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { DEFAULT_PRIMARY } from "@/lib/theme";
+import { openDocument } from "@/lib/document-theme";
 
 export interface IdCardData {
   schoolName: string;
@@ -79,7 +80,7 @@ export function buildIdCardHtml(data: IdCardData, opts: IdCardRenderOptions = {}
     ? `<span class="mark tl"></span><span class="mark tr"></span><span class="mark bl"></span><span class="mark br"></span>`
     : "";
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(data.holderKind)} ID — ${esc(data.holderName)}</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${esc(data.holderKind)} ID — ${esc(data.holderName)}</title>
 <style>
   :root { --brand: ${brand}; }
   * { box-sizing: border-box; }
@@ -95,6 +96,11 @@ export function buildIdCardHtml(data: IdCardData, opts: IdCardRenderOptions = {}
   .mark:before { width:${CR80.bleed}mm; height:.2mm; top:50%; }
   .mark:after { height:${CR80.bleed}mm; width:.2mm; left:50%; }
   .mark.tl { top:0; left:0 } .mark.tr { top:0; right:0 } .mark.bl { bottom:0; left:0 } .mark.br { bottom:0; right:0 }
+  @media screen and (max-width: 760px) {
+    body { padding:12px 10px; }
+    /* Card pages are fixed in mm; zoom keeps them fully visible on a phone. */
+    .sheet { zoom: 0.72; gap:12px; }
+  }
 
   /* ---------- front ---------- */
   .band { height:15mm; background:linear-gradient(135deg, var(--brand) 0%, rgba(0,0,0,.45) 320%); color:#fff; padding:2.6mm 4mm; display:flex; align-items:center; gap:2.6mm; position:relative; overflow:hidden; }
@@ -206,8 +212,5 @@ ${preview ? "" : `
 
 /** Open a print window for the ID card. */
 export function printIdCard(data: IdCardData, opts: IdCardRenderOptions = {}) {
-  const win = window.open("", "_blank");
-  if (!win) return;
-  win.document.write(buildIdCardHtml(data, opts));
-  win.document.close();
+  openDocument(buildIdCardHtml(data, opts));
 }

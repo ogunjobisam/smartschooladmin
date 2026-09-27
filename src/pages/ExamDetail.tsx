@@ -5,9 +5,18 @@ import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
 import { canManageStudents } from "@/lib/access";
 import { notifySchoolAdmins } from "@/lib/school-updates";
+import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown } from "lucide-react";
+import { Save, Loader2, Printer, ArrowLeft, BookOpen, FileDown, Send, MoreHorizontal } from "lucide-react";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ReportCardView } from "@/components/exams/ReportCardView";
+import { documentTheme } from "@/lib/document-theme";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 
 interface ScoreEntry {
@@ -39,6 +49,8 @@ export default function ExamDetail() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [reportCardStudent, setReportCardStudent] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const { branding } = useSchoolBranding();
 
   const handlePrintAllReportCards = () => {
@@ -71,7 +83,9 @@ export default function ExamDetail() {
 
       return `
         <div class="page">
+          <div class="brand-bar"></div>
           <div class="header">
+            ${branding.logoUrl ? `<img class="crest" src="${branding.logoUrl}" alt="" />` : ""}
             <h1>${branding.name}</h1>
             ${branding.tagline ? `<p>${branding.tagline}</p>` : ""}
             <p style="font-weight:600;margin-top:4px">STUDENT REPORT CARD</p>
@@ -93,26 +107,40 @@ export default function ExamDetail() {
         </div>`;
     }).join("");
 
+    const theme = documentTheme({
+      name: branding.name,
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      accentColor: branding.accentColor,
+    });
+
     win.document.write(`<html><head><title>Report Cards - ${exam.name}</title><style>
-      body { font-family: 'Inter', system-ui, sans-serif; color: #1e293b; margin: 0; }
-      .page { padding: 32px; max-width: 800px; margin: 0 auto; page-break-after: always; }
+      @page { size: A4; margin: 14mm; }
+      :root { --brand: ${theme.primary}; --brand-accent: ${theme.accent}; --brand-soft: ${theme.soft}; --brand-border: ${theme.border}; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-family: 'Segoe UI', system-ui, sans-serif; color: #0f172a; margin: 0; }
+      .page { padding: 30px 28px; max-width: 840px; margin: 0 auto; page-break-after: always; }
       .page:last-child { page-break-after: auto; }
-      .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px double #1e293b; }
-      .header h1 { font-size: 22px; margin: 0 0 4px; }
+      .brand-bar { height: 5px; border-radius: 4px; margin-bottom: 18px;
+        background: linear-gradient(90deg, var(--brand) 0%, var(--brand) 58%, var(--brand-accent) 58%, var(--brand-accent) 100%); }
+      .crest { height: 54px; width: 54px; object-fit: contain; border-radius: 12px; display: block; margin: 0 auto 8px; }
+      .header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--brand-border); }
+      .header h1 { font-size: 23px; margin: 0 0 4px; color: var(--brand); }
       .header p { font-size: 12px; color: #64748b; margin: 2px 0; }
       .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: 13px; }
       .label { color: #64748b; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-      th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; }
-      td { padding: 8px 12px; border: 1px solid #e2e8f0; font-size: 13px; }
+      th { background: var(--brand-soft); color: var(--brand); padding: 9px 12px; text-align: left; font-size: 11px;
+           font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--brand-border); }
+      td { padding: 8px 12px; border: 1px solid #e6ebf1; font-size: 13px; }
       .text-center { text-align: center; }
-      .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+      .summary { background: var(--brand-soft); border: 1px solid var(--brand-border); padding: 18px; border-radius: 12px; margin-bottom: 20px; }
       .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; text-align: center; }
-      .summary-value { font-size: 24px; font-weight: 700; }
-      .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+      .summary-value { font-size: 26px; font-weight: 800; color: var(--brand); }
+      .summary-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
       .footer { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 12px; }
-      .sign-line { border-top: 1px solid #1e293b; padding-top: 4px; margin-top: 40px; }
-      @media print { .page { padding: 16px; } }
+      .sign-line { border-top: 1px solid #0f172a; padding-top: 4px; margin-top: 40px; }
+      @media print { .page { padding: 0 0 8px; } }
     </style></head><body>${pages}</body></html>`);
     win.document.close();
     win.print();
@@ -237,7 +265,7 @@ export default function ExamDetail() {
       if (!exam?.class_id) return [];
       let q = supabase
         .from("enrolments")
-        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status)")
+        .select("student_id, students!inner(id, first_name, last_name, student_id_number, status, user_id)")
         .eq("class_id", exam.class_id);
       if (exam.academic_period_id) q = q.eq("academic_period_id", exam.academic_period_id);
       const { data } = await q;
@@ -422,6 +450,61 @@ export default function ExamDetail() {
     />
   );
 
+  // Releasing results: the exam is marked published and every family is told.
+  /** Mistakes and end-of-term wrap-up both need a way back out of "published". */
+  const setExamStatus = async (status: "draft" | "published" | "closed", message: string) => {
+    if (!id) return;
+    const { error } = await supabase.from("exams").update({ status }).eq("id", id);
+    if (error) { toast.error(getErrorMessage(error, "Could not update this exam.")); return; }
+    toast.success(message);
+    queryClient.invalidateQueries({ queryKey: ["exam", id] });
+    queryClient.invalidateQueries({ queryKey: ["exams"] });
+  };
+
+  const handleDeleteExam = async () => {
+    if (!id) return;
+    setDeleteOpen(false);
+    const { error: scoreError } = await supabase.from("student_scores").delete().eq("exam_id", id);
+    if (scoreError) { toast.error(getErrorMessage(scoreError, "Could not delete this exam's scores.")); return; }
+    const { error } = await supabase.from("exams").delete().eq("id", id);
+    if (error) { toast.error(getErrorMessage(error, "Could not delete this exam.")); return; }
+    toast.success("Exam deleted");
+    queryClient.invalidateQueries({ queryKey: ["exams"] });
+    navigate("/exams");
+  };
+
+  const handlePublishResults = async () => {
+    if (!exam || !id || !orgId || !schoolId) return;
+    setPublishing(true);
+    const { error } = await supabase.from("exams").update({ status: "published" }).eq("id", id);
+    if (error) {
+      setPublishing(false);
+      toast.error("Could not publish results: " + error.message);
+      return;
+    }
+    try {
+      const result = await sendResultsPublishedAlerts({
+        orgId,
+        schoolId,
+        examId: id,
+        examName: exam.name,
+        className: displayClassName(exam.classes?.name) || "your class",
+        termName: exam.academic_periods?.name ?? null,
+        students: students.map((s) => ({ id: s.id, userId: s.user_id ?? null })),
+      });
+      toast.success(
+        result.queued > 0
+          ? `Results published — ${result.queued} email${result.queued === 1 ? "" : "s"} sent to families`
+          : "Results published",
+      );
+    } catch (alertError) {
+      console.error(alertError);
+      toast.success("Results published, but some alerts could not be sent");
+    }
+    setPublishing(false);
+    queryClient.invalidateQueries({ queryKey: ["exam", id] });
+  };
+
   // Show report card view
   if (reportCardStudent) {
     const student = students.find((s) => s.id === reportCardStudent);
@@ -469,6 +552,45 @@ export default function ExamDetail() {
             <Button variant="outline" size="sm" onClick={handlePrintAllReportCards}>
               <FileDown className="mr-2 h-3.5 w-3.5" /> Print All Reports
             </Button>
+          )}
+          {canManageStudents(userRole) && students.length > 0 && exam.status !== "published" && (
+            <Button variant="secondary" size="sm" onClick={handlePublishResults} disabled={publishing || dirty}>
+              {publishing ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-2 h-3.5 w-3.5" />}
+              Publish Results
+            </Button>
+          )}
+          {exam.status === "published" && <Badge variant="secondary">Results published</Badge>}
+          {exam.status === "closed" && <Badge variant="outline">Closed</Badge>}
+          {canManageStudents(userRole) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Exam actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {exam.status === "published" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setExamStatus("draft", "Results unpublished")}>
+                      Unpublish results
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setExamStatus("closed", "Exam closed")}>
+                      Close exam
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {exam.status === "closed" && (
+                  <DropdownMenuItem onClick={() => setExamStatus("published", "Exam reopened")}>
+                    Reopen exam
+                  </DropdownMenuItem>
+                )}
+                {exam.status !== "published" && (
+                  <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOpen(true)}>
+                    Delete exam
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {dirty && (
             <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -641,6 +763,26 @@ export default function ExamDetail() {
           )}
         </CardContent>
       </Card>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this exam?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {exam.name} and every score recorded against it will be permanently removed.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleDeleteExam(); }}
+            >
+              Delete exam
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

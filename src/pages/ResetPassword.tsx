@@ -1,3 +1,4 @@
+import { Seo } from "@/components/seo/Seo";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +83,8 @@ export default function ResetPassword() {
   };
 
   return (
+    <>
+      <Seo title={"Choose a new password"} description={"Set a new password for your SmartSchoolAdmin account."} path="/reset-password" noIndex />
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center space-y-2 text-center">
@@ -114,5 +117,6 @@ export default function ResetPassword() {
         )}
       </div>
     </div>
+    </>
   );
 }

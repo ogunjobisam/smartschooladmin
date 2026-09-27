@@ -93,12 +93,13 @@ describe("buildPayslipHtml", () => {
       ...base,
       school: { ...base.school, logoUrl: "https://example.test/logo.png" },
     });
-    expect(withLogo).toContain(`<img src="https://example.test/logo.png"`);
+    expect(withLogo).toContain(`src="https://example.test/logo.png"`);
 
     // No logo: a lettered block stands in, rather than a broken image or a gap.
     const withoutLogo = buildPayslipHtml(base);
     expect(withoutLogo).not.toContain("<img");
-    expect(withoutLogo).toMatch(/<div style="height:52px[^"]*">G<\/div>/);
+    expect(withoutLogo).toContain('<div class="doc-monogram"');
+    expect(withoutLogo).toContain(">G</div>");
   });
 
   it("drops the print button in preview, where the app supplies its own", () => {

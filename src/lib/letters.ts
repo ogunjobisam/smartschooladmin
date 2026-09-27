@@ -1,4 +1,6 @@
 import { formatCurrency } from "@/lib/format";
+import { documentShell, letterheadHtml, openDocument } from "@/lib/document-theme";
+
 
 /**
  * Printed letters exist for the very common case of a guardian with no email or
@@ -149,67 +151,74 @@ function letterHtml(recipient: LetterRecipient, opts: LetterOptions, school: Let
   const signatory = opts.signatoryName?.trim() || "The Bursary";
   const signatoryRole = opts.signatoryRole?.trim() || "";
 
-  const logo = school.logoUrl
-    ? `<img src="${esc(school.logoUrl)}" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:8px" />`
-    : `<div style="height:56px;width:56px;background:#1e293b;border-radius:8px;color:#fff;font-weight:700;font-size:22px;display:flex;align-items:center;justify-content:center">${esc(school.name.charAt(0))}</div>`;
-
   const detailRows: string[] = [];
-  if (recipient.studentIdNumber) detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Student ID</td><td style="font-family:monospace">${esc(recipient.studentIdNumber)}</td></tr>`);
-  if (recipient.className) detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Class</td><td>${esc(recipient.className)}</td></tr>`);
-  if (recipient.periodName) detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Term</td><td>${esc(recipient.periodName)}</td></tr>`);
-  if (recipient.invoiceNumber) detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Invoice</td><td style="font-family:monospace">${esc(recipient.invoiceNumber)}</td></tr>`);
+  const detail = (label: string, value: string, cls = "") =>
+    detailRows.push(
+      `<tr><td style="padding:5px 16px 5px 0;color:var(--muted);font-size:11.5px;white-space:nowrap">${esc(
+        label
+      )}</td><td class="${cls}" style="padding:5px 0;font-weight:600">${value}</td></tr>`
+    );
+
+  if (recipient.studentIdNumber) detail("Student ID", esc(recipient.studentIdNumber), "mono");
+  if (recipient.className) detail("Class", esc(recipient.className));
+  if (recipient.periodName) detail("Term", esc(recipient.periodName));
+  if (recipient.invoiceNumber) detail("Invoice", esc(recipient.invoiceNumber), "mono");
   if (opts.kind !== "general" && (recipient.balance ?? 0) > 0)
-    detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Amount outstanding</td><td style="font-family:monospace;font-weight:700;color:#b91c1c">${esc(formatCurrency(recipient.balance || 0, currency))}</td></tr>`);
-  if (recipient.dueDate) detailRows.push(`<tr><td style="padding:3px 12px 3px 0;color:#64748b">Due date</td><td>${esc(longDate(recipient.dueDate))}</td></tr>`);
+    detailRows.push(
+      `<tr><td style="padding:5px 16px 5px 0;color:var(--muted);font-size:11.5px">Amount outstanding</td><td class="mono" style="padding:5px 0;font-weight:700;color:#b91c1c;font-size:15px">${esc(
+        formatCurrency(recipient.balance || 0, currency)
+      )}</td></tr>`
+    );
+  if (recipient.dueDate) detail("Due date", esc(longDate(recipient.dueDate)));
 
   const detailBox = detailRows.length
-    ? `<table style="margin:0 0 18px;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:13px;border-collapse:separate">${detailRows.join("")}</table>`
+    ? `<div class="card" style="margin:0 0 18px"><table style="border-collapse:collapse">${detailRows.join(
+        ""
+      )}</table></div>`
     : "";
 
   const instructions = opts.paymentInstructions?.trim()
-    ? `<div style="margin:0 0 16px;padding:12px 14px;background:#f8fafc;border-left:3px solid #1e293b;font-size:13px">
-        <p style="margin:0 0 6px;font-weight:600">How to pay</p>${paragraphs(opts.paymentInstructions)}
+    ? `<div style="margin:0 0 16px;padding:13px 16px;background:var(--brand-softer);border-left:4px solid var(--brand-accent);border-radius:0 10px 10px 0">
+        <p style="margin:0 0 6px;font-weight:700;color:var(--brand)">How to pay</p>${paragraphs(
+          opts.paymentInstructions
+        )}
       </div>`
     : "";
 
   const slip =
     opts.includeSlip === false
       ? ""
-      : `<div style="margin-top:28px;border-top:1px dashed #94a3b8;padding-top:14px;font-size:12px">
-          <p style="margin:0 0 10px;font-weight:600">Acknowledgement slip — please sign and return with your child</p>
+      : `<div style="margin-top:30px;border-top:1px dashed var(--brand);padding-top:14px;font-size:12px">
+          <p style="margin:0 0 10px;font-weight:700;color:var(--brand)">Acknowledgement slip — please sign and return with your child</p>
           <table style="width:100%;font-size:12px;border-collapse:collapse">
             <tr>
-              <td style="padding:4px 0">Student: <strong>${esc(recipient.studentName)}</strong>${recipient.className ? ` &nbsp; Class: <strong>${esc(recipient.className)}</strong>` : ""}</td>
+              <td style="padding:4px 0">Student: <strong>${esc(recipient.studentName)}</strong>${
+                recipient.className ? ` &nbsp; Class: <strong>${esc(recipient.className)}</strong>` : ""
+              }</td>
             </tr>
             <tr><td style="padding:14px 0 4px">Received by (name): ______________________________________</td></tr>
             <tr><td style="padding:14px 0 4px">Signature: ____________________________ Date: ______________</td></tr>
-            <tr><td style="padding:14px 0 0;color:#475569">I will pay / I would like to discuss a payment plan (please circle one).</td></tr>
+            <tr><td style="padding:14px 0 0;color:var(--muted)">I will pay / I would like to discuss a payment plan (please circle one).</td></tr>
           </table>
         </div>`;
 
   return `<section class="letter" style="${index > 0 ? "page-break-before:always;" : ""}">
-    <header style="display:flex;gap:14px;align-items:center;border-bottom:2px solid #1e293b;padding-bottom:14px;margin-bottom:18px">
-      ${logo}
-      <div>
-        <h1 style="margin:0;font-size:19px;font-weight:700">${esc(school.name)}</h1>
-        ${school.address ? `<p style="margin:2px 0;font-size:12px;color:#64748b">${esc(school.address)}</p>` : ""}
-        ${school.phone || school.email ? `<p style="margin:2px 0;font-size:12px;color:#64748b">${esc([school.phone, school.email].filter(Boolean).join(" • "))}</p>` : ""}
-      </div>
-    </header>
+    ${letterheadHtml(school, { kicker: "Letter", meta: [longDate(new Date().toISOString())] })}
 
-    <p style="margin:0 0 14px;font-size:12px;color:#64748b">${esc(longDate(new Date().toISOString()))}</p>
     <p style="margin:0 0 4px;font-size:13px">${salutation}</p>
-    <h2 style="margin:14px 0 12px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.02em">${esc(subject)}</h2>
+    <h2 style="margin:14px 0 14px;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--brand)">${esc(
+      subject
+    )}</h2>
 
     ${detailBox}
-    <div style="font-size:13px;line-height:1.65">${paragraphs(letterBody(recipient, opts, currency))}</div>
+    <div style="font-size:13px;line-height:1.7">${paragraphs(letterBody(recipient, opts, currency))}</div>
     ${instructions}
 
-    <div style="margin-top:22px;font-size:13px">
-      <p style="margin:0 0 26px">Yours faithfully,</p>
-      <p style="margin:0;font-weight:600">${esc(signatory)}</p>
-      ${signatoryRole ? `<p style="margin:0;font-size:12px;color:#64748b">${esc(signatoryRole)}</p>` : ""}
-      <p style="margin:2px 0 0;font-size:12px;color:#64748b">${esc(school.name)}</p>
+    <div style="margin-top:24px;font-size:13px">
+      <p style="margin:0 0 30px">Yours faithfully,</p>
+      <p style="margin:0;font-weight:700">${esc(signatory)}</p>
+      ${signatoryRole ? `<p style="margin:0;font-size:12px;color:var(--muted)">${esc(signatoryRole)}</p>` : ""}
+      <p style="margin:2px 0 0;font-size:12px;color:var(--muted)">${esc(school.name)}</p>
     </div>
 
     ${slip}
@@ -222,31 +231,19 @@ function letterHtml(recipient: LetterRecipient, opts: LetterOptions, school: Let
  */
 export function buildLettersDocument(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): string {
   const title = `${letterSubject(opts.kind, opts.subject)} — ${school.name}`;
-  const body = recipients.map((r, i) => letterHtml(r, opts, school, i)).join("");
+  const letters = recipients.map((r, i) => letterHtml(r, opts, school, i)).join("");
 
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${esc(title)}</title>
-<style>
-  @page { margin: 18mm; }
-  @media print { .no-print { display: none; } body { padding: 0; } }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; max-width: 780px; margin: 0 auto; padding: 28px 22px; }
-  .letter { padding-bottom: 8px; }
-  p { line-height: 1.6; }
-</style></head><body>
-  <div class="no-print" style="margin:0 0 20px;text-align:center">
-    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">
-      Print ${recipients.length} letter${recipients.length === 1 ? "" : "s"}
-    </button>
+  const body = `
+  <div class="no-print actions" style="margin:0 0 20px">
+    <button onclick="window.print()">Print ${recipients.length} letter${recipients.length === 1 ? "" : "s"}</button>
   </div>
-  ${body}
-</body></html>`;
+  ${letters}`;
+
+  return documentShell(school, { title, body, maxWidth: 800, extraCss: ".letter { padding-bottom: 8px; }" });
 }
+
 
 export function printLetters(recipients: LetterRecipient[], opts: LetterOptions, school: LetterSchool): boolean {
   if (recipients.length === 0) return false;
-  const win = window.open("", "_blank");
-  if (!win) return false;
-  win.document.write(buildLettersDocument(recipients, opts, school));
-  win.document.close();
-  return true;
+  return openDocument(buildLettersDocument(recipients, opts, school));
 }

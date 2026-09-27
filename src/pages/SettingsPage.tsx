@@ -30,6 +30,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/errors";
 import { assertWrote } from "@/lib/writes";
+import { COUNTRIES, CURRENCIES, currencyForCountry } from "@/lib/currencies";
+import { formatCurrency } from "@/lib/format";
 
 const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "academic", "admissions", "notifications", "addons"];
 
@@ -418,6 +420,9 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* ── Currency & Region ── */}
+          <CurrencyCard orgId={orgId} canManage={canManageAddons} />
 
           {/* ── ID Numbering ── */}
           <IdFormatCard schoolId={schoolId} schoolName={school?.name || schoolName} orgId={orgId} canManage={canManage} />
@@ -1228,6 +1233,150 @@ function SubjectsTab({ schoolId, canManage }: { schoolId: string | null; canMana
         </Card>
       )}
     </div>
+  );
+}
+
+/**
+ * The organisation's country and billing currency. Chosen once at setup and,
+ * until now, unchangeable — a group set up as "United Kingdom" was stuck
+ * showing £ on every fee, invoice and payslip.
+ */
+function CurrencyCard({ orgId, canManage }: { orgId: string | null; canManage: boolean }) {
+  const [country, setCountry] = useState("");
+  const [currency, setCurrency] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const { data: org, isLoading } = useQuery({
+    queryKey: ["org-currency", orgId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organisation_groups")
+        .select("country, currency")
+        .eq("id", orgId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!orgId,
+  });
+
+  useEffect(() => {
+    if (!org) return;
+    setCountry(org.country || "");
+    setCurrency(org.currency || "NGN");
+  }, [org]);
+
+  const handleCountry = (code: string) => {
+    setCountry(code);
+    const suggested = currencyForCountry(code);
+    if (suggested) setCurrency(suggested);
+  };
+
+  const dirty = !!org && (country !== (org.country || "") || currency !== (org.currency || ""));
+
+  const save = async () => {
+    if (!orgId) return;
+    setConfirmOpen(false);
+    setSaving(true);
+    const { error } = await supabase
+      .from("organisation_groups")
+      .update({ country, currency })
+      .eq("id", orgId);
+    setSaving(false);
+    if (error) {
+      toast.error(getErrorMessage(error, "Could not save the currency."));
+      return;
+    }
+    toast.success("Currency updated — reloading so every page uses it");
+    // The currency is read once when the workspace loads and threaded through
+    // every document and export, so a full reload is the honest way to apply it.
+    setTimeout(() => window.location.reload(), 600);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Receipt className="h-4 w-4" /> Currency &amp; Region
+        </CardTitle>
+        <CardDescription>
+          The currency used for fees, invoices, receipts, payslips and reports across this
+          organisation.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Select value={country} onValueChange={handleCountry} disabled={!canManage}>
+                  <SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <Select value={currency} onValueChange={setCurrency} disabled={!canManage}>
+                  <SelectTrigger><SelectValue placeholder="Select a currency" /></SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+              Changing the currency changes the symbol shown everywhere. Amounts already recorded
+              keep their figures — they are not converted. Your SmartSchoolAdmin subscription and
+              SMS bundles are always charged in Naira and are not affected.
+            </p>
+
+            {canManage ? (
+              <div className="flex items-center gap-3">
+                <Button onClick={() => setConfirmOpen(true)} disabled={!dirty || saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Currency
+                </Button>
+                {currency && (
+                  <span className="text-xs text-muted-foreground">
+                    Example: {formatCurrency(250000, currency)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Only a proprietor or group owner can change the currency.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change currency to {currency}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every fee, invoice, receipt, statement and payslip will show {currency} from now on.
+              Existing figures are not converted, and the app will reload.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={save}>Change currency</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
   );
 }
 

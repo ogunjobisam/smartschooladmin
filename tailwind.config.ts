@@ -14,13 +14,24 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        // Inter leads because it is the face the app actually loads and the
+        // one `body` sets; Plus Jakarta Sans stays in the stack so `font-sans`
+        // still names what main chose if it is ever loaded.
+        sans: ["Inter", '"Plus Jakarta Sans"', "system-ui", "sans-serif"],
+        // One line to revisit if the ceremonial face ever changes. Body text
+        // deliberately stays on the sans in `body`.
+        display: ["Cinzel", "Georgia", "Times New Roman", "serif"],
+      },
       colors: {
         // Gold is decorative (rules, edge bars, tiles). `gold.ink` is the
-        // darkened variant that is legible as text on the cream ground.
+        // darkened variant that is legible as text on the cream ground, and
+        // `gold.foreground` is the ink the landing page sets on a gold fill.
         gold: {
           DEFAULT: "hsl(var(--gold))",
           ink: "hsl(var(--gold-ink))",
           soft: "hsl(var(--gold-soft))",
+          foreground: "hsl(var(--gold-foreground))",
           // For anything sitting on, or filling against, --primary.
           "on-primary": "hsl(var(--gold-on-primary))",
         },
@@ -32,6 +43,12 @@ export default {
           3: "hsl(var(--chart-3))",
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          ice: "hsl(var(--brand-ice))",
+          mint: "hsl(var(--brand-mint))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,6 +74,18 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+        },
+        coral: {
+          DEFAULT: "hsl(var(--coral))",
+          foreground: "hsl(var(--coral-foreground))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          foreground: "hsl(var(--teal-foreground))",
+        },
+        violet: {
+          DEFAULT: "hsl(var(--violet))",
+          foreground: "hsl(var(--violet-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -86,11 +115,6 @@ export default {
           muted: "hsl(var(--sidebar-muted))",
         },
       },
-      fontFamily: {
-        // One line to revisit if the ceremonial face ever changes. Body text
-        // deliberately stays on the sans in `body`.
-        display: ["Cinzel", "Georgia", "Times New Roman", "serif"],
-      },
       boxShadow: {
         // Cards sit on cream, not grey, so the shadow needs a warm cast and
         // less spread than shadcn's default or it reads as dirt.
@@ -98,6 +122,7 @@ export default {
         tile: "0 4px 12px -4px hsl(var(--primary) / 0.35)",
       },
       borderRadius: {
+        brand: "14px",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

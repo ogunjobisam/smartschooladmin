@@ -41,10 +41,15 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "staff", title: "Staff", url: "/staff", group: "overview" },
   { key: "staff-portal", title: "My Teaching", url: "/staff-portal", group: "overview" },
   { key: "attendance", title: "Attendance", url: "/attendance", group: "overview" },
+  { key: "timetable", title: "Timetable", url: "/timetable", group: "overview" },
   { key: "exams", title: "Exams", url: "/exams", group: "overview" },
   { key: "performance", title: "Performance", url: "/performance", group: "overview" },
   { key: "achievements", title: "Achievements", url: "/achievements", group: "overview" },
   { key: "wall", title: "Achievement Wall", url: "/wall", group: "overview" },
+  // A student's own record, from their portal out to the detail behind it.
+  { key: "my-results", title: "My Results", url: "/student/results", group: "overview" },
+  { key: "my-attendance", title: "My Attendance", url: "/student/attendance", group: "overview" },
+  { key: "my-timetable", title: "My Timetable", url: "/student/timetable", group: "overview" },
 
   { key: "fees", title: "Fee Schedules", url: "/fees", group: "finance" },
   { key: "invoices", title: "Invoices", url: "/invoices", group: "finance" },
@@ -68,8 +73,11 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "reports", title: "Reports", url: "/reports", group: "operations" },
   { key: "audit-log", title: "Audit Log", url: "/audit-log", group: "operations" },
 
+  { key: "billing", title: "Billing", url: "/billing", group: "system" },
+  { key: "school-profile", title: "School Profile", url: "/school-profile", group: "system" },
   { key: "settings", title: "Settings", url: "/settings", group: "system" },
   { key: "users", title: "Users", url: "/users", group: "system" },
+  { key: "roles", title: "Roles & Access", url: "/roles", group: "system" },
 ];
 
 /**
@@ -88,20 +96,20 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "settings", "users",
+    "billing", "school-profile", "settings", "users", "roles",
   ],
   principal: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
     // A principal runs their own school's profile, classes, terms and ID
     // numbering without needing the group owner to do it for them.
-    "settings", "users",
+    "school-profile", "settings", "users", "roles",
   ],
   bursar: [
     "dashboard", "wall", "admissions", "students", "guardians",
@@ -124,7 +132,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "users",
   ],
   teacher: [
-    "dashboard", "staff-portal", "wall", "students", "attendance", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "students", "attendance", "timetable", "exams", "performance", "achievements",
     "announcements", "events", "preferences", "my-pay",
   ],
   parent: [
@@ -134,7 +142,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   // A student sees their own portal and their own notification preferences.
   // Everything else on the dashboard is the school's, not theirs.
   student: [
-    "dashboard", "wall",
+    "dashboard", "wall", "my-results", "my-attendance", "my-timetable",
     "events", "preferences",
   ],
 };

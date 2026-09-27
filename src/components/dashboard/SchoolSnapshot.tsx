@@ -119,6 +119,9 @@ export function SchoolSnapshot() {
           list.push(Number(s.score));
           byExam.set(s.exam_id, list);
         }
+        // A teacher only sees the classes and marks they hold, so an exam for
+        // another class arrives with no class name and no scores. Showing it as
+        // "— —" reads like a fault, so leave those rows out.
         examSummaries = exams.map((e) => {
           const list = byExam.get(e.id) || [];
           const max = Number(e.max_score) || 100;
@@ -133,7 +136,7 @@ export function SchoolSnapshot() {
             average,
             entries: list.length,
           };
-        });
+        }).filter((e) => e.className !== "—" || e.entries > 0);
       }
 
       const invoices = invoicesRes.data || [];
@@ -162,7 +165,11 @@ export function SchoolSnapshot() {
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Your school at a glance</CardTitle>
-        <CardDescription>Attendance, results and fees — the same figures the group owner sees.</CardDescription>
+        <CardDescription>
+          {canSeeFinance
+            ? "Attendance, results and fees — the same figures the group owner sees."
+            : "Attendance and results for the classes you hold, read from the same records as the school view."}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {isLoading ? (

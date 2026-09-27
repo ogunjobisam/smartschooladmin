@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { diagnoseError, type ErrorDiagnosis } from "@/lib/errors";
+import { previewableRoles } from "@/lib/roles";
 
 interface SchoolOption {
   id: string;
@@ -29,6 +30,14 @@ interface AuthContextType {
    * `userRole` is the most senior of these and drives navigation and gating.
    */
   userRoles: string[];
+  /** The role actually granted to this account, ignoring any preview. */
+  realRole: string | null;
+  /** Every granted role in this organisation, ignoring any preview. */
+  realRoles: string[];
+  /** The role currently being previewed, or null when working as yourself. */
+  viewAsRole: string | null;
+  /** Start or stop previewing the app as a more junior role. */
+  setViewAsRole: (role: string | null) => void;
   orgId: string | null;
   schoolId: string | null;
   currency: string;
@@ -51,13 +60,15 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, userRole: null, userRoles: [], orgId: null, schoolId: null,
+  user: null, session: null, loading: true, userRole: null, userRoles: [], realRole: null, realRoles: [],
+  viewAsRole: null, setViewAsRole: () => {}, orgId: null, schoolId: null,
   currency: "NGN", schools: [], orgs: [], needsWorkspaceChoice: false, roleError: null,
   retryRole: () => {}, setSchoolId: () => {}, setOrgId: () => {}, confirmWorkspace: () => {}, signOut: async () => {},
 });
 
 const orgKey = (userId: string) => `smartschool.workspace.org.${userId}`;
 const schoolKey = (userId: string) => `smartschool.workspace.school.${userId}`;
+const viewAsKey = (userId: string) => `smartschool.viewAs.${userId}`;
 
 function readStored(key: string): string | null {
   try {
@@ -228,7 +239,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [orgId, userId, roleRows]);
 
   const activeRoles = useMemo(() => rolesForOrg(roleRows, orgId), [roleRows, orgId]);
-  const userRoles = useMemo(() => activeRoles.map((r) => r.role), [activeRoles]);
+  const realRoles = useMemo(() => activeRoles.map((r) => r.role), [activeRoles]);
+  const realRole = realRoles[0] ?? null;
+
+  // Previewing another role changes what the interface offers, never what the
+  // database will hand over: row-level security still answers to the real
+  // account. Only a role more junior than your own may be previewed.
+  const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) { setViewAsRoleState(null); return; }
+    const stored = readStored(viewAsKey(userId));
+    setViewAsRoleState(stored && previewableRoles(realRole).includes(stored) ? stored : null);
+  }, [userId, realRole]);
+
+  const setViewAsRole = useCallback((role: string | null) => {
+    const next = role && previewableRoles(realRole).includes(role) ? role : null;
+    setViewAsRoleState(next);
+    if (userId) writeStored(viewAsKey(userId), next);
+  }, [userId, realRole]);
+
+  const userRoles = useMemo(() => (viewAsRole ? [viewAsRole] : realRoles), [viewAsRole, realRoles]);
   const userRole = userRoles[0] ?? null;
 
   const setSchoolId = useCallback((id: string) => {
@@ -268,7 +299,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user, session, loading, userRole, userRoles, orgId, schoolId, currency, schools, orgs,
+        user, session, loading, userRole, userRoles, realRole, realRoles, viewAsRole, setViewAsRole,
+        orgId, schoolId, currency, schools, orgs,
         needsWorkspaceChoice, roleError, retryRole, setSchoolId, setOrgId, confirmWorkspace, signOut,
       }}
     >

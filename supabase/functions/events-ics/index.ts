@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const lines: string[] = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//SmartSchool Admin//Events//EN",
+      "PRODID:-//SmartSchoolAdmin//Events//EN",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       `X-WR-CALNAME:${escapeText(school.name)}`,

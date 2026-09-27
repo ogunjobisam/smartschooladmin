@@ -1,8 +1,14 @@
 import { displayClassName } from "@/lib/sections";
 import { useState } from "react";
-import { ArrowLeft, Printer, CreditCard, Mail } from "lucide-react";
+import { ArrowLeft, Printer, CreditCard, Mail, Ban } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/errors";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -12,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
 import { printInvoice } from "@/lib/print-documents";
+import { usePaymentReturn } from "@/hooks/use-payment-return";
 import { PayInvoiceDialog } from "@/components/payments/PayInvoiceDialog";
 import { LetterDialog } from "@/components/letters/LetterDialog";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
@@ -20,11 +27,15 @@ import {
 } from "@/components/ui/table";
 
 export default function InvoiceDetail() {
+  usePaymentReturn();
   const { id } = useParams<{ id: string }>();
-  const { schoolId, orgId } = useAuth();
+  const { schoolId, orgId, userRoles } = useAuth();
   const { formatMoney, currency } = useCurrency();
+  const queryClient = useQueryClient();
   const [payOpen, setPayOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [voiding, setVoiding] = useState(false);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -100,6 +111,23 @@ export default function InvoiceDetail() {
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 
+  /** Finance roles need a way out of a mistaken invoice; voiding keeps the audit trail. */
+  const canVoid = (userRoles || []).some((r) =>
+    ["super_admin", "proprietor", "principal", "bursar", "accountant"].includes(r)
+  );
+
+  const handleVoid = async () => {
+    if (!id) return;
+    setVoiding(true);
+    const { error } = await supabase.from("invoices").update({ status: "void" }).eq("id", id);
+    setVoiding(false);
+    setVoidOpen(false);
+    if (error) return toast.error(getErrorMessage(error, "Could not void this invoice."));
+    toast.success("Invoice voided");
+    queryClient.invalidateQueries({ queryKey: ["invoice", id] });
+    queryClient.invalidateQueries({ queryKey: ["invoices"] });
+  };
+
   const handlePrint = () => {
     printInvoice({
       invoiceNumber: invoice.invoice_number,
@@ -167,6 +195,11 @@ export default function InvoiceDetail() {
               </Button>
             )}
             <Link to="/payments/new"><Button variant="outline" size="sm" className="gap-1.5">Record Payment</Button></Link>
+            {canVoid && totalPaid === 0 && invoice.status !== "void" && invoice.status !== "paid" && (
+              <Button variant="outline" size="sm" className="gap-1.5 text-destructive" onClick={() => setVoidOpen(true)}>
+                <Ban className="h-3.5 w-3.5" /> Void invoice
+              </Button>
+            )}
           </div>
         </div>
         <Separator className="my-4" />
@@ -312,6 +345,28 @@ export default function InvoiceDetail() {
           periodName: invoice.academic_periods?.name,
         }]}
       />
+
+      <AlertDialog open={voidOpen} onOpenChange={setVoidOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Void this invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {invoice.invoice_number} will be marked void and will stop counting towards
+              outstanding fees. The record stays for your audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleVoid(); }}
+              disabled={voiding}
+            >
+              {voiding ? "Voiding…" : "Void invoice"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

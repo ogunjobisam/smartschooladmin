@@ -1,4 +1,5 @@
 import { displayClassName } from "@/lib/sections";
+import { printStudentTranscript } from "@/lib/student-documents";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,73 @@ function ChildPerformance({ studentId }: { studentId: string }) {
       performance={summariseStudent(studentId, scores, attendance)}
       isLoading={isLoading}
     />
+  );
+}
+
+/**
+ * Downloads and the class teachers for one child. All read-only, all scoped by
+ * row-level security to the parent's own child.
+ */
+function ChildDocumentsAndTeachers({ studentId }: { studentId: string }) {
+  const { data: currentPeriod } = useQuery({
+    queryKey: ["parent-current-period", studentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("academic_periods")
+        .select("id, name")
+        .eq("is_current", true)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ["parent-child-teachers", studentId],
+    queryFn: async () => {
+      const { data: enrolments } = await supabase
+        .from("enrolments")
+        .select("class_id, classes(name)")
+        .eq("student_id", studentId);
+      const out: { className: string; teacher: string }[] = [];
+      const seenClasses = new Set<string>();
+      for (const e of enrolments || []) {
+        if (!e.class_id || seenClasses.has(e.class_id)) continue;
+        seenClasses.add(e.class_id);
+        const { data: names } = await supabase.rpc("class_teacher_names", { _class_id: e.class_id });
+        for (const row of names || []) {
+          out.push({ className: displayClassName(e.classes?.name) || "Class", teacher: row.full_name });
+        }
+      }
+      return out;
+    },
+  });
+
+  const download = async (periodId?: string, periodName?: string) => {
+    await printStudentTranscript(studentId, periodId ? { periodId, periodName } : undefined);
+  };
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => download()}>
+          <FileText className="h-3.5 w-3.5" /> Transcript
+        </Button>
+        {currentPeriod && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => download(currentPeriod.id, currentPeriod.name)}>
+            <Printer className="h-3.5 w-3.5" /> Report card — {currentPeriod.name}
+          </Button>
+        )}
+      </div>
+      {teachers.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Class teacher{teachers.length === 1 ? "" : "s"}:{" "}
+          <span className="text-foreground">
+            {teachers.map((t) => `${t.teacher} (${t.className})`).join(", ")}
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -113,7 +181,9 @@ export default function ParentDashboard() {
   const pendingInvoices = invoices?.filter((i) => i.status === "pending" || i.status === "overdue").length || 0;
 
   const formatMethod = (m: string) => m.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
-  const displayName = user?.user_metadata?.full_name || guardian ? `${guardian?.first_name} ${guardian?.last_name}` : "Parent";
+  const displayName = guardian
+    ? `${guardian.first_name} ${guardian.last_name}`
+    : user?.user_metadata?.full_name || "Parent";
 
   type ParentInvoice = NonNullable<typeof invoices>[number];
 
@@ -321,6 +391,7 @@ export default function ParentDashboard() {
                 <TabsContent key={child.id} value={child.id} className="mt-4 space-y-4">
                   {/* The register and the marks themselves, then the analysis
                       staff see for the same child. */}
+                  <ChildDocumentsAndTeachers studentId={child.id} />
                   <ChildRecords studentId={child.id} />
                   <ChildPerformance studentId={child.id} />
                 </TabsContent>

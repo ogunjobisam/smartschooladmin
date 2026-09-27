@@ -120,6 +120,25 @@
     --chart-4: 270 43% 56%;
     --chart-5: 153 97% 25%;
 
+    /* ---- Landing-page accents (from main) ---------------------------------
+       Used only by src/pages/Landing.tsx, the pre-auth marketing page, which
+       is painted in its own multi-colour palette rather than in a school's.
+       Kept at the values it was built against so it still renders as intended;
+       bringing it into the royal palette is a separate piece of work.
+
+       --gold is the exception: it is a chrome token the whole app and the
+       theme tests depend on, so the royal value stands and --gold-foreground
+       is set to the navy that clears 4.13:1 on it. */
+    --gold-foreground: 226 60% 15%;
+    --brand-ice: 167 85% 89%;
+    --brand-mint: 171 77% 64%;
+    --coral: 8 78% 57%;
+    --coral-foreground: 0 0% 100%;
+    --teal: 175 77% 26%;
+    --teal-foreground: 0 0% 100%;
+    --violet: 270 62% 55%;
+    --violet-foreground: 0 0% 100%;
+
     --sidebar-background: 226 66% 15%;
     --sidebar-foreground: 44 25% 82%;
     --sidebar-primary: 44 64% 48%;
@@ -190,6 +209,16 @@
     --chart-4: 271 58% 58%;
     --chart-5: 153 92% 30%;
 
+    --gold-foreground: 226 60% 12%;
+    --brand-ice: 176 40% 18%;
+    --brand-mint: 171 60% 46%;
+    --coral: 8 70% 52%;
+    --coral-foreground: 0 0% 100%;
+    --teal: 173 80% 40%;
+    --teal-foreground: 178 59% 8%;
+    --violet: 270 55% 60%;
+    --violet-foreground: 0 0% 100%;
+
     --sidebar-background: 226 50% 7%;
     --sidebar-foreground: 44 20% 78%;
     --sidebar-primary: 44 64% 52%;
@@ -209,6 +238,10 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.01em;
+    font-weight: 700;
   }
   /* Small caps come free: Cinzel's lowercase glyphs are small capitals, so
      "Fee Intelligence" renders as FEE INTELLIGENCE with the leading letters

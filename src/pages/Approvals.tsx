@@ -75,6 +75,28 @@ async function applySalaryChange(approvalRequestId: string, reviewerId: string |
   }
 }
 
+/**
+ * Carry an approval decision through to the payroll run itself. Without this the
+ * queue would say "approved" while the run stayed stuck awaiting approval.
+ */
+async function applyPayrollDecision(
+  request: { id: string; type: string; reference_id: string | null },
+  status: "approved" | "rejected",
+  reviewerId: string | undefined
+) {
+  if (request.type !== "payroll_run" || !request.reference_id) return;
+  const { error } = await supabase
+    .from("payroll_runs")
+    .update(
+      status === "approved"
+        ? { status: "approved", approved_by: reviewerId, approved_at: new Date().toISOString() }
+        : { status: "rejected" }
+    )
+    .eq("id", request.reference_id)
+    .eq("status", "pending");
+  if (error) throw error;
+}
+
 export default function Approvals() {
   const { orgId, user } = useAuth();
   const { formatMoney } = useCurrency();
@@ -86,7 +108,7 @@ export default function Approvals() {
       if (!orgId) return [];
       const { data } = await supabase
         .from("approval_requests")
-        .select("id, type, description, amount, status, created_at, requested_by")
+        .select("id, type, description, amount, status, created_at, requested_by, reference_id")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -98,6 +120,7 @@ export default function Approvals() {
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
       const reviewedAt = new Date().toISOString();
+      const request = approvals?.find((a) => a.id === id);
 
       const { error } = await supabase
         .from("approval_requests")
@@ -107,7 +130,8 @@ export default function Approvals() {
 
       // Flipping the status is not the outcome anyone is after — an approved
       // salary change has to actually reach the staff member's payroll profile,
-      // otherwise the approval queue is decorative.
+      // and an approved payroll run has to become payable, otherwise the
+      // approval queue is decorative.
       if (status === "approved") {
         await applySalaryChange(id, user?.id, orgId);
       } else {
@@ -116,11 +140,21 @@ export default function Approvals() {
           .update({ status: "rejected" })
           .eq("approval_request_id", id);
       }
+
+      if (request) {
+        await applyPayrollDecision(
+          { id: request.id, type: request.type, reference_id: request.reference_id },
+          status,
+          user?.id
+        );
+      }
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
       queryClient.invalidateQueries({ queryKey: ["salary-changes"] });
       queryClient.invalidateQueries({ queryKey: ["payroll-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
+      queryClient.invalidateQueries({ queryKey: ["payroll-run"] });
       toast({ title: `Request ${status}`, description: `The approval request has been ${status}.` });
     },
     onError: (err) => {

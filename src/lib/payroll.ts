@@ -118,3 +118,70 @@ export function parseSalaryValue(field: SalaryField, raw: string): number | null
   if (isRate) return parsed > 100 ? null : Math.round(parsed * 100) / 100;
   return Math.round(parsed);
 }
+
+/* ------------------------------------------------------------------ *
+ * Run lifecycle
+ *
+ * draft -> pending -> approved -> paid
+ *            |
+ *            +-> rejected -> draft
+ *
+ * Kept here rather than in the page so the rules are testable and the
+ * list and detail views can never disagree about what is allowed.
+ * ------------------------------------------------------------------ */
+
+export type PayrollRunStatus = "draft" | "pending" | "approved" | "paid" | "rejected";
+
+export type PayrollAction =
+  | "edit"
+  | "submit"
+  | "approve"
+  | "reject"
+  | "return_to_draft"
+  | "mark_paid"
+  | "delete";
+
+/** Roles allowed to build and pay runs — mirrors the payroll_runs RLS policy. */
+const PAYROLL_MANAGERS = ["super_admin", "proprietor", "bursar", "hr_admin"];
+/** Roles allowed to sign a run off. Whoever prepared it should not approve it alone. */
+const PAYROLL_APPROVERS = ["super_admin", "proprietor", "principal"];
+
+export function canManagePayroll(roles: string[] | null | undefined): boolean {
+  return (roles || []).some((r) => PAYROLL_MANAGERS.includes(r));
+}
+
+export function canApprovePayroll(roles: string[] | null | undefined): boolean {
+  return (roles || []).some((r) => PAYROLL_APPROVERS.includes(r));
+}
+
+/** Which actions the run's own state permits, before role checks. */
+export function actionsForStatus(status: string | null | undefined): PayrollAction[] {
+  switch (status) {
+    case "draft":
+      return ["edit", "submit", "delete"];
+    case "pending":
+      return ["approve", "reject", "return_to_draft"];
+    case "approved":
+      return ["mark_paid"];
+    case "rejected":
+      return ["return_to_draft", "delete"];
+    // A paid run is history — nothing may change it.
+    case "paid":
+    default:
+      return [];
+  }
+}
+
+/** State and role combined: what this user can actually do to this run. */
+export function payrollActions(
+  status: string | null | undefined,
+  roles: string[] | null | undefined
+): PayrollAction[] {
+  const allowed = actionsForStatus(status);
+  const manage = canManagePayroll(roles);
+  const approve = canApprovePayroll(roles);
+  return allowed.filter((a) => {
+    if (a === "approve" || a === "reject") return approve;
+    return manage;
+  });
+}
