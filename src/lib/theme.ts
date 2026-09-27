@@ -22,6 +22,30 @@
 export const DEFAULT_PRIMARY = "#15255b"; // royal navy  — hsl(226 63% 22%)
 export const DEFAULT_ACCENT = "#bc9529"; // ceremonial gold — hsl(44 64% 45%)
 
+export interface BrandPreset {
+  name: string;
+  primary: string;
+  accent: string;
+}
+
+/**
+ * Ready-made pairs, because picking two colours that work together is a
+ * different skill from running a school.
+ *
+ * Each is a deep, cool ink against a warm metal — the shape the design needs,
+ * whatever the hues. Every one of them is run through the full contrast suite
+ * in `src/test/theme.test.ts`, so a preset on this list is one we have proved
+ * legible rather than one that looked nice in a picker.
+ */
+export const BRAND_PRESETS: BrandPreset[] = [
+  { name: "Royal Navy & Gold", primary: DEFAULT_PRIMARY, accent: DEFAULT_ACCENT },
+  { name: "Deep Maroon & Gold", primary: "#5b1520", accent: "#bc9529" },
+  { name: "Forest & Brass", primary: "#123024", accent: "#b08a2a" },
+  { name: "Oxford Blue & Copper", primary: "#0f2540", accent: "#b06a2a" },
+  { name: "Aubergine & Gold", primary: "#3b1a4f", accent: "#c09a2c" },
+  { name: "Teal & Amber", primary: "#0e4a46", accent: "#d99a1f" },
+];
+
 export interface Hsl {
   h: number;
   s: number;
@@ -29,6 +53,9 @@ export interface Hsl {
 }
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/** Whether a string is a colour this theme can actually use. */
+export const isBrandColor = (value: string): boolean => HEX_COLOR.test(value);
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

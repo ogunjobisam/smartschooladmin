@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
+  BRAND_PRESETS,
   contrastRatio,
   DEFAULT_ACCENT,
   DEFAULT_PRIMARY,
@@ -132,6 +133,11 @@ describe("contrast holds across brands", () => {
     ["plum & rose", "#3b0a45", "#d94f7a"],
     ["black & grey", "#000000", "#9ca3af"],
     ["a school that typed nonsense", "not-a-colour", ""],
+    // Every pair offered in Settings, so the list cannot grow a preset that
+    // looked good in a picker and fails a pairing somewhere in the chrome.
+    ...BRAND_PRESETS.map(
+      (p): [string, string, string] => [`preset: ${p.name}`, p.primary, p.accent],
+    ),
   ];
 
   // [what it is, ink token, ground token (null = a white card), minimum].

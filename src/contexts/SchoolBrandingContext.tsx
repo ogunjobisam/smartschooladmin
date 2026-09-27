@@ -19,21 +19,36 @@ const defaultBranding: SchoolBranding = {
   tagline: null,
 };
 
+/** Candidate colours being tried out in Settings, not yet saved. */
+export interface BrandingPreview {
+  primaryColor: string;
+  accentColor: string;
+}
+
 interface SchoolBrandingContextType {
   branding: SchoolBranding;
   loading: boolean;
   refetch: () => void;
+  /**
+   * Paint the whole app in colours that have not been saved, so someone
+   * choosing them can see what they are choosing. Pass null to put the saved
+   * colours back — and do it on unmount, or they walk away from Settings with
+   * a theme that is not their school's.
+   */
+  previewColors: (colors: BrandingPreview | null) => void;
 }
 
 const SchoolBrandingContext = createContext<SchoolBrandingContextType>({
   branding: defaultBranding,
   loading: true,
   refetch: () => {},
+  previewColors: () => {},
 });
 
 export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
   const { schoolId } = useAuth();
   const [branding, setBranding] = useState<SchoolBranding>(defaultBranding);
+  const [preview, setPreview] = useState<BrandingPreview | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchBranding = useCallback(async () => {
@@ -78,20 +93,25 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
   // These are light-mode values. Nothing in the app sets .dark today; when
   // something does, this needs a dark branch, and inline styles would win over
   // the .dark class until it has one — hence the guard.
+  const primaryColor = preview?.primaryColor ?? branding.primaryColor;
+  const accentColor = preview?.accentColor ?? branding.accentColor;
+
   useEffect(() => {
     const root = document.documentElement;
     if (root.classList.contains("dark")) return;
-    const vars = schoolThemeVars(branding.primaryColor, branding.accentColor);
+    const vars = schoolThemeVars(primaryColor, accentColor);
     for (const [token, value] of Object.entries(vars)) {
       root.style.setProperty(token, value);
     }
     return () => {
       for (const token of Object.keys(vars)) root.style.removeProperty(token);
     };
-  }, [branding.primaryColor, branding.accentColor]);
+  }, [primaryColor, accentColor]);
 
   return (
-    <SchoolBrandingContext.Provider value={{ branding, loading, refetch: fetchBranding }}>
+    <SchoolBrandingContext.Provider
+      value={{ branding, loading, refetch: fetchBranding, previewColors: setPreview }}
+    >
       {children}
     </SchoolBrandingContext.Provider>
   );

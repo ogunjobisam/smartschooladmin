@@ -12,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdmissionsSettingsTab } from "@/components/settings/AdmissionsSettingsTab";
 import { NoticesCard } from "@/components/settings/NoticesCard";
 import { IdFormatCard } from "@/components/settings/IdFormatCard";
+import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +35,7 @@ const SETTINGS_TABS = ["general", "branding", "classes", "subjects", "fees", "ac
 
 export default function SettingsPage() {
   const { userRole, schoolId, orgId } = useAuth();
-  const { branding, refetch } = useSchoolBranding();
+  const { branding, loading: brandingLoading, refetch } = useSchoolBranding();
   const queryClient = useQueryClient();
   // Group-level only: buying add-ons spends the organisation's money.
   const canManageAddons = userRole === "super_admin" || userRole === "proprietor" || userRole === "group_admin";
@@ -47,9 +49,12 @@ export default function SettingsPage() {
   const canEditBranding = canManage;
 
   // ── Branding state ──
-  const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);
-  const [accentColor, setAccentColor] = useState(branding.accentColor);
+  // Hydrated from the fetched branding rather than initialised from it: on a
+  // hard reload straight into Settings the fetch is still in flight at first
+  // render, so this used to hold the defaults and saving wrote them over the
+  // school's real tagline.
   const [tagline, setTagline] = useState(branding.tagline || "");
+  const taglineHydrated = useRef(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,22 +158,38 @@ export default function SettingsPage() {
 
   // ── Handlers ──
 
-  const handleSaveBranding = async () => {
+  useEffect(() => {
+    if (brandingLoading || taglineHydrated.current) return;
+    taglineHydrated.current = true;
+    setTagline(branding.tagline || "");
+  }, [brandingLoading, branding.tagline]);
+
+  const saveBranding = async (patch: TablesUpdate<"schools">, what: string) => {
     if (!schoolId) return;
+    await assertWrote(
+      supabase.from("schools").update(patch).eq("id", schoolId).select("id"),
+      `save the ${what}`,
+    );
+    refetch();
+  };
+
+  const handleSaveColors = async (primary: string, accent: string) => {
+    try {
+      await saveBranding({ primary_color: primary, accent_color: accent }, "colours");
+      toast.success("Colours updated");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to save colours"));
+      throw err; // keep the card dirty so the change is not silently lost
+    }
+  };
+
+  const handleSaveTagline = async () => {
     setSaving(true);
     try {
-      await assertWrote(
-        supabase
-          .from("schools")
-          .update({ primary_color: primaryColor, accent_color: accentColor, tagline: tagline || null })
-          .eq("id", schoolId)
-          .select("id"),
-        "save the branding",
-      );
-      toast.success("Branding updated");
-      refetch();
+      await saveBranding({ tagline: tagline || null }, "tagline");
+      toast.success("Tagline updated");
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to save branding"));
+      toast.error(getErrorMessage(err, "Failed to save tagline"));
     } finally {
       setSaving(false);
     }
@@ -422,30 +443,10 @@ export default function SettingsPage() {
             </Card>
           ) : (
             <>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Preview</CardTitle>
-                  <CardDescription>How your sidebar header will look</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3 rounded-lg p-4" style={{ backgroundColor: primaryColor }}>
-                    {branding.logoUrl ? (
-                      <Avatar className="h-9 w-9 rounded-lg">
-                        <AvatarImage src={branding.logoUrl} alt="School logo" />
-                        <AvatarFallback className="rounded-lg" style={{ backgroundColor: accentColor, color: "#fff" }}>{branding.name[0]}</AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: accentColor }}>
-                        <Building2 className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm font-semibold text-white">{branding.name}</p>
-                      {tagline && <p className="text-[11px] text-white/70">{tagline}</p>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* No mock preview card: the app itself repaints as the colours
+                  change, which is a truer preview than a swatch of a sidebar
+                  header could ever be. */}
+              <BrandColorsCard onSave={handleSaveColors} />
 
               <Card>
                 <CardHeader>
@@ -475,33 +476,18 @@ export default function SettingsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Colors & Tagline</CardTitle>
-                  <CardDescription>Customize your school's brand colors</CardDescription>
+                  <CardTitle className="text-base">Tagline</CardTitle>
+                  <CardDescription>Sits under the school name in the sidebar and on printed documents</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Primary Color</Label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-10 w-10 cursor-pointer rounded border border-input" />
-                        <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="flex-1" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Accent Color</Label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="h-10 w-10 cursor-pointer rounded border border-input" />
-                        <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="flex-1" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tagline</Label>
-                    <Input placeholder="e.g. Excellence in Education" value={tagline} onChange={(e) => setTagline(e.target.value)} />
-                  </div>
-                  <Button onClick={handleSaveBranding} disabled={saving}>
+                  <Input
+                    placeholder="e.g. Excellence in Education"
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                  />
+                  <Button onClick={handleSaveTagline} disabled={saving || tagline === (branding.tagline || "")}>
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Branding
+                    Save tagline
                   </Button>
                 </CardContent>
               </Card>
