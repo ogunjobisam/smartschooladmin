@@ -1583,4 +1583,65 @@ SELECT public.assert((SELECT count(*) FROM student_scores) > 0,
   'lifting a hold did not give the pupil their marks back');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- SMS credits: charged per part, refunded on failure, and only by the queue
+-- ---------------------------------------------------------------------------
+-- charge_sms() used to be executable by PUBLIC, so anyone — signed in or not —
+-- could call it with any organisation's id and spend its prepaid credits.
+INSERT INTO sms_credit_balances (org_id, balance) VALUES ('11111111-1111-1111-1111-111111111111', 5);
+INSERT INTO outbound_message_queue (id, org_id, channel, recipient, body)
+  VALUES ('0a000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'sms', '08031234567', 'Hello');
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    PERFORM public.charge_sms('11111111-1111-1111-1111-111111111111', NULL, 'x', 1, 'sandbox');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a signed-in user can spend the organisation''s SMS credits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a signed-in user can mint SMS credits through a refund';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+
+  SET LOCAL ROLE anon;
+  BEGIN
+    PERFORM public.charge_sms('11111111-1111-1111-1111-111111111111', NULL, 'x', 1, 'sandbox');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an anonymous visitor can spend SMS credits';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- As the queue (the service role, here the table owner): a two-part text
+-- costs two credits; one that would overdraw costs nothing and is refused.
+DO $$
+BEGIN
+  PERFORM public.assert(public.charge_sms('11111111-1111-1111-1111-111111111111',
+    '0a000000-0000-0000-0000-000000000001', '2348031234567', 2, 'termii'),
+    'the queue could not charge a two-part text against a balance of five');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 3,
+    'a two-part text did not cost two credits');
+  PERFORM public.assert((SELECT parts FROM sms_usage_log WHERE queue_id = '0a000000-0000-0000-0000-000000000001') = 2,
+    'the usage log does not record how many parts were charged');
+
+  PERFORM public.assert(NOT public.charge_sms('11111111-1111-1111-1111-111111111111',
+    NULL, '2348031234567', 4, 'termii'),
+    'a four-part text was charged against a balance of three');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 3,
+    'a refused charge still took credits');
+
+  -- The provider then fails: the two credits come back, once.
+  PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+  PERFORM public.refund_sms('0a000000-0000-0000-0000-000000000001');
+  PERFORM public.assert((SELECT balance FROM sms_credit_balances WHERE org_id = '11111111-1111-1111-1111-111111111111') = 5,
+    'a refund did not restore exactly the credits charged, or refunded twice');
+  PERFORM public.assert((SELECT count(*) FROM sms_usage_log WHERE queue_id = '0a000000-0000-0000-0000-000000000001') = 0,
+    'a refunded send is still in the usage log');
+END $$;
+
 SELECT 'rls behaviour tests passed' AS result;
