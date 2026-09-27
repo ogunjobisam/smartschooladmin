@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { rowTint } from "@/lib/ledger";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -110,7 +112,11 @@ export default function Invoices() {
                 const student = inv.students;
                 const studentName = student ? `${student.first_name} ${student.last_name}` : "—";
                 return (
-                  <TableRow key={inv.id} className="cursor-pointer" onClick={() => navigate(`/invoices/${inv.id}`)}>
+                  <TableRow
+                    key={inv.id}
+                    className={cn("cursor-pointer", rowTint(inv.status))}
+                    onClick={() => navigate(`/invoices/${inv.id}`)}
+                  >
                     <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">{inv.invoice_number}</TableCell>
                     <TableCell className="font-medium">
                       <span className="block max-w-[9rem] truncate sm:max-w-none">{studentName}</span>

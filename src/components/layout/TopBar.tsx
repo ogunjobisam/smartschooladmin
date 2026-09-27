@@ -31,7 +31,7 @@ export function TopBar() {
       ) : (
         <span
           aria-hidden
-          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-gold ring-1 ring-gold/50"
+          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-gold-on-primary ring-1 ring-gold/50"
         >
           {(branding.name || "S").charAt(0)}
         </span>

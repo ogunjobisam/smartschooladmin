@@ -67,7 +67,9 @@ serve(async (req) => {
       .insert({ user_id: user.id, role: "proprietor", org_id: org.id });
     if (roleErr) throw roleErr;
 
-    // 3. Create school
+    // 3. Create school. Brand colours are deliberately left to the column
+    // defaults (navy and gold — see the migration that sets them) so there is
+    // one place to change them rather than a copy here to drift out of step.
     const { data: school, error: schoolErr } = await supabase
       .from("schools")
       .insert({ org_id: org.id, name: schoolName })

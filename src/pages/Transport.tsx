@@ -207,9 +207,9 @@ export default function Transport() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard title="Routes" value={routes.length.toString()} icon={Bus} />
-            <StatCard title="Students riding" value={riders.toString()} icon={Users} />
-            <StatCard title="Transport per term" value={formatMoney(termRevenue)} icon={MapPin} mono subtitle="At current assignments" />
+            <StatCard title="Routes" value={routes.length.toString()} icon={Bus} tone="navy" />
+            <StatCard title="Students riding" value={riders.toString()} icon={Users} tone="blue" />
+            <StatCard title="Transport per term" value={formatMoney(termRevenue)} icon={MapPin} mono subtitle="At current assignments" tone="green" />
           </div>
 
           <Card>

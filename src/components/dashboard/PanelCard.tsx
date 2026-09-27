@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { TONE, type Tone } from "@/components/dashboard/tones";
 
 interface PanelCardProps {
   /**
@@ -12,6 +13,8 @@ interface PanelCardProps {
   /** Title case, not upper case — the display face supplies the small caps. */
   title: ReactNode;
   icon?: LucideIcon;
+  /** The icon tile's colour — see `tones.ts`. Defaults to the brand navy. */
+  tone?: Tone;
   /** Right of the title, before the icon tile: a filter, a link, a count. */
   action?: ReactNode;
   children: ReactNode;
@@ -32,6 +35,7 @@ export function PanelCard({
   eyebrow,
   title,
   icon: Icon,
+  tone = "navy",
   action,
   children,
   flush,
@@ -58,7 +62,10 @@ export function PanelCard({
         {Icon && (
           <span
             aria-hidden
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-gold shadow-tile"
+            className={cn(
+              "grid h-11 w-11 shrink-0 place-items-center rounded-xl shadow-tile",
+              TONE[tone],
+            )}
           >
             <Icon className="h-5 w-5" />
           </span>

@@ -16,16 +16,22 @@ import {
   Download, Users, GraduationCap, FileText, CreditCard, AlertTriangle,
   Calculator, CheckSquare, TrendingUp, ArrowRight, Clock, Percent, Wallet
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { exportToCsv } from "@/lib/csv-export";
+import { CHART_SERIES, STATUS_COLOURS } from "@/lib/chart-colors";
 import { Link } from "react-router-dom";
 
-const COLORS = [
-  "hsl(var(--accent))",
-  "hsl(var(--primary))",
-  "hsl(var(--destructive))",
-  "hsl(var(--warning, 38 92% 50%))",
-];
+// Paid, pending, overdue and draft are *states*, not categories, so they wear
+// the reserved status colours — the same four the table pills and the row tints
+// use — rather than being dealt hues off the categorical ramp. The gold-navy-red-
+// amber set they had before made "pending" the brand colour and left "paid" and
+// "draft" hard to tell apart.
+const INVOICE_STATUS = {
+  Paid: STATUS_COLOURS.paid,
+  Pending: STATUS_COLOURS.pending,
+  Overdue: STATUS_COLOURS.overdue,
+  Draft: STATUS_COLOURS.void,
+} as const;
 
 export default function ProprietorDashboard() {
   const { orgId, schools } = useAuth();
@@ -85,10 +91,10 @@ export default function ProprietorDashboard() {
         collectionRate,
         pendingApprovals: pendingApprovals || 0,
         invoiceBreakdown: [
-          { name: "Paid", value: paidCount, color: COLORS[0] },
-          { name: "Pending", value: pendingCount, color: COLORS[1] },
-          { name: "Overdue", value: overdueCount, color: COLORS[2] },
-          { name: "Draft", value: draftCount, color: COLORS[3] },
+          { name: "Paid", value: paidCount, color: INVOICE_STATUS.Paid },
+          { name: "Pending", value: pendingCount, color: INVOICE_STATUS.Pending },
+          { name: "Overdue", value: overdueCount, color: INVOICE_STATUS.Overdue },
+          { name: "Draft", value: draftCount, color: INVOICE_STATUS.Draft },
         ].filter(i => i.value > 0),
       };
     },
@@ -229,14 +235,14 @@ export default function ProprietorDashboard() {
         </div>
       ) : kpis ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Students" value={kpis.totalStudents.toLocaleString()} icon={GraduationCap} />
-          <StatCard title="Total Staff" value={kpis.totalStaff.toLocaleString()} icon={Users} />
-          <StatCard title="Total Invoiced" value={formatMoney(kpis.totalInvoiced)} icon={FileText} mono />
-          <StatCard title="Total Collected" value={formatMoney(kpis.totalCollected)} icon={CreditCard} mono />
-          <StatCard title="Outstanding" value={formatMoney(kpis.totalOutstanding)} icon={TrendingUp} mono />
-          <StatCard title="Collection Rate" value={`${kpis.collectionRate}%`} icon={Percent} subtitle={kpis.collectionRate >= 80 ? "On track" : "Needs attention"} />
-          <StatCard title="Overdue Invoices" value={`${kpis.overdueCount}`} icon={AlertTriangle} subtitle={formatMoney(kpis.overdueValue)} />
-          <StatCard title="Pending Approvals" value={kpis.pendingApprovals.toString()} icon={CheckSquare} />
+          <StatCard title="Total Students" value={kpis.totalStudents.toLocaleString()} icon={GraduationCap} tone="navy" />
+          <StatCard title="Total Staff" value={kpis.totalStaff.toLocaleString()} icon={Users} tone="blue" />
+          <StatCard title="Total Invoiced" value={formatMoney(kpis.totalInvoiced)} icon={FileText} mono tone="violet" />
+          <StatCard title="Total Collected" value={formatMoney(kpis.totalCollected)} icon={CreditCard} mono tone="green" />
+          <StatCard title="Outstanding" value={formatMoney(kpis.totalOutstanding)} icon={TrendingUp} mono tone="gold" />
+          <StatCard title="Collection Rate" value={`${kpis.collectionRate}%`} icon={Percent} subtitle={kpis.collectionRate >= 80 ? "On track" : "Needs attention"} tone="violet" />
+          <StatCard title="Overdue Invoices" value={`${kpis.overdueCount}`} icon={AlertTriangle} subtitle={formatMoney(kpis.overdueValue)} tone="rose" />
+          <StatCard title="Pending Approvals" value={kpis.pendingApprovals.toString()} icon={CheckSquare} tone="blue" />
         </div>
       ) : null}
 
@@ -255,8 +261,12 @@ export default function ProprietorDashboard() {
                   <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 11 }} />
                   <YAxis className="text-xs" tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => formatMoney(value)} />
-                  <Bar dataKey="collected" fill="hsl(var(--accent))" name="Collected" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="outstanding" fill="hsl(var(--destructive))" name="Outstanding" radius={[4, 4, 0, 0]} />
+                  {/* Two categories, not two states: outstanding money is not
+                      an error, so it takes a series colour rather than the
+                      reserved destructive red. */}
+                  <Bar dataKey="collected" fill={CHART_SERIES[0]} name="Collected" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="outstanding" fill={CHART_SERIES[2]} name="Outstanding" radius={[4, 4, 0, 0]} />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: "11px" }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

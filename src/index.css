@@ -21,8 +21,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 226 55% 16%;
 
-    /* Royal navy. Every school overrides this via --school-primary; these are
-       the defaults a school inherits before it sets its own colours. */
+    /* Royal navy. Everything below the two brand colours is derived from them
+       by `schoolThemeVars` in src/lib/theme.ts, which overwrites these tokens
+       at runtime with the school's own. These values ARE that function applied
+       to the navy/gold defaults — src/test/theme.test.ts asserts it — so a
+       school that has chosen nothing renders exactly this block. */
     --primary: 226 63% 22%;
     --primary-foreground: 46 60% 97%;
 
@@ -68,6 +71,12 @@
        --gold-ink is text: the eyebrow and metric labels. 4.86 on cream,
        4.92 on the panel band, 5.25 on white — AA at small sizes. */
     --gold: 44 64% 40%;
+    /* The third gold: the glyph on a navy tile, and the fill of a gold one.
+       --gold is pinned dark enough for the cream ground, which for a mid-dark
+       primary leaves the two nearly equal in brightness and the icon invisible.
+       This one is lifted until it measures 3:1 against --primary. For the navy
+       default that needs no lifting, so it matches --gold exactly. */
+    --gold-on-primary: 44 64% 40%;
     --gold-ink: 40 72% 32%;
     --gold-soft: 44 70% 88%;
 
@@ -80,6 +89,36 @@
        the figure, which is what makes an owing line readable at a glance. */
     --tint-paid: 152 44% 92%;
     --tint-owing: 0 58% 94%;
+
+    /* ---- The accent ramp --------------------------------------------------
+       One set of five hues doing double duty: chart series and the coloured
+       icon tiles on metric cards and panel headers. Sharing them is what stops
+       a page of tiles and the chart beside it looking like two designs.
+
+       The order is FIXED — slot 1 is always this blue, slot 5 always this
+       green — and is never cycled or reassigned when a series drops out.
+       Deliberately *not* derived from the school's colours: their job is to be
+       six things telling each other apart, which collapses the moment they all
+       follow one hue.
+
+       These values are not taste. They come out of
+       `dataviz/scripts/validate_palette.js`, which computes the OKLCH
+       lightness band, the chroma floor, OKLab ΔE between adjacent slots under
+       simulated protanopia and deuteranopia, and WCAG contrast. This set
+       passes every check on both surfaces a chart sits on here — the white
+       card and the cream page — so nothing downstream owes texture or a
+       fallback. Re-run it before touching a value:
+
+         node scripts/validate_palette.js \
+           "#1d5ab0,#a17904,#9a2733,#8f5fc0,#027e47" --mode light
+
+       Contrast against white is >= 3:1 for all five, which is also what lets a
+       white glyph sit on a tile filled with one. */
+    --chart-1: 215 72% 40%;
+    --chart-2: 45 95% 32%;
+    --chart-3: 354 60% 38%;
+    --chart-4: 270 43% 56%;
+    --chart-5: 153 97% 25%;
 
     --sidebar-background: 226 66% 15%;
     --sidebar-foreground: 44 25% 82%;
@@ -131,12 +170,25 @@
     --ring: 44 64% 52%;
 
     --gold: 44 64% 52%;
+    --gold-on-primary: 44 64% 52%;
     --gold-ink: 44 70% 66%;
     --gold-soft: 226 40% 22%;
     --royal-check: 226 40% 16%;
     --panel-band: 226 40% 14%;
     --tint-paid: 152 30% 14%;
     --tint-owing: 0 35% 16%;
+
+    /* Dark steps are *chosen*, not an automatic flip of the light ones: the
+       same five hues re-stepped and re-validated against the dark card, since
+       the lightness band and the contrast reference both move.
+
+         node scripts/validate_palette.js \
+           "#1069da,#b88a06,#c5293d,#9554d2,#069253" --mode dark --surface "#12182b" */
+    --chart-1: 214 86% 46%;
+    --chart-2: 44 94% 37%;
+    --chart-3: 352 66% 47%;
+    --chart-4: 271 58% 58%;
+    --chart-5: 153 92% 30%;
 
     --sidebar-background: 226 50% 7%;
     --sidebar-foreground: 44 20% 78%;

@@ -21,6 +21,17 @@ export default {
           DEFAULT: "hsl(var(--gold))",
           ink: "hsl(var(--gold-ink))",
           soft: "hsl(var(--gold-soft))",
+          // For anything sitting on, or filling against, --primary.
+          "on-primary": "hsl(var(--gold-on-primary))",
+        },
+        // The validated accent ramp — chart series and coloured icon tiles draw
+        // from the same five. Fixed order; see the note in src/index.css.
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

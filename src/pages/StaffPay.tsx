@@ -145,9 +145,9 @@ export default function StaffPay() {
 
       {latest && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard title="Latest net pay" value={formatMoney(latest.net_pay)} icon={Banknote} />
-          <StatCard title="Period" value={latest.payroll_runs?.period_label || "—"} icon={Wallet} />
-          <StatCard title="Payslips" value={String(payslips.length)} icon={Eye} />
+          <StatCard title="Latest net pay" value={formatMoney(latest.net_pay)} icon={Banknote} tone="green" />
+          <StatCard title="Period" value={latest.payroll_runs?.period_label || "—"} icon={Wallet} tone="navy" />
+          <StatCard title="Payslips" value={String(payslips.length)} icon={Eye} tone="violet" />
         </div>
       )}
 

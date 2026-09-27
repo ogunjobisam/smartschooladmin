@@ -161,6 +161,7 @@ export default function StudentPortal() {
           icon={GraduationCap}
           mono
           subtitle={performance.average === null ? "No results yet" : `Grade ${performance.grade}`}
+          tone="navy"
         />
         <StatCard
           title="Attendance"
@@ -168,6 +169,7 @@ export default function StudentPortal() {
           icon={CalendarCheck}
           mono
           subtitle={`${performance.attendance.present + performance.attendance.late} days present`}
+          tone="blue"
         />
         <StatCard
           title="Fees outstanding"
@@ -175,6 +177,7 @@ export default function StudentPortal() {
           icon={Receipt}
           mono
           subtitle={`${formatMoney(totalPaid)} paid`}
+          tone="rose"
         />
       </div>
 

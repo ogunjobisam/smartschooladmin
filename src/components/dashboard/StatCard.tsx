@@ -1,19 +1,8 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { TONE, type Tone } from "@/components/dashboard/tones";
 
-/**
- * The tile colour is decorative, not semantic — it varies down a list so the
- * eye can tell one metric from the next at a glance. Nothing should infer
- * meaning from it; use `trend` for that.
- */
-export type StatTone = "navy" | "gold" | "green" | "blue";
-
-const TONE: Record<StatTone, string> = {
-  navy: "bg-primary text-gold",
-  gold: "bg-gold text-primary",
-  green: "bg-success text-success-foreground",
-  blue: "bg-[hsl(214_80%_46%)] text-white",
-};
+export type StatTone = Tone;
 
 interface StatCardProps {
   title: string;
@@ -21,6 +10,11 @@ interface StatCardProps {
   subtitle?: string;
   icon: LucideIcon;
   trend?: { value: string; positive: boolean };
+  /**
+   * The icon tile's colour. Pass one per card down a grid so the metrics tell
+   * each other apart — see `tones.ts`. Defaults to the brand navy, which is
+   * right for a lone card and wrong for a row of eight.
+   */
   tone?: StatTone;
   className?: string;
   mono?: boolean;

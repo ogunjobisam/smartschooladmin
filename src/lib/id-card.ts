@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { DEFAULT_PRIMARY } from "@/lib/theme";
 
 export interface IdCardData {
   schoolName: string;
@@ -48,7 +49,7 @@ const esc = (v: unknown) =>
 /** Full standalone HTML document containing the CR80 front (page 1) and back (page 2). */
 export function buildIdCardHtml(data: IdCardData, opts: IdCardRenderOptions = {}) {
   const { cutGuides = true, preview = false } = opts;
-  const brand = data.primaryColor || "#1e293b";
+  const brand = data.primaryColor || DEFAULT_PRIMARY;
   const initials = data.holderName.split(" ").filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   const pageW = cutGuides ? CR80.width + CR80.bleed * 2 : CR80.width;

@@ -106,7 +106,10 @@ export function AppSidebar() {
                       end={url === "/"}
                       onClick={closeOnMobile}
                       className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-gradient-to-r from-sidebar-primary to-[hsl(44_58%_40%)] text-sidebar-primary-foreground font-semibold shadow-tile"
+                      // The far end of the gradient was a literal gold, which
+                      // stayed gold however the school rebranded. It now
+                      // follows the accent like the near end does.
+                      activeClassName="bg-gradient-to-r from-sidebar-primary to-gold text-sidebar-primary-foreground font-semibold shadow-tile"
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span className="truncate">{item.title}</span>}
