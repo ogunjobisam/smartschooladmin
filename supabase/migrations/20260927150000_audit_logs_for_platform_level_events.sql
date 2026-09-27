@@ -21,6 +21,12 @@ COMMENT ON COLUMN public.audit_logs.org_id IS
 -- equals anything, so org-less rows are invisible to every tenant — which is
 -- what we want. They still need to be readable by someone, or the record is
 -- write-only and the migration guard rightly complains.
+-- DROP first, like every other policy migration here. CREATE POLICY has no
+-- IF NOT EXISTS, so without this the file cannot be run twice — which matters
+-- when migrations are applied by hand through an editor rather than by
+-- `supabase db push`: a half-finished attempt leaves you working out which
+-- statements landed. The ALTER TABLE above is already idempotent.
+DROP POLICY IF EXISTS "Super admins can view platform audit logs" ON public.audit_logs;
 CREATE POLICY "Super admins can view platform audit logs"
   ON public.audit_logs FOR SELECT TO authenticated
   USING (org_id IS NULL AND public.has_role(auth.uid(), 'super_admin'));
