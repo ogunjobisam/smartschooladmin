@@ -468,6 +468,11 @@ COMMIT;
 --
 -- Two users, because "only" is the whole point of is_support_staff_only():
 -- someone who is *also* a bursar must keep the bursar's reach.
+-- An exam_subjects row, so the support-staff assertion below measures row-level
+-- security rather than an empty table. Without it the count is 0 either way and
+-- the assertion proves nothing.
+INSERT INTO exam_subjects (exam_id, subject_id, max_score, weight) VALUES
+  ('77777777-7777-7777-7777-777777777777', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 100, 1);
 INSERT INTO auth.users (id, email) VALUES
   ('e0000000-0000-0000-0000-00000000000a', 'office@example.test'),
   ('e0000000-0000-0000-0000-00000000000b', 'office-and-bursar@example.test');
@@ -511,6 +516,12 @@ SELECT public.assert((SELECT count(*) FROM exams) = 0,
   'support staff can read the school''s exams');
 SELECT public.assert((SELECT count(*) FROM student_scores) = 0,
   'support staff can read pupils'' scores');
+-- exam_subjects has its own FOR ALL policy beside the SELECT one, and it was
+-- missed the first time. Permissive policies combine with OR, so one untightened
+-- policy grants through everything the other denies — asserting only exams and
+-- scores left that hole open and invisible.
+SELECT public.assert((SELECT count(*) FROM exam_subjects) = 0,
+  'support staff can read the exam subject list');
 COMMIT;
 
 BEGIN;
@@ -522,6 +533,10 @@ SELECT public.assert(NOT public.is_support_staff_only(auth.uid()),
   'a support_staff who is also a bursar is being treated as support-staff-only');
 SELECT public.assert((SELECT count(*) FROM invoices) = 1,
   'a support_staff who is also a bursar lost the bursar''s sight of invoices');
+-- The other half of the exam_subjects assertion: somebody must be able to see
+-- the row, or "support staff see none" is just an empty table.
+SELECT public.assert((SELECT count(*) FROM exam_subjects) = 1,
+  'nobody can see the exam_subjects fixture, so the support-staff assertion is vacuous');
 COMMIT;
 
 SELECT 'rls behaviour tests passed' AS result;
