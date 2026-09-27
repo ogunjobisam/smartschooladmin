@@ -3812,7 +3812,6 @@ export type Database = {
           status: string
         }[]
       }
-      my_staff_id: { Args: never; Returns: string }
       my_staff_ids: { Args: never; Returns: string[] }
       my_student_id: { Args: never; Returns: string }
       my_subscription: {
