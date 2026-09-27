@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchCallerRoles, primaryRole } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,12 +116,12 @@ Deno.serve(async (req) => {
       }).auth.getUser();
       if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
 
-      const { data: roleRow } = await admin
-        .from("user_roles")
-        .select("org_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
+      // Deterministic rather than whichever row came back first: someone who
+      // started a sandbox while signed in to a real account holds two role
+      // rows, and "no demo session to end" arriving at random is not something
+      // anyone can reproduce. The is_demo check below is what keeps a real
+      // organisation safe either way.
+      const roleRow = primaryRole(await fetchCallerRoles(admin, user.id));
       const orgId = roleRow?.org_id as string | undefined;
       if (!orgId) return jsonResponse({ error: "No demo session to end" }, 400);
 

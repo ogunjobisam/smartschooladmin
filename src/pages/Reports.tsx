@@ -23,11 +23,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import { exportToCsv } from "@/lib/csv-export";
-
-const CHART_COLORS = [
-  "hsl(215, 90%, 55%)", "hsl(152, 60%, 40%)", "hsl(38, 92%, 50%)",
-  "hsl(0, 72%, 51%)", "hsl(270, 60%, 55%)"
-];
+import { CHART_REFERENCE, CHART_SERIES, topWithOther } from "@/lib/chart-colors";
 
 export default function Reports() {
   const { schoolId, orgId } = useAuth();
@@ -62,7 +58,12 @@ export default function Reports() {
       const { data } = await supabase.from("payments").select("payment_method, amount").eq("school_id", schoolId);
       const grouped: Record<string, number> = {};
       (data || []).forEach((p) => { grouped[p.payment_method] = (grouped[p.payment_method] || 0) + (p.amount || 0); });
-      return Object.entries(grouped).map(([method, total]) => ({ name: formatMethod(method), value: total })).sort((a, b) => b.value - a.value);
+      const rows = Object.entries(grouped)
+        .map(([method, total]) => ({ name: formatMethod(method), value: total }))
+        .sort((a, b) => b.value - a.value);
+      // A school can add payment methods, and a sixth one must not wrap back
+      // onto the first slice's colour.
+      return topWithOther(rows);
     },
     enabled: !!schoolId,
   });
@@ -189,11 +190,11 @@ export default function Reports() {
           ))
         ) : (
           <>
-            <StatCard title="Total Billed" value={formatMoney(overallStats?.totalBilled || 0)} icon={FileText} mono />
-            <StatCard title="Total Collected" value={formatMoney(overallStats?.totalCollected || 0)} icon={CreditCard} mono />
-            <StatCard title="Collection Rate" value={`${overallStats?.collectionRate || 0}%`} icon={TrendingUp} subtitle={`${overallStats?.studentCount} students`} />
-            <StatCard title="Total Payroll" value={formatMoney(overallStats?.totalPayroll || 0)} icon={Calculator} mono />
-            <StatCard title="Active Staff" value={(overallStats?.staffCount || 0).toLocaleString()} icon={Users} />
+            <StatCard title="Total Billed" value={formatMoney(overallStats?.totalBilled || 0)} icon={FileText} mono tone="navy" />
+            <StatCard title="Total Collected" value={formatMoney(overallStats?.totalCollected || 0)} icon={CreditCard} mono tone="green" />
+            <StatCard title="Collection Rate" value={`${overallStats?.collectionRate || 0}%`} icon={TrendingUp} subtitle={`${overallStats?.studentCount} students`} tone="blue" />
+            <StatCard title="Total Payroll" value={formatMoney(overallStats?.totalPayroll || 0)} icon={Calculator} mono tone="violet" />
+            <StatCard title="Active Staff" value={(overallStats?.staffCount || 0).toLocaleString()} icon={Users} tone="gold" />
           </>
         )}
       </div>
@@ -251,7 +252,7 @@ export default function Reports() {
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => formatMoneyCompact(v)} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" name="Revenue" fill={CHART_SERIES[0]} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -272,10 +273,21 @@ export default function Reports() {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={paymentsByMethod} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                    {paymentsByMethod?.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    {paymentsByMethod?.map((slice) => <Cell key={slice.name} fill={slice.fill} />)}
                   </Pie>
                   <Tooltip formatter={(v: number) => formatMoney(v)} />
-                  <Legend iconSize={10} wrapperStyle={{ fontSize: "11px" }} />
+                  {/* The amount rides in the legend, so the chart can be read
+                      without matching a slice to a swatch by colour. */}
+                  <Legend
+                    iconSize={10}
+                    wrapperStyle={{ fontSize: "11px" }}
+                    // recharts types the legend entry's payload as a bare
+                    // object, so narrow it rather than reaching through `any`.
+                    formatter={(name, entry) => {
+                      const payload = entry?.payload as { value?: number } | undefined;
+                      return `${name} — ${formatMoneyCompact(payload?.value ?? 0)}`;
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -303,8 +315,11 @@ export default function Reports() {
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => formatMoneyCompact(v)} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="billed" name="Billed" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="collected" name="Collected" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                    {/* Billed is the reference the eye measures collected
+                        against, so it stays recessive rather than competing. */}
+                    <Bar dataKey="billed" name="Billed" fill={CHART_REFERENCE} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" name="Collected" fill={CHART_SERIES[0]} radius={[4, 4, 0, 0]} />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: "11px" }} />
                   </BarChart>
                 </ResponsiveContainer>
                 <Table>

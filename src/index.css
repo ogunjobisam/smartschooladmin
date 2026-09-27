@@ -1,124 +1,247 @@
+/* Inter carries the dense screens — registers, payroll grids, forms — where a
+   serif would cost legibility. Cinzel is the ceremonial face: its lowercase IS
+   small caps, so ordinary title-case text renders as SMALL CAPS with no
+   font-variant trickery, which is exactly the look of the reference design. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 168 20% 97%;
-    --foreground: 178 59% 11%;
+    /* Cream rather than white: the reference design floats white cards on a
+       warm ground, and that contrast is most of why the cards read as cards. */
+    --background: 46 56% 95%;
+    --foreground: 226 55% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 178 59% 11%;
+    --card-foreground: 226 55% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 178 59% 11%;
+    --popover-foreground: 226 55% 16%;
 
-    --primary: 175 77% 26%;
-    --primary-foreground: 0 0% 100%;
+    /* Royal navy. Everything below the two brand colours is derived from them
+       by `schoolThemeVars` in src/lib/theme.ts, which overwrites these tokens
+       at runtime with the school's own. These values ARE that function applied
+       to the navy/gold defaults — src/test/theme.test.ts asserts it — so a
+       school that has chosen nothing renders exactly this block. */
+    --primary: 226 63% 22%;
+    --primary-foreground: 46 60% 97%;
 
-    --secondary: 167 30% 95%;
-    --secondary-foreground: 178 59% 14%;
+    --secondary: 44 40% 91%;
+    --secondary-foreground: 226 50% 20%;
 
-    --muted: 175 12% 94%;
-    --muted-foreground: 215 15% 40%;
+    --muted: 44 30% 92%;
+    --muted-foreground: 226 14% 42%;
 
-    --accent: 173 80% 40%;
-    --accent-foreground: 0 0% 100%;
+    /* Gold. Accents, rules and edge bars only — never body text on cream,
+       which would fail contrast. See --gold-ink for the readable variant. */
+    --accent: 44 64% 45%;
+    --accent-foreground: 226 60% 15%;
 
-    --destructive: 0 72% 51%;
+    /* Status text needs its own value, for the same reason --gold does: one
+       colour cannot be both a fill carrying white text and ink readable on a
+       pale card. `text-warning` measured 2.48:1 on a card — every "pending"
+       badge in the app — and `text-success` 3.96. The fills below are
+       unchanged; Tailwind maps text-* to these and bg-* to the fills, so no
+       call site had to move. */
+    --destructive-ink: 0 68% 47%;
+    --success-ink: 152 58% 30%;
+    --warning-ink: 38 88% 30%;
+
+    --destructive: 0 68% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 171 60% 35%;
+    --success: 152 58% 36%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 38 88% 47%;
     --warning-foreground: 38 92% 14%;
 
+    --border: 44 28% 85%;
+    --input: 44 28% 85%;
+    /* The boundary gold, not the brighter accent: a focus ring is a UI
+       component and owes 3:1, which the accent managed only 2.81 of on a
+       white card (2.14 for an amber school). */
+    --ring: 44 64% 40%;
+
+    --radius: 0.875rem;
+
+    /* What box-shadow is built from. Its own token because --primary inverts
+       in dark mode, and a pale primary would turn every shadow into a halo. */
+    --shadow-color: 226 63% 22%;
+
+    /* ---- Royal extensions -------------------------------------------------
+       Tokens the shadcn set has no equivalent for, carrying the parts of the
+       design that are not simply "a colour": the two golds, the check behind
+       navy panels, and the row tints used by ledgers. */
+
+    /* Two golds, and they are NOT interchangeable.
+
+       --gold draws boundaries: edge bars, rules, dashed borders, icon glyphs
+       on navy tiles. Those are UI components under WCAG 1.4.11, so it has to
+       clear 3:1 against every ground it lands on — 3.24 on cream, 3.50 on
+       white, 4.13 on navy. An earlier, brighter 45% lightness managed only
+       2.60 on cream and failed.
+
+       --gold-ink is text: the eyebrow and metric labels. 4.86 on cream,
+       4.92 on the panel band, 5.25 on white — AA at small sizes. */
+    --gold: 44 64% 40%;
+    /* The third gold: the glyph on a navy tile, and the fill of a gold one.
+       --gold is pinned dark enough for the cream ground, which for a mid-dark
+       primary leaves the two nearly equal in brightness and the icon invisible.
+       This one is lifted until it measures 3:1 against --primary. For the navy
+       default that needs no lifting, so it matches --gold exactly. */
+    --tile: 226 63% 22%;
+    --gold-on-primary: 44 64% 40%;
+    --gold-ink: 40 72% 32%;
+    --gold-soft: 44 70% 88%;
+
+    /* The faint diamond check on navy panels, and the cream wash behind a
+       panel's header band. */
+    --royal-check: 226 55% 26%;
+    --panel-band: 46 52% 96%;
+
+    /* Ledger row tints — the reference tints the whole row rather than just
+       the figure, which is what makes an owing line readable at a glance. */
+    --tint-paid: 152 44% 92%;
+    --tint-owing: 0 58% 94%;
+
+    /* ---- The accent ramp --------------------------------------------------
+       One set of five hues doing double duty: chart series and the coloured
+       icon tiles on metric cards and panel headers. Sharing them is what stops
+       a page of tiles and the chart beside it looking like two designs.
+
+       The order is FIXED — slot 1 is always this blue, slot 5 always this
+       green — and is never cycled or reassigned when a series drops out.
+       Deliberately *not* derived from the school's colours: their job is to be
+       six things telling each other apart, which collapses the moment they all
+       follow one hue.
+
+       These values are not taste. They come out of
+       `dataviz/scripts/validate_palette.js`, which computes the OKLCH
+       lightness band, the chroma floor, OKLab ΔE between adjacent slots under
+       simulated protanopia and deuteranopia, and WCAG contrast. This set
+       passes every check on both surfaces a chart sits on here — the white
+       card and the cream page — so nothing downstream owes texture or a
+       fallback. Re-run it before touching a value:
+
+         node scripts/validate_palette.js \
+           "#1d5ab0,#a17904,#9a2733,#8f5fc0,#027e47" --mode light
+
+       Contrast against white is >= 3:1 for all five, which is also what lets a
+       white glyph sit on a tile filled with one. */
+    --chart-1: 215 72% 40%;
+    --chart-2: 45 95% 32%;
+    --chart-3: 354 60% 38%;
+    --chart-4: 270 43% 56%;
+    --chart-5: 153 97% 25%;
+
+    /* ---- Landing-page accents (from main) ---------------------------------
+       Used only by src/pages/Landing.tsx, the pre-auth marketing page, which
+       is painted in its own multi-colour palette rather than in a school's.
+       Kept at the values it was built against so it still renders as intended;
+       bringing it into the royal palette is a separate piece of work.
+
+       --gold is the exception: it is a chrome token the whole app and the
+       theme tests depend on, so the royal value stands and --gold-foreground
+       is set to the navy that clears 4.13:1 on it. */
+    --gold-foreground: 226 60% 15%;
     --brand-ice: 167 85% 89%;
     --brand-mint: 171 77% 64%;
-
     --coral: 8 78% 57%;
     --coral-foreground: 0 0% 100%;
     --teal: 175 77% 26%;
     --teal-foreground: 0 0% 100%;
-    --gold: 42 92% 52%;
-    --gold-foreground: 30 80% 12%;
     --violet: 270 62% 55%;
     --violet-foreground: 0 0% 100%;
 
-    --border: 175 8% 88%;
-    --input: 175 8% 88%;
-    --ring: 175 77% 26%;
-
-    --radius: 0.875rem;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 15% 34%;
-    --sidebar-primary: 175 77% 26%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 167 85% 89%;
-    --sidebar-accent-foreground: 176 69% 22%;
-    --sidebar-border: 175 8% 88%;
-    --sidebar-ring: 175 77% 26%;
-    --sidebar-muted: 175 10% 92%;
+    --sidebar-background: 226 66% 15%;
+    --sidebar-foreground: 44 25% 82%;
+    --sidebar-primary: 44 64% 48%;
+    --sidebar-primary-foreground: 226 60% 13%;
+    --sidebar-accent: 226 55% 22%;
+    --sidebar-accent-foreground: 44 40% 92%;
+    --sidebar-border: 226 45% 24%;
+    --sidebar-ring: 44 64% 48%;
+    /* Text — the group label, the role line, the user's email, four call
+       sites in AppSidebar. At 34% it measured 1.94:1 and had been failing AA
+       since the sidebar went navy. */
+    --sidebar-muted: 226 30% 60%;
   }
 
+  /* Live: ThemeProvider sets .dark, and SchoolBrandingContext writes the
+     school's own derived values over these at runtime. */
   .dark {
-    --background: 178 45% 6%;
-    --foreground: 167 30% 95%;
+    /* Derived, not hand-written: exactly
+       schoolThemeVars(DEFAULT_PRIMARY, DEFAULT_ACCENT, "dark"), which
+       src/test/theme.test.ts asserts — so this block cannot drift from the
+       derivation the way the hand-kept one did. It had --primary and
+       --gold-on-primary set to the same colour: 1.00:1, an invisible glyph
+       on every icon tile, and nothing caught it because nothing set .dark. */
+    --background: 226 45% 7%;
+    --foreground: 44 25% 92%;
+    --card: 226 42% 12%;
+    --popover: 226 42% 12%;
+    --card-foreground: 44 25% 92%;
+    --popover-foreground: 44 25% 92%;
+    --primary: 226 63% 62%;
+    --primary-foreground: 226 60% 10%;
+    --secondary: 226 35% 18%;
+    --secondary-foreground: 44 25% 88%;
+    --muted: 226 30% 18%;
+    --muted-foreground: 44 12% 64%;
+    --accent: 44 64% 52%;
+    --accent-foreground: 226 60% 12%;
+    --border: 226 30% 26%;
+    --input: 226 30% 26%;
+    --ring: 44 64% 46%;
+    --gold: 44 64% 46%;
+    --tile: 226 63% 32%;
+    --gold-on-primary: 44 64% 50%;
+    --gold-ink: 40 72% 60%;
+    --gold-soft: 44 50% 22%;
+    --royal-check: 226 55% 22%;
+    --panel-band: 226 40% 14%;
+    --sidebar-background: 226 60% 15%;
+    --sidebar-foreground: 44 20% 84%;
+    --sidebar-primary: 44 64% 52%;
+    --sidebar-primary-foreground: 226 60% 10%;
+    --sidebar-accent: 226 45% 21%;
+    --sidebar-accent-foreground: 44 25% 90%;
+    --sidebar-border: 226 40% 30%;
+    --sidebar-ring: 44 64% 52%;
+    --sidebar-muted: 44 12% 68%;
+    --shadow-color: 226 0% 0%;
 
-    --card: 178 40% 9%;
-    --card-foreground: 167 30% 95%;
-
-    --popover: 178 40% 9%;
-    --popover-foreground: 167 30% 95%;
-
-    --primary: 173 80% 40%;
-    --primary-foreground: 178 59% 8%;
-
-    --secondary: 178 25% 16%;
-    --secondary-foreground: 167 25% 90%;
-
-    --muted: 178 20% 16%;
-    --muted-foreground: 175 12% 65%;
-
-    --accent: 173 80% 40%;
-    --accent-foreground: 178 59% 8%;
-
+    /* Not derived: these carry meaning, or the product's own brand, rather
+       than a school's, so a school's colours must not repaint them. */
+    --destructive-ink: 0 62% 65%;
+    --success-ink: 152 50% 43%;
+    --warning-ink: 38 80% 50%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-
-    --success: 171 55% 38%;
+    --success: 152 50% 40%;
     --success-foreground: 0 0% 100%;
-
-    --warning: 38 80% 45%;
-    --warning-foreground: 0 0% 100%;
-
-    --brand-ice: 176 45% 18%;
-    --brand-mint: 171 70% 55%;
-
-    --coral: 8 72% 60%;
+    --warning: 38 80% 50%;
+    --warning-foreground: 38 92% 12%;
+    --tint-paid: 152 30% 14%;
+    --tint-owing: 0 35% 16%;
+    --chart-1: 214 86% 46%;
+    --chart-2: 44 94% 37%;
+    --chart-3: 352 66% 47%;
+    --chart-4: 271 58% 58%;
+    --chart-5: 153 92% 30%;
+    --gold-foreground: 226 60% 12%;
+    --brand-ice: 176 40% 18%;
+    --brand-mint: 171 60% 46%;
+    --coral: 8 70% 52%;
     --coral-foreground: 0 0% 100%;
-    --teal: 173 70% 48%;
+    --teal: 173 80% 40%;
     --teal-foreground: 178 59% 8%;
-    --gold: 42 88% 58%;
-    --gold-foreground: 30 80% 10%;
-    --violet: 270 66% 68%;
-    --violet-foreground: 270 70% 10%;
-
-    --border: 178 20% 18%;
-    --input: 178 20% 18%;
-    --ring: 173 80% 40%;
-
-    --sidebar-background: 178 45% 8%;
-    --sidebar-foreground: 175 12% 75%;
-    --sidebar-primary: 173 80% 40%;
-    --sidebar-primary-foreground: 178 59% 8%;
-    --sidebar-accent: 176 40% 15%;
-    --sidebar-accent-foreground: 167 30% 92%;
-    --sidebar-border: 178 25% 14%;
-    --sidebar-ring: 173 80% 40%;
-    --sidebar-muted: 178 20% 20%;
+    --violet: 270 55% 60%;
+    --violet-foreground: 0 0% 100%;
   }
 }
 
@@ -128,11 +251,18 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.01em;
     font-weight: 700;
+  }
+  /* Small caps come free: Cinzel's lowercase glyphs are small capitals, so
+     "Fee Intelligence" renders as FEE INTELLIGENCE with the leading letters
+     full height. Do not uppercase the text as well — that flattens it. */
+  .font-display {
+    font-family: 'Cinzel', Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.01em;
   }
   .font-mono {
     font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
@@ -144,6 +274,20 @@
 }
 
 @layer utilities {
+  /* The faint diamond check behind navy panels and the sidebar. Two gradients
+     offset by half a tile; cheap, and it stops large navy areas reading flat. */
+  .royal-check {
+    background-image:
+      linear-gradient(45deg, hsl(var(--royal-check) / 0.55) 25%, transparent 25%, transparent 75%, hsl(var(--royal-check) / 0.55) 75%),
+      linear-gradient(45deg, hsl(var(--royal-check) / 0.55) 25%, transparent 25%, transparent 75%, hsl(var(--royal-check) / 0.55) 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 11px 11px;
+  }
+
+  /* Ledger rows tinted by meaning rather than only the figure. */
+  .row-paid { background-color: hsl(var(--tint-paid)); }
+  .row-owing { background-color: hsl(var(--tint-owing)); }
+
   .status-paid {
     @apply bg-success/10 text-success;
   }

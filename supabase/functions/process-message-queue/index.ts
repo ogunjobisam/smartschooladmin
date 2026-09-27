@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { EmailAPIError, sendLovableEmail } from "npm:@lovable.dev/email-js";
 import { classifyEmailFailure } from "../_shared/email-result.ts";
+import { fetchCallerRoles, primaryRole } from "../_shared/caller-roles.ts";
 import { formatSender, replyToAddress } from "../_shared/sender.ts";
 
 const corsHeaders = {
@@ -348,13 +349,13 @@ Deno.serve(async (req) => {
       const { data: { user } } = await createClient(supabaseUrl, anonKey).auth.getUser(token);
       if (!user) return json({ error: "Unauthorized" }, 401);
 
-      const { data: role } = await admin
-        .from("user_roles")
-        .select("role, org_id")
-        .eq("user_id", user.id)
-        .in("role", ["super_admin", "proprietor", "group_admin", "school_admin", "principal"])
-        .limit(1)
-        .maybeSingle();
+      // This picks the organisation whose backlog gets drained, so an arbitrary
+      // row meant a multi-org admin could drain the wrong one — or be refused
+      // because the row that came back was a role that cannot send. Most senior
+      // first, deterministically, and only among roles allowed to send.
+      const SENDING_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal"];
+      const rows = await fetchCallerRoles(admin, user.id);
+      const role = primaryRole(rows.filter((r) => SENDING_ROLES.includes(r.role)));
 
       if (!role?.org_id) return json({ error: "Your role cannot send queued messages" }, 403);
       orgFilter = role.org_id;

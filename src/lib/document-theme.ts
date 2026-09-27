@@ -182,7 +182,16 @@ export function documentCss(school: DocumentSchool | null | undefined, opts: Doc
     --line: #e6ebf1;
   }
   * { box-sizing: border-box; }
-  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* color-scheme: light pins these to paper. Everything built here is printed
+     or emailed, so it must not follow the reader's dark mode — without this a
+     dark OS darkens the UA canvas, the scrollbars and any form control inside
+     the print-preview iframe, and a dark payslip is a cartridge of ink. */
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-scheme: light;
+    background: #ffffff;
+  }
   body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
     color: var(--ink);

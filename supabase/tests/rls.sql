@@ -328,4 +328,131 @@ SELECT public.assert((SELECT count(*) FROM staff_bank_details) = 0,
   'a student can read staff bank details');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- is_teacher_only() must mean what it says, and tolerate a NULL school
+-- ---------------------------------------------------------------------------
+-- 20260908162058 started gating schools, exams, subjects, class_subjects and
+-- exam_subjects on `NOT is_teacher_only(auth.uid()) OR <col> = get_user_school_id(...)`.
+-- Two ways that locked people out of the whole app rather than one school:
+--
+--   * is_teacher_only() is `EXISTS (… role = 'teacher')` — it has no "only" in
+--     it. An admin who also teaches a class, which invite-user explicitly
+--     permits, read as a teacher;
+--   * `id = NULL` is NULL, not true, so anyone whose winning role row carries a
+--     NULL school_id saw ZERO schools. invite-user writes `school_id || null`
+--     for an org-level invite, and primary_user_role() ranks by seniority
+--     first, so a senior row's NULL beats a teacher row's real school.
+--
+-- AuthContext loads the school list from `schools`, so an empty list is a blank
+-- app with no error anywhere — the failure nobody reports.
+
+-- A second school, so "their org's schools" is a number larger than one.
+INSERT INTO schools (id, org_id, name)
+  VALUES ('22222222-2222-2222-2222-222222222223', '11111111-1111-1111-1111-111111111111', 'Grace Annexe');
+INSERT INTO classes (id, school_id, name)
+  VALUES ('55555555-5555-5555-5555-555555555556', '22222222-2222-2222-2222-222222222223', 'JSS1 Annexe');
+INSERT INTO subjects (id, school_id, name)
+  VALUES ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc', '22222222-2222-2222-2222-222222222223', 'English');
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-777777777778', '22222222-2222-2222-2222-222222222223',
+          '44444444-4444-4444-4444-444444444444', 'Annexe mid-term', 100);
+
+INSERT INTO auth.users (id, email) VALUES
+  ('dccccccc-0000-0000-0000-00000000000c', 'admin.who.teaches@example.test'),
+  ('dddddddd-0000-0000-0000-00000000000d', 'org.level.teacher@example.test'),
+  ('deeeeeee-0000-0000-0000-00000000000e', 'school.scoped.teacher@example.test'),
+  ('dfffffff-0000-0000-0000-00000000000f', 'teacher.at.two.schools@example.test');
+
+-- An administrator who also teaches. The school_admin row carries no school —
+-- an org-level invite — which is exactly the combination that went blank.
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('dccccccc-0000-0000-0000-00000000000c', 'school_admin', '11111111-1111-1111-1111-111111111111', NULL),
+  ('dccccccc-0000-0000-0000-00000000000c', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+-- A plain teacher invited at org level, with no school of their own.
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('dddddddd-0000-0000-0000-00000000000d', 'teacher', '11111111-1111-1111-1111-111111111111', NULL);
+-- A plain teacher who does have a school. Deliberately NOT the teacher from the
+-- top of this file: a later section gives that one a proprietor role in a second
+-- organisation, so reusing it here would quietly test a proprietor instead.
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('deeeeeee-0000-0000-0000-00000000000e', 'teacher', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+-- Employed across the group rather than at one school, so no single school_id —
+-- which is the only way the staff_id clause below is ever reached. A teacher
+-- pinned to one school cannot see the other school's classes anyway, so a test
+-- built on one would go green for the wrong reason.
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('dfffffff-0000-0000-0000-00000000000f', 'teacher', '11111111-1111-1111-1111-111111111111', NULL);
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dccccccc-0000-0000-0000-00000000000c';
+SELECT public.assert((SELECT count(*) FROM schools) = 2,
+  'an admin who also teaches cannot see their org''s schools');
+SELECT public.assert((SELECT count(*) FROM exams) = 2,
+  'an admin who also teaches cannot see their org''s exams');
+SELECT public.assert((SELECT count(*) FROM subjects) = 2,
+  'an admin who also teaches cannot see their org''s subjects');
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dddddddd-0000-0000-0000-00000000000d';
+SELECT public.assert((SELECT count(*) FROM schools) = 2,
+  'a teacher with no school of their own sees nothing rather than their org');
+COMMIT;
+
+-- The restriction itself must survive: a teacher scoped to one school still
+-- sees only that one. Fixing the lockout must not open the gate.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the fixture user is not teacher-only, so this proves nothing');
+SELECT public.assert((SELECT count(*) FROM schools) = 1,
+  'a school-scoped teacher can see other schools in the org');
+
+-- And it survives transitively, which is the part worth pinning down. Each of
+-- these policies tests `EXISTS (SELECT 1 FROM schools WHERE … org_id = …)`, and
+-- that subquery runs under the caller's own row-level security — so a teacher
+-- who cannot see the second school cannot see its exams or subjects either,
+-- even though the FOR ALL "Staff can manage …" policies beside them are scoped
+-- to the org rather than the school. Read as a policy listing it looks like the
+-- restriction is defeated by a broader policy; it is not, and this says so.
+SELECT public.assert((SELECT count(*) FROM exams) = 1,
+  'a school-scoped teacher can see another school''s exams');
+SELECT public.assert((SELECT count(*) FROM subjects) = 1,
+  'a school-scoped teacher can see another school''s subjects');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- A teacher employed at two schools in one group sees both sets of classes
+-- ---------------------------------------------------------------------------
+-- 20260908162058 gated class_teachers on `staff_id = my_staff_id()`, whose body
+-- is `SELECT id FROM staff WHERE user_id = auth.uid() LIMIT 1` — a LIMIT 1 with
+-- no ORDER BY, so physical heap order. 20260902090000 had already added
+-- my_staff_ids() precisely because someone can hold two staff rows in a group.
+-- The singular helper returns an arbitrary one, so half this teacher's classes
+-- vanish, and which half changes after any UPDATE to staff.
+INSERT INTO staff (id, school_id, user_id, first_name, last_name) VALUES
+  ('f1111111-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222',
+   'dfffffff-0000-0000-0000-00000000000f', 'Ngozi', 'Eze'),
+  ('f1111111-0000-0000-0000-000000000005', '22222222-2222-2222-2222-222222222223',
+   'dfffffff-0000-0000-0000-00000000000f', 'Ngozi', 'Eze');
+INSERT INTO class_teachers (class_id, staff_id) VALUES
+  ('55555555-5555-5555-5555-555555555555', 'f1111111-0000-0000-0000-000000000004'),
+  ('55555555-5555-5555-5555-555555555556', 'f1111111-0000-0000-0000-000000000005');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dfffffff-0000-0000-0000-00000000000f';
+-- Without this the assertion below passes for the wrong reason: a user who is
+-- not teacher-only skips the staff_id clause entirely.
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the fixture user is not teacher-only, so the staff_id clause is never reached');
+SELECT public.assert((SELECT count(*) FROM classes) = 2,
+  'the fixture user cannot see both classes, so this tests school scoping, not staff_id');
+SELECT public.assert((SELECT count(*) FROM class_teachers) = 2,
+  'a teacher employed at two schools loses one school''s class assignments');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;

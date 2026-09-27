@@ -148,18 +148,21 @@ export default function Performance() {
               icon={BarChart3}
               mono
               subtitle={`${students.length} students`}
+              tone="navy"
             />
             <StatCard
               title="Needing attention"
               value={needingAttention.length.toString()}
               icon={TrendingDown}
               subtitle="Watch or needs attention"
+              tone="rose"
             />
             <StatCard
               title="Scores recorded"
               value={scores.length.toString()}
               icon={GraduationCap}
               subtitle={periodId === "all" ? "All terms" : "Selected term"}
+              tone="violet"
             />
           </div>
 
@@ -208,7 +211,9 @@ export default function Performance() {
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={0} angle={-15} textAnchor="end" height={50} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <Tooltip formatter={(value: number) => [`${value}%`, "Class average"]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                      <Bar dataKey="average" radius={[4, 4, 0, 0]} className="fill-accent" />
+                      {/* Was fill-accent, which became gold with the royal
+                          palette and left the bars pale against cream. */}
+                      <Bar dataKey="average" radius={[4, 4, 0, 0]} className="fill-chart-1" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

@@ -149,8 +149,8 @@ export default function Arrears() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard title="Total Outstanding" value={formatMoney(data?.totalOutstanding || 0)} icon={AlertTriangle} mono />
-        <StatCard title="Overdue Students" value={(data?.overdueCount || 0).toString()} icon={Users} subtitle="With overdue invoices" />
+        <StatCard title="Total Outstanding" value={formatMoney(data?.totalOutstanding || 0)} icon={AlertTriangle} mono tone="rose" />
+        <StatCard title="Overdue Students" value={(data?.overdueCount || 0).toString()} icon={Users} subtitle="With overdue invoices" tone="gold" />
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -210,7 +210,9 @@ export default function Arrears() {
                 </TableRow>
             ) : (
               data?.overdueInvoices?.map((s) => (
-                <TableRow key={s.id}>
+                // Every row here is overdue by definition, so the wash says
+                // "this whole page is money owed" at a glance.
+                <TableRow key={s.id} className="row-owing">
                   <TableCell className="font-medium">{s.studentName}</TableCell>
                   <TableCell>{s.className}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{s.invoice_number}</TableCell>

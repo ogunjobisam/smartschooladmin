@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { TONE, type Tone } from "@/components/dashboard/tones";
+
+export type StatTone = Tone;
 
 interface StatCardProps {
   title: string;
@@ -7,35 +10,70 @@ interface StatCardProps {
   subtitle?: string;
   icon: LucideIcon;
   trend?: { value: string; positive: boolean };
+  /**
+   * The icon tile's colour. Pass one per card down a grid so the metrics tell
+   * each other apart — see `tones.ts`. Defaults to the brand navy, which is
+   * right for a lone card and wrong for a row of eight.
+   */
+  tone?: StatTone;
   className?: string;
   mono?: boolean;
 }
 
-export function StatCard({ title, value, subtitle, icon: Icon, trend, className, mono = false }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
+  tone = "navy",
+  className,
+  mono = false,
+}: StatCardProps) {
   return (
-    <div className={cn("rounded-lg border bg-card p-4 sm:p-5", className)}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">{title}</p>
+    <div
+      className={cn(
+        // The gold left edge is the card's signature; `overflow-hidden` keeps it
+        // inside the rounded corner instead of poking past it.
+        "relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 pl-5 shadow-royal sm:p-5 sm:pl-6",
+        className,
+      )}
+    >
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-gold" />
+
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl shadow-tile", TONE[tone])}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold-ink">
+            {title}
+          </p>
           {/* Long money values (₦435,000,000) must shrink and wrap rather than
               run under the icon on a narrow screen. */}
           <p
             className={cn(
-              "break-all text-lg font-bold leading-tight tracking-tight text-card-foreground sm:text-2xl",
-              mono && "font-mono tabular-nums"
+              "break-all text-xl font-bold leading-tight text-primary sm:text-2xl",
+              mono ? "font-mono tabular-nums" : "font-display",
             )}
           >
             {value}
           </p>
           {subtitle && <p className="text-[11px] text-muted-foreground sm:text-xs">{subtitle}</p>}
           {trend && (
-            <p className={cn("text-[11px] font-medium sm:text-xs", trend.positive ? "text-success" : "text-destructive")}>
+            <p
+              className={cn(
+                "text-[11px] font-medium sm:text-xs",
+                trend.positive ? "text-success" : "text-destructive",
+              )}
+            >
               {trend.positive ? "↑" : "↓"} {trend.value}
             </p>
           )}
-        </div>
-        <div className="shrink-0 rounded-lg bg-accent/10 p-2 sm:p-2.5">
-          <Icon className="h-4 w-4 text-accent sm:h-5 sm:w-5" />
         </div>
       </div>
     </div>

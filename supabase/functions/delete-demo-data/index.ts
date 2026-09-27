@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { administers, fetchCallerRoles } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,22 +45,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify role
-    const { data: roleData } = await admin
-      .from("user_roles")
-      .select("role, org_id")
-      .eq("user_id", userId)
-      .in("role", ["proprietor", "super_admin"])
-      .limit(1)
-      .maybeSingle();
-
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Forbidden — admin role required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const { school_id, org_id } = await req.json();
     if (!school_id || !org_id) {
       return new Response(JSON.stringify({ error: "school_id and org_id are required" }), {
@@ -71,7 +56,17 @@ Deno.serve(async (req) => {
     // Tenant isolation: this deletes with the service role key, which bypasses RLS,
     // so the target org/school MUST be proven to belong to the caller before any
     // delete runs. Without this an admin of one school could wipe another's data.
-    if (roleData.org_id !== org_id) {
+    //
+    // Asked of every role row the caller holds rather than of one arbitrary
+    // row. The old shape compared a randomly-chosen row's org_id, which denied
+    // a multi-org proprietor their own group on some requests and not others,
+    // and denied a super_admin always, since their row carries a NULL org_id.
+    const roleData = administers(await fetchCallerRoles(admin, userId), {
+      allowed: ["proprietor", "super_admin"],
+      orgId: org_id,
+      schoolId: school_id,
+    });
+    if (!roleData) {
       return new Response(JSON.stringify({ error: "Forbidden — organisation does not belong to you" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

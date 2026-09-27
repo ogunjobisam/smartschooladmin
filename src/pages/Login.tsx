@@ -82,7 +82,7 @@ export default function Login() {
           ) : (
             <Logo variant="mark" className="h-12 w-12" alt="SmartSchoolAdmin" />
           )}
-          <h1 className="text-2xl font-bold tracking-tight">{schoolBrand?.name || "SmartSchoolAdmin"}</h1>
+          <h1 className="font-display text-2xl font-bold tracking-wide text-primary">{schoolBrand?.name || "SmartSchoolAdmin"}</h1>
           <p className="text-sm text-muted-foreground">Sign in to manage your schools</p>
         </div>
 

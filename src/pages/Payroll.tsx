@@ -119,9 +119,9 @@ export default function Payroll() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard title="Pending Payroll" value={formatMoney(dueThisMonth)} icon={Calculator} mono subtitle="Draft, submitted and approved" />
-        <StatCard title="Paid Payroll" value={formatMoney(paidThisMonth)} icon={Calculator} mono />
-        <StatCard title="Active Staff" value={(staffCount || 0).toString()} icon={Calculator} subtitle="In this school" />
+        <StatCard title="Pending Payroll" value={formatMoney(dueThisMonth)} icon={Calculator} mono subtitle="Draft, submitted and approved" tone="gold" />
+        <StatCard title="Paid Payroll" value={formatMoney(paidThisMonth)} icon={Calculator} mono tone="green" />
+        <StatCard title="Active Staff" value={(staffCount || 0).toString()} icon={Calculator} subtitle="In this school" tone="blue" />
       </div>
 
       <div className="flex justify-end">

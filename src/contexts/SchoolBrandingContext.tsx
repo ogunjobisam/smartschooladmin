@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_ACCENT, DEFAULT_PRIMARY, schoolThemeVars } from "@/lib/theme";
+import { useThemeMode } from "@/hooks/use-theme-mode";
 import { setDocumentSchoolProfile } from "@/lib/document-theme";
 
 interface SchoolBranding {
@@ -17,54 +19,44 @@ interface SchoolBranding {
 const defaultBranding: SchoolBranding = {
   name: "SmartSchoolAdmin",
   logoUrl: null,
-  primaryColor: "#0F766E",
-  accentColor: "#14B8A6",
+  primaryColor: DEFAULT_PRIMARY,
+  accentColor: DEFAULT_ACCENT,
   tagline: null,
   address: null,
   phone: null,
   email: null,
 };
 
+/** Candidate colours being tried out in Settings, not yet saved. */
+export interface BrandingPreview {
+  primaryColor: string;
+  accentColor: string;
+}
+
 interface SchoolBrandingContextType {
   branding: SchoolBranding;
   loading: boolean;
   refetch: () => void;
+  /**
+   * Paint the whole app in colours that have not been saved, so someone
+   * choosing them can see what they are choosing. Pass null to put the saved
+   * colours back — and do it on unmount, or they walk away from Settings with
+   * a theme that is not their school's.
+   */
+  previewColors: (colors: BrandingPreview | null) => void;
 }
 
 const SchoolBrandingContext = createContext<SchoolBrandingContextType>({
   branding: defaultBranding,
   loading: true,
   refetch: () => {},
+  previewColors: () => {},
 });
-
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-
-function hexToHsl(hex: string): string {
-  // Colours come from user-editable school settings, so an unexpected value
-  // (a short #fff, a named colour, an empty string) must not produce
-  // "NaN NaN% NaN%" and blank the theme.
-  if (!HEX_COLOR.test(hex)) hex = defaultBranding.primaryColor;
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
 
 export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
   const { schoolId } = useAuth();
   const [branding, setBranding] = useState<SchoolBranding>(defaultBranding);
+  const [preview, setPreview] = useState<BrandingPreview | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchBranding = useCallback(async () => {
@@ -100,13 +92,41 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
     fetchBranding();
   }, [fetchBranding]);
 
-  // Apply CSS custom properties
+  // Repaint the chrome in the school's own colours.
+  //
+  // This used to write --school-primary and --school-accent, which nothing in
+  // the app read: a school could pick maroon in Settings and still see navy
+  // everywhere. It now writes the real shadcn tokens, derived by
+  // schoolThemeVars, so the royal *structure* is the product and the colours
+  // belong to the school. A school that has chosen nothing gets the navy and
+  // gold defaults, which are exactly the values already in :root.
+  //
+  // These are inline styles, so they beat the .dark class selector — which is
+  // why the mode has to be an input here rather than something the stylesheet
+  // is left to settle. React runs the cleanup and the new effect in one commit,
+  // and both modes produce the same set of keys (asserted in theme.test.ts), so
+  // a flip cannot strand a stale token or paint a frame half-lit.
+  const primaryColor = preview?.primaryColor ?? branding.primaryColor;
+  const accentColor = preview?.accentColor ?? branding.accentColor;
+  const { mode } = useThemeMode();
+
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--school-primary", hexToHsl(branding.primaryColor));
-    root.style.setProperty("--school-accent", hexToHsl(branding.accentColor));
-    // Printed and emailed documents are generated outside React, so they read the
-    // palette from this module-level publisher rather than from context.
+    const vars = schoolThemeVars(primaryColor, accentColor, mode);
+    for (const [token, value] of Object.entries(vars)) {
+      root.style.setProperty(token, value);
+    }
+    return () => {
+      for (const token of Object.keys(vars)) root.style.removeProperty(token);
+    };
+  }, [primaryColor, accentColor, mode]);
+
+  // Printed and emailed documents are generated outside React, so they read the
+  // school's letterhead from this module-level publisher rather than from
+  // context. Kept separate from the theme effect above because it follows the
+  // *saved* branding: a colour being tried out in Settings should repaint the
+  // screen, not the next invoice someone prints.
+  useEffect(() => {
     setDocumentSchoolProfile({
       name: branding.name,
       address: branding.address,
@@ -117,14 +137,12 @@ export function SchoolBrandingProvider({ children }: { children: ReactNode }) {
       primaryColor: branding.primaryColor,
       accentColor: branding.accentColor,
     });
-    return () => {
-      root.style.removeProperty("--school-primary");
-      root.style.removeProperty("--school-accent");
-    };
   }, [branding]);
 
   return (
-    <SchoolBrandingContext.Provider value={{ branding, loading, refetch: fetchBranding }}>
+    <SchoolBrandingContext.Provider
+      value={{ branding, loading, refetch: fetchBranding, previewColors: setPreview }}
+    >
       {children}
     </SchoolBrandingContext.Provider>
   );

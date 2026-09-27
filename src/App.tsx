@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SchoolBrandingProvider } from "@/contexts/SchoolBrandingContext";
+import { ThemeProvider } from "next-themes";
+import { THEME_STORAGE_KEY } from "@/hooks/use-theme-mode";
 import { ProtectedRoute, RequireAccess } from "@/components/auth/ProtectedRoute";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -182,19 +184,32 @@ function AppRoutes() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <SchoolBrandingProvider>
-            <AppRoutes />
-          </SchoolBrandingProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  // Outermost, because SchoolBrandingProvider derives its tokens for whichever
+  // mode is active — and because ui/sonner.tsx already read from next-themes.
+  // With no provider mounted it was handed "system", so a visitor on a dark
+  // machine has been getting dark toasts over the cream app all along.
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="system"
+    enableSystem
+    enableColorScheme
+    disableTransitionOnChange
+    storageKey={THEME_STORAGE_KEY}
+  >
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <SchoolBrandingProvider>
+              <AppRoutes />
+            </SchoolBrandingProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

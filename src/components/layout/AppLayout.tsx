@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { canAccessPath } from "@/lib/access";
 import { DemoBanner } from "@/components/demo/DemoBanner";
@@ -15,6 +16,7 @@ import { ViewAsBanner } from "./ViewAsBanner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId, userRole } = useAuth();
+  const { branding } = useSchoolBranding();
   // Only people who can actually action an approval should be nagged about one.
   const canReviewApprovals = canAccessPath(userRole, "/approvals");
 
@@ -36,7 +38,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          {/* The school's crest, ghosted into the bottom-right of the page
+              ground. Decorative and non-interactive: pointer-events-none keeps
+              it from swallowing clicks on whatever sits above it. */}
+          {branding.logoUrl && (
+            <img
+              src={branding.logoUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none fixed bottom-6 right-6 z-0 hidden w-56 select-none opacity-[0.045] lg:block"
+            />
+          )}
+
           <TopBar />
 
           <ViewAsBanner />

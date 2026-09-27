@@ -154,7 +154,7 @@ export function PerformanceSummary({ performance, isLoading, position }: Props) 
                       formatter={(value: number) => [`${value}%`, "Average"]}
                       contentStyle={{ fontSize: 12, borderRadius: 8 }}
                     />
-                    <Line type="monotone" dataKey="average" strokeWidth={2} className="stroke-accent" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="average" strokeWidth={2} className="stroke-chart-1" dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

@@ -241,19 +241,21 @@ export default function StaffPortal() {
       </PageHeader>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="My classes" value={String(myClasses.length)} icon={BookOpen} />
-        <StatCard title="My students" value={String(enrolments.length)} icon={Users} />
+        <StatCard title="My classes" value={String(myClasses.length)} icon={BookOpen} tone="navy" />
+        <StatCard title="My students" value={String(enrolments.length)} icon={Users} tone="blue" />
         <StatCard
           title="Attendance (30 days)"
           value={attendanceRate === null ? "—" : `${attendanceRate}%`}
           subtitle="Present or late"
           icon={CalendarCheck}
+          tone="green"
         />
         <StatCard
           title="Recent exams"
           value={String(exams.length)}
           subtitle={`${scores.length} result${scores.length === 1 ? "" : "s"} entered`}
           icon={ClipboardList}
+          tone="gold"
         />
       </div>
 

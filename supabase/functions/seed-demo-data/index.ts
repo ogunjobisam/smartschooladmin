@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { administers, fetchCallerRoles } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,16 +39,19 @@ serve(async (req) => {
 
     // Tenant isolation: seeding writes with the service role key, so confirm the
     // caller actually administers the org/school they are asking us to fill.
+    // Ask about the whole set of roles this caller holds rather than one row
+    // PostgREST happened to return first. Passing school_id is what closes the
+    // second hole here: the old check proved only that the school belonged to
+    // the org, so a school_admin scoped to one school could seed any school in
+    // the group — while this writes with the service role key.
     const SEED_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin"];
-    const { data: callerRole } = await supabase
-      .from("user_roles")
-      .select("role, org_id")
-      .eq("user_id", userId)
-      .in("role", SEED_ROLES)
-      .limit(1)
-      .maybeSingle();
-    if (!callerRole || callerRole.org_id !== org_id) {
-      return jsonError("Forbidden — you do not administer this organisation", 403);
+    const callerRole = administers(await fetchCallerRoles(supabase, userId), {
+      allowed: SEED_ROLES,
+      orgId: org_id,
+      schoolId: school_id,
+    });
+    if (!callerRole) {
+      return jsonError("Forbidden — you do not administer this school", 403);
     }
 
     const { data: seedSchool } = await supabase

@@ -170,11 +170,11 @@ export default function Dashboard() {
           ))
         ) : (
           <>
-            <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" />
-            <StatCard title="Fees Collected" value={formatMoneyCompact(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" />
-            <StatCard title="Outstanding Fees" value={formatMoneyCompact(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} />
+            <StatCard title="Total Students" value={(stats?.totalStudents || 0).toLocaleString()} icon={GraduationCap} subtitle="Active students" tone="navy" />
+            <StatCard title="Fees Collected" value={formatMoneyCompact(stats?.feesCollected || 0)} icon={CreditCard} mono subtitle="This term" tone="green" />
+            <StatCard title="Outstanding Fees" value={formatMoneyCompact(stats?.outstandingFees || 0)} icon={Receipt} mono subtitle={`${stats?.overdueStudents || 0} overdue`} tone="gold" />
             {canReviewApprovals && (
-              <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" />
+              <StatCard title="Pending Approvals" value={(stats?.pendingApprovals || 0).toString()} icon={CheckSquare} subtitle="Awaiting review" tone="violet" />
             )}
           </>
         )}

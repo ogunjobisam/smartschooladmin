@@ -173,12 +173,15 @@ export default function Landing() {
 
       </section>
 
-      <section className="bg-primary py-8 text-primary-foreground">
+      {/* The product's own teal, not --primary: this is SmartSchoolAdmin's
+          marketing page rather than a school's app, and --primary inverts to a
+          pale colour in dark mode, which would turn this band inside out. */}
+      <section className="bg-teal py-8 text-teal-foreground">
         <div className="mx-auto grid max-w-7xl gap-6 px-6 sm:grid-cols-3">
           {proofPoints.map((item) => (
-            <div key={item.value} className="border-primary-foreground/20 sm:border-l sm:pl-6 first:border-l-0 first:pl-0">
+            <div key={item.value} className="border-teal-foreground/20 sm:border-l sm:pl-6 first:border-l-0 first:pl-0">
               <p className="text-lg font-bold">{item.value}</p>
-              <p className="mt-1 text-sm text-primary-foreground/70">{item.label}</p>
+              <p className="mt-1 text-sm text-teal-foreground/70">{item.label}</p>
             </div>
           ))}
         </div>
@@ -271,7 +274,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="border-y border-border bg-primary py-20 text-primary-foreground">
+      <section className="border-y border-border bg-teal py-20 text-teal-foreground">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="max-w-3xl">
             <div className="mb-5 flex gap-3">
@@ -280,13 +283,13 @@ export default function Landing() {
               <span className="h-2 w-12 rounded-full bg-teal" />
             </div>
             <h2 className="text-3xl font-bold sm:text-4xl">Give your staff fewer things to chase—and your families fewer reasons to call.</h2>
-            <p className="mt-4 text-base text-primary-foreground/75">Bring the whole school together in one clear, secure system.</p>
+            <p className="mt-4 text-base text-teal-foreground/75">Bring the whole school together in one clear, secure system.</p>
           </div>
           <div className="flex flex-wrap gap-3 lg:justify-end">
             <Button size="lg" variant="secondary" className="gap-2" asChild>
               <Link to="/signup">Get started <ArrowRight className="h-4 w-4" /></Link>
             </Button>
-            <Button size="lg" className="border border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10" asChild>
+            <Button size="lg" className="border border-teal-foreground/30 bg-transparent text-teal-foreground hover:bg-teal-foreground/10" asChild>
               <a href="#demo"><FlaskConical className="h-4 w-4" /> Try the demo</a>
             </Button>
           </div>
