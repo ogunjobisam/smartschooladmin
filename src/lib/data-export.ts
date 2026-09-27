@@ -194,6 +194,7 @@ export const EXCLUDED_TABLES: Record<string, string> = {
   sms_credit_balances: "Platform billing state.",
   sms_usage_log: "Platform billing state.",
   ai_usage_events: "Platform metering.",
+  rate_limit_hits: "Abuse counters for public forms, keyed by IP address; not the school's data.",
   cbt_test_questions: "Which bank questions make up each CBT paper; the questions and tests themselves are exported.",
   cbt_answers: "Each pupil's answer to each CBT question; every sitting's score is exported with CBT attempts.",
   notifications: "Each user's personal inbox.",
