@@ -294,7 +294,17 @@ function lightTokens({ coolH, warmH, groundH, warmS, primary, accent }: BrandFam
     "--sidebar-foreground": hsl(warmH, 25, 82),
     "--sidebar-primary": sidebarPrimary,
     "--sidebar-primary-foreground": sidebarInk,
-    "--sidebar-accent": hsl(coolH, 55, 22),
+    // The hover fill, and only ever that — every call site is `hover:`,
+    // `active:` or `data-[active=true]:`. It has to clear the royal-check
+    // diamonds above it (L26), not just the sidebar fill below it (L15): at
+    // L22 it sat *between* the two and read as more pattern rather than as a
+    // highlight.
+    //
+    // L34 is the target, but it is a ceiling rather than a constant: a green or
+    // teal brand is far more luminous at the same lightness than navy, and the
+    // near-white ink stops clearing AA on it. So darken from 34 only as far as
+    // that ink requires — navy keeps all of it, teal gives a little back.
+    "--sidebar-accent": darkenUntil(hsl(warmH, 40, 92), coolH, 55, 34, 4.5),
     "--sidebar-accent-foreground": hsl(warmH, 40, 92),
     "--sidebar-border": hsl(coolH, 45, 24),
     "--sidebar-ring": sidebarPrimary,
@@ -414,7 +424,11 @@ function darkTokens({ coolH, warmH, groundH, warmS, primary, accent }: BrandFami
     "--sidebar-foreground": hsl(warmH, 20, 84),
     "--sidebar-primary": sidebarPrimary,
     "--sidebar-primary-foreground": sidebarInk,
-    "--sidebar-accent": hsl(coolH, clamp(coolS, 8, 45), 21),
+    // Same story as light, and worse: at L21 the hover fill was a hair *below*
+    // the diamonds at L22, measuring 1.00 against them — the hovered row and
+    // the texture were the same colour. Ceiling of 34, given back per-hue to
+    // whatever the ink needs, exactly as in light.
+    "--sidebar-accent": darkenUntil(hsl(warmH, 25, 90), coolH, clamp(coolS, 8, 45), 34, 4.5),
     "--sidebar-accent-foreground": hsl(warmH, 25, 90),
     "--sidebar-border": hsl(coolH, clamp(coolS, 8, 40), 30),
     "--sidebar-ring": sidebarPrimary,

@@ -167,23 +167,23 @@ describe("schoolThemeVars", () => {
  * against its own tile — invisible — and four of the seven brands below had a
  * sidebar active item that failed AA.
  */
-describe("contrast holds across brands", () => {
-  const BRANDS: [string, string, string][] = [
-    ["navy & gold (the default)", DEFAULT_PRIMARY, DEFAULT_ACCENT],
-    ["maroon & olive", "#5b1520", "#8a7a2f"],
-    ["forest & copper", "#123024", "#b06a2a"],
-    ["teal & amber", "#0f766e", "#f59e0b"],
-    ["slate & blue", "#1e293b", "#3b82f6"],
-    ["plum & rose", "#3b0a45", "#d94f7a"],
-    ["black & grey", "#000000", "#9ca3af"],
-    ["a school that typed nonsense", "not-a-colour", ""],
-    // Every pair offered in Settings, so the list cannot grow a preset that
-    // looked good in a picker and fails a pairing somewhere in the chrome.
-    ...BRAND_PRESETS.map(
-      (p): [string, string, string] => [`preset: ${p.name}`, p.primary, p.accent],
-    ),
-  ];
+const BRANDS: [string, string, string][] = [
+  ["navy & gold (the default)", DEFAULT_PRIMARY, DEFAULT_ACCENT],
+  ["maroon & olive", "#5b1520", "#8a7a2f"],
+  ["forest & copper", "#123024", "#b06a2a"],
+  ["teal & amber", "#0f766e", "#f59e0b"],
+  ["slate & blue", "#1e293b", "#3b82f6"],
+  ["plum & rose", "#3b0a45", "#d94f7a"],
+  ["black & grey", "#000000", "#9ca3af"],
+  ["a school that typed nonsense", "not-a-colour", ""],
+  // Every pair offered in Settings, so the list cannot grow a preset that
+  // looked good in a picker and fails a pairing somewhere in the chrome.
+  ...BRAND_PRESETS.map(
+    (p): [string, string, string] => [`preset: ${p.name}`, p.primary, p.accent],
+  ),
+];
 
+describe("contrast holds across brands", () => {
   // [what it is, ink token, ground token, minimum]. The ground is "--card"
   // rather than a literal white: in dark a card is not white, and measuring
   // gold against #fff there would fail for entirely the wrong reason.
@@ -212,6 +212,8 @@ describe("contrast holds across brands", () => {
     // Text, at four call sites in AppSidebar, and nothing was checking it.
     ["sidebar secondary text", "--sidebar-muted", "--sidebar-background", 4.5],
     ["ink on the accent", "--accent-foreground", "--accent", 4.5],
+    // The hover fill carries text while it is showing, so it owes AA too.
+    ["ink on the sidebar's hover fill", "--sidebar-accent-foreground", "--sidebar-accent", 4.5],
   ];
 
   for (const mode of THEME_MODES) {
@@ -324,6 +326,56 @@ describe("the unbranded status tokens are legible in both modes", () => {
           expect(vars[ink], `${ink} missing from the ${mode} block`).toBeDefined();
           const ratio = contrastRatio(vars[ink], vars[ground]);
           expect(Number(ratio.toFixed(2))).toBeGreaterThanOrEqual(min);
+        });
+      }
+    });
+  }
+});
+
+/**
+ * The sidebar's hover state has to be visible, and the thing that makes that
+ * hard is the surface it sits on.
+ *
+ * `--sidebar-accent` is never a resting surface — every one of its call sites is
+ * `hover:bg-sidebar-accent`, `active:`, or `data-[active=true]:`. So it has one
+ * job: to look different from the sidebar when the pointer is over a row.
+ *
+ * It was failing at that, and measuring it against `--sidebar-background` alone
+ * hid why. The sidebar wears `royal-check`, so the surface underneath a hovered
+ * row is not one colour but two — the fill and the diamonds. The hover fill sat
+ * at L22 in light and L21 in dark, *below* the diamonds at L26 and L22, so it
+ * measured 1.00–1.15 against the texture and read as more pattern rather than as
+ * a highlight. The lesson the sidebar's edge already taught, in reverse: on a
+ * textured surface a flat measurement against the base colour is not the whole
+ * story.
+ */
+describe("the sidebar's hover state is visible on a textured sidebar", () => {
+  for (const mode of THEME_MODES) {
+    describe(mode, () => {
+      for (const [brand, primary, accent] of BRANDS) {
+        const vars = schoolThemeVars(primary, accent, mode);
+        it(`${brand}: reads against the sidebar itself`, () => {
+          expect(contrastRatio(vars["--sidebar-accent"], vars["--sidebar-background"]))
+            .toBeGreaterThanOrEqual(1.5);
+        });
+        it(`${brand}: sits above the royal-check diamonds, not among them`, () => {
+          // Direction, not just magnitude. A bare ratio would be satisfied by a
+          // hover fill *darker* than the diamonds, which is precisely the bug
+          // this suite exists for: at L22-on-L26 the hovered row read as more
+          // pattern. A lighter colour has less contrast against white, so this
+          // is the luminance comparison without exporting a second helper.
+          const WHITE = "0 0% 100%";
+          expect(contrastRatio(vars["--sidebar-accent"], WHITE))
+            .toBeLessThan(contrastRatio(vars["--royal-check"], WHITE));
+          expect(contrastRatio(vars["--sidebar-accent"], vars["--royal-check"]))
+            .toBeGreaterThanOrEqual(1.2);
+        });
+        it(`${brand}: stays subordinate to the active item`, () => {
+          // Active is a gold gradient. Hover must not compete with it, or the
+          // sidebar has two things claiming to be the current page.
+          const hover = contrastRatio(vars["--sidebar-accent"], vars["--sidebar-background"]);
+          const active = contrastRatio(vars["--sidebar-primary"], vars["--sidebar-background"]);
+          expect(active).toBeGreaterThan(hover * 1.5);
         });
       }
     });

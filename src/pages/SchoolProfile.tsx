@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { prepareCrest, validateCrest, ACCEPTED_CREST_TYPES } from "@/lib/crest";
 import { assertWrote } from "@/lib/writes";
 import {
   documentShell,
@@ -123,14 +124,36 @@ export default function SchoolProfile() {
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !schoolId) return;
+    const picked = e.target.files?.[0];
+    if (!picked || !schoolId) return;
+
+    // Nothing was checking this before: a 40MB TIFF went straight to storage and
+    // then failed silently in every <img> that tried to show it.
+    const problem = validateCrest(picked);
+    if (problem) {
+      toast.error(problem);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
-    const ext = file.name.split(".").pop();
+
+    // Trim the dead margin and cap the size before this becomes the school's
+    // crest everywhere. Schools send what they have — a crest exported from Word
+    // with two inches of white around it renders as a speck in a 48px bar.
+    // prepareCrest never changes the proportions, and hands back the original
+    // untouched if there is nothing worth doing.
+    const prepared = await prepareCrest(picked);
+    const file = prepared.file;
+
+    // The extension has to follow the processed file, not the picked one:
+    // prepareCrest re-encodes to PNG, and storing those bytes as `logo.jpg`
+    // would mislabel them for every consumer.
+    const ext = file.type === "image/svg+xml" ? "svg" : file.name.split(".").pop() || "png";
     const path = `${schoolId}/logo.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("school-assets")
-      .upload(path, file, { upsert: true });
+      .upload(path, file, { upsert: true, contentType: file.type });
     if (uploadError) {
       toast.error("Upload failed: " + uploadError.message);
       setUploading(false);
@@ -142,7 +165,13 @@ export default function SchoolProfile() {
         supabase.from("schools").update({ logo_url: `${urlData.publicUrl}?v=${Date.now()}` }).eq("id", schoolId).select("id"),
         "attach the new logo to your school",
       );
-      toast.success("Logo updated");
+      // Say what happened to their file. Silent processing is how someone
+      // concludes the upload is broken when it has actually just been tidied.
+      toast.success(
+        prepared.trimmed || prepared.scaled
+          ? `Logo updated — trimmed to ${prepared.to.width}×${prepared.to.height}, proportions unchanged`
+          : "Logo updated",
+      );
       refetch();
       queryClient.invalidateQueries({ queryKey: ["school-profile"] });
     } catch (err) {
@@ -334,7 +363,10 @@ export default function SchoolProfile() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    // Narrower than image/*, which offered TIFF and HEIC that
+                    // no browser here can draw — the picker should not present
+                    // a choice the next line will reject.
+                    accept={ACCEPTED_CREST_TYPES.join(",")}
                     className="hidden"
                     onChange={handleLogoUpload}
                   />
