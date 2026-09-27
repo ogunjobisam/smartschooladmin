@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Download, GraduationCap, Printer } from "lucide-react";
 
 import { ReleasedTermReports } from "@/components/exams/ReleasedTermReports";
+import { WithheldNotice } from "@/components/exams/WithheldNotice";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +105,8 @@ export default function MyResults() {
           <Download className="h-3.5 w-3.5" /> Download transcript
         </Button>
       </PageHeader>
+
+      {me && <WithheldNotice studentId={me.id} />}
 
       {me && (
         <ReleasedTermReports

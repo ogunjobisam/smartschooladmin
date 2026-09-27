@@ -260,5 +260,18 @@ export function canManageTermReports(role: string | null): boolean {
   return ACADEMIC_MANAGERS.includes((role || "") as AppRole);
 }
 
+/**
+ * Roles that may hold a pupil's results by hand. Mirrors is_school_manager() in
+ * SQL, which enforces it. The bursar is in: a hold is often about money the
+ * invoice ledger does not show.
+ */
+const RESULT_HOLDERS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar",
+];
+
+export function canHoldResults(role: string | null): boolean {
+  return RESULT_HOLDERS.includes((role || "") as AppRole);
+}
+
 /** Exported for tests. */
 export const _internals = { NAV_KEY_BY_ROLE, URL_BY_KEY };

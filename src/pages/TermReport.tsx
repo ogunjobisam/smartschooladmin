@@ -21,7 +21,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
-import { canManageTermReports } from "@/lib/access";
+import { canHoldResults, canManageTermReports } from "@/lib/access";
+import { useCurrency } from "@/hooks/use-currency";
 import { sortBySection } from "@/lib/sections";
 import { getErrorMessage } from "@/lib/errors";
 import { openDocument } from "@/lib/document-theme";
@@ -31,6 +32,7 @@ import {
   RATING_SCALE, commentsByStudent, fetchTermReport, ordinal, ratingsByStudent, releaseChanges, termReportHtml,
   traitLists, weightStatus,
   type RatingDomain, type TermComments, type TermRating, type TermReport as TermReportData, type TraitLists,
+  type WithheldEntry,
 } from "@/lib/term-report";
 
 interface Pupil {
@@ -51,6 +53,8 @@ export default function TermReport() {
   const { schoolId, orgId, userRole } = useAuth();
   const { branding } = useSchoolBranding();
   const isManager = canManageTermReports(userRole);
+  const canHold = canHoldResults(userRole);
+  const { formatMoney } = useCurrency();
 
   const [classId, setClassId] = useState("");
   const [periodId, setPeriodId] = useState("");
@@ -190,6 +194,12 @@ export default function TermReport() {
     [data, subjectNames]
   );
   const pupilName = (id: string) => pupils.find((p) => p.id === id)?.name ?? "A pupil";
+  const withheldByPupil = useMemo(
+    () => new Map((data?.withheld ?? []).map((w) => [w.student_id, w])),
+    [data]
+  );
+  const withheldLabel = (w: WithheldEntry) =>
+    w.reason === "hold" ? "On hold" : `Owes ${formatMoney(Number(w.balance ?? 0))}`;
   const showLevel = !!cls?.level_name && cls.level_name !== cls.name;
 
   const openReportCards = (list: Pupil[]) => {
@@ -339,6 +349,7 @@ export default function TermReport() {
             <p className="border-b px-4 py-2 text-xs text-muted-foreground">
               {data.arm_size} pupils with results · class average {data.arm_average ?? "—"}%
               {showLevel && ` · ${data.level_size} across ${cls?.level_name}`}
+              {withheldByPupil.size > 0 && ` · ${withheldByPupil.size} withheld from families`}
             </p>
           )}
           <CardContent className="overflow-x-auto p-0">
@@ -355,6 +366,7 @@ export default function TermReport() {
                   <TableHead className="text-center">Position</TableHead>
                   {showLevel && <TableHead className="text-center">In {cls?.level_name}</TableHead>}
                   <TableHead className="text-center">Comments</TableHead>
+                  <TableHead className="text-center">Families</TableHead>
                   <TableHead className="w-[120px]" />
                 </TableRow>
               </TableHeader>
@@ -374,6 +386,15 @@ export default function TermReport() {
                       {showLevel && <TableCell className="text-center">{r ? ordinal(r.level_position) : "—"}</TableCell>}
                       <TableCell className="text-center text-xs text-muted-foreground">
                         {[c?.classTeacher && "Teacher", c?.principal && "Principal"].filter(Boolean).join(" · ") || "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {withheldByPupil.has(p.id) ? (
+                          <Badge variant="outline" className="border-warning text-warning" title={withheldByPupil.get(p.id)?.note ?? undefined}>
+                            {withheldLabel(withheldByPupil.get(p.id)!)}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{data.released ? "Can see" : "—"}</span>
+                        )}
                       </TableCell>
                       <TableCell className="p-1 text-right">
                         <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>Report card</Button>
@@ -400,6 +421,9 @@ export default function TermReport() {
           isManager={isManager}
           schoolId={schoolId}
           traits={traits}
+          withheld={withheldByPupil.get(editing.id)}
+          withheldLabel={withheldLabel}
+          canHold={canHold}
           onClose={() => setEditing(null)}
           onPrint={() => openReportCards([editing])}
           onSaved={() => queryClient.invalidateQueries({ queryKey: ["term-report", classId, periodId] })}
@@ -428,7 +452,7 @@ export default function TermReport() {
 
 function ReportCardEditor({
   pupil, periodId, className, report, subjectNames, comments, ratings, attendance, isManager, schoolId, traits,
-  onClose, onPrint, onSaved,
+  withheld, withheldLabel, canHold, onClose, onPrint, onSaved,
 }: {
   pupil: Pupil;
   periodId: string;
@@ -441,6 +465,9 @@ function ReportCardEditor({
   isManager: boolean;
   schoolId: string | null;
   traits: TraitLists;
+  withheld?: WithheldEntry;
+  withheldLabel: (w: WithheldEntry) => string;
+  canHold: boolean;
   onClose: () => void;
   onPrint: () => void;
   onSaved: () => void;
@@ -452,6 +479,22 @@ function ReportCardEditor({
   );
   const [saving, setSaving] = useState(false);
   const [drafting, setDrafting] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
+  const [holding, setHolding] = useState(false);
+
+  // A hold is live, like the debt check: it takes effect for families at once,
+  // with nothing to release again.
+  const setHold = async (hold: boolean) => {
+    setHolding(true);
+    const { error } = hold
+      ? await supabase.from("result_holds").insert({ student_id: pupil.id, reason: holdReason.trim() })
+      : await supabase.from("result_holds").delete().eq("student_id", pupil.id);
+    setHolding(false);
+    if (error) { toast.error(getErrorMessage(error, "Could not change the hold.")); return; }
+    toast.success(hold ? "Results held" : "Hold lifted");
+    setHoldReason("");
+    onSaved();
+  };
 
   const result = report.students.find((s) => s.student_id === pupil.id);
   const subjects = report.subjects.filter((s) => s.student_id === pupil.id);
@@ -576,6 +619,37 @@ function ReportCardEditor({
               <p className="text-sm text-muted-foreground">{comments.principal || "Written by the principal."}</p>
             )}
           </div>
+
+          {(withheld || canHold) && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">Families</p>
+              {withheld ? (
+                <p className="text-sm text-muted-foreground">
+                  Withheld: {withheldLabel(withheld)}
+                  {withheld.reason === "hold" && withheld.note ? ` — ${withheld.note}` : ""}.
+                  {withheld.reason === "debt" && " Clears as soon as the balance is paid down."}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Can see these results once released.</p>
+              )}
+              {canHold && (withheld?.reason === "hold" ? (
+                <Button variant="outline" size="sm" onClick={() => setHold(false)} disabled={holding}>Lift hold</Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Textarea
+                    rows={1}
+                    maxLength={500}
+                    placeholder="Reason for holding results (staff only)"
+                    value={holdReason}
+                    onChange={(e) => setHoldReason(e.target.value)}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => setHold(true)} disabled={holding || !holdReason.trim()}>
+                    Hold results
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid gap-6 sm:grid-cols-2">
             {ratingGrid("Affective", "affective", traits.affective)}

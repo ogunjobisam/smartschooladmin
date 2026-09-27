@@ -76,8 +76,22 @@ export interface TermReportBody {
   traits?: TraitRow[] | null;
 }
 
+/**
+ * A pupil whose results are withheld. Staff get the reason, the overdue balance
+ * and a hold's internal note; families get only the school's message.
+ */
+export interface WithheldEntry {
+  student_id: string;
+  reason?: "debt" | "hold";
+  balance?: number;
+  note?: string | null;
+  message?: string;
+}
+
 export interface TermReport {
   released: boolean;
+  /** Pupils in this arm whose results are withheld right now. */
+  withheld?: WithheldEntry[];
   /** When the report was last released. */
   released_at?: string | null;
   /** Staff only: the report as families currently see it. */

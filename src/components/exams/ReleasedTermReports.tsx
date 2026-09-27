@@ -36,7 +36,9 @@ export function ReleasedTermReports({
       const found = await Promise.all(
         (enrolments || []).map(async (e) => {
           const report = await fetchTermReport(e.class_id, e.academic_period_id);
-          return report.students.some((s) => s.student_id === studentId) ? { enrolment: e, report } : null;
+          const mine = report.students.some((s) => s.student_id === studentId)
+            || (report.withheld ?? []).some((w) => w.student_id === studentId);
+          return mine ? { enrolment: e, report } : null;
         })
       );
       return found
@@ -91,6 +93,7 @@ export function ReleasedTermReports({
         {released.map((entry) => {
           const { enrolment, report } = entry;
           const result = report.students.find((s) => s.student_id === studentId);
+          const withheld = (report.withheld ?? []).find((w) => w.student_id === studentId);
           return (
             <div key={`${enrolment.class_id}:${enrolment.academic_period_id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2">
               <div>
@@ -103,9 +106,13 @@ export function ReleasedTermReports({
                   {result ? ` · average ${result.average.toFixed(1)}% · ${ordinal(result.arm_position)} of ${report.arm_size}` : ""}
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => open(entry)}>
-                <Printer className="h-3.5 w-3.5" /> Report card
-              </Button>
+              {withheld ? (
+                <span className="text-xs text-muted-foreground">Withheld</span>
+              ) : (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => open(entry)}>
+                  <Printer className="h-3.5 w-3.5" /> Report card
+                </Button>
+              )}
             </div>
           );
         })}

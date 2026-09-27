@@ -2488,6 +2488,76 @@ export type Database = {
           },
         ]
       }
+      result_access_settings: {
+        Row: {
+          allowed_balance: number
+          debtor_message: string
+          hold_message: string
+          school_id: string
+          updated_at: string
+          updated_by: string | null
+          withhold_debtors: boolean
+        }
+        Insert: {
+          allowed_balance?: number
+          debtor_message?: string
+          hold_message?: string
+          school_id: string
+          updated_at?: string
+          updated_by?: string | null
+          withhold_debtors?: boolean
+        }
+        Update: {
+          allowed_balance?: number
+          debtor_message?: string
+          hold_message?: string
+          school_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          withhold_debtors?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_access_settings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      result_holds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_holds_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -4102,6 +4172,16 @@ export type Database = {
           school_id: string
         }[]
       }
+      result_withholding: {
+        Args: { _student_id: string }
+        Returns: {
+          balance: number
+          message: string
+          note: string
+          reason: string
+        }[]
+      }
+      results_withheld: { Args: { _student_id: string }; Returns: boolean }
       role_rank: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
@@ -4156,6 +4236,7 @@ export type Database = {
           subject_type: string
         }[]
       }
+      withheld_notice: { Args: { _student_id: string }; Returns: string }
     }
     Enums: {
       app_role:
