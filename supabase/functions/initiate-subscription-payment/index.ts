@@ -5,6 +5,7 @@
 // request cannot under- or over-pay.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { safeReturnUrl } from "../_shared/abuse.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -54,10 +55,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const purpose = body.purpose === "subscription" || body.purpose === "sms_bundle" ? body.purpose : null;
     const provider = body.provider === "paystack" || body.provider === "flutterwave" ? (body.provider as Provider) : null;
-    const returnUrl = typeof body.return_url === "string" ? body.return_url : null;
+    // Must be this app — see initiate-payment.
+    const returnUrl = safeReturnUrl(body.return_url, (Deno.env.get("ALLOWED_RETURN_ORIGINS") ?? "").split(","));
 
     if (!purpose || !provider || !returnUrl) {
-      return json({ error: "purpose, provider and return_url are required" }, 400);
+      return json({ error: "purpose, provider and a return_url pointing back to this app are required" }, 400);
     }
 
     const service = createClient(SUPABASE_URL, SERVICE_KEY);

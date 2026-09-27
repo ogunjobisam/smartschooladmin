@@ -2466,6 +2466,142 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------------
+-- Families see their own profile, not the staff directory
+-- ---------------------------------------------------------------------------
+-- The September audit reported that any parent or pupil could list every staff
+-- member's email and phone. It does not reproduce: the profiles policy admits
+-- other people's rows through their user_roles, which families cannot read.
+-- These pin that down, since the protection is indirect and easy to lose by
+-- widening user_roles. Only staff screens read other people's profiles.
+INSERT INTO profiles (user_id, full_name, email, phone) VALUES
+  ('d3000000-0000-0000-0000-000000000002', 'Pupil Two', 'pupil.two@example.test', NULL),
+  ('d3000000-0000-0000-0000-000000000003', 'Bola Bursar', 'bursar@example.test', '+2348000000003')
+ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, phone = EXCLUDED.phone;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000002';
+SELECT public.assert((SELECT count(*) FROM profiles WHERE user_id = 'd3000000-0000-0000-0000-000000000003') = 0,
+  'a pupil can read a staff member''s profile');
+SELECT public.assert((SELECT count(*) FROM profiles WHERE user_id = 'd3000000-0000-0000-0000-000000000002') = 1,
+  'a pupil cannot read their own profile');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM profiles WHERE user_id = 'd3000000-0000-0000-0000-000000000003') = 0,
+  'a parent can read a staff member''s profile');
+COMMIT;
+-- Positive control: the owner's User Management screen still lists staff.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM profiles WHERE user_id = 'd3000000-0000-0000-0000-000000000003') = 1,
+  'the owner cannot read a staff member''s profile');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- Notifications go to people in the sender's organisation
+-- ---------------------------------------------------------------------------
+-- The insert policy checked only the sender's organisation, never the
+-- recipient's, so anyone signed in could drop a "Pay here" notification into
+-- any user's bell, in any school. And a family could notify another family.
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$INSERT INTO notifications (org_id, user_id, type, title, message)
+     VALUES ('11111111-1111-1111-1111-111111111111', 'eaaaaaaa-0000-0000-0000-00000000000e', 'school_announcement', 'Pay here', 'x')$q$,
+  'a notification can be sent to a user in another organisation');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000002',
+  $q$INSERT INTO notifications (org_id, user_id, type, title, message)
+     VALUES ('11111111-1111-1111-1111-111111111111', 'd2000000-0000-0000-0000-000000000003', 'school_announcement', 'Pay here', 'x')$q$,
+  'a pupil can send a notification to a parent');
+-- Positive controls: staff notify a family, and a family can reach staff.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000003';
+INSERT INTO notifications (org_id, user_id, type, title, message)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'd2000000-0000-0000-0000-000000000003', 'school_announcement', 'Fees due', 'x');
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000002';
+INSERT INTO notifications (org_id, user_id, type, title, message)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'd3000000-0000-0000-0000-000000000003', 'school_announcement', 'Question', 'x');
+ROLLBACK;
+
+-- ---------------------------------------------------------------------------
+-- Families see only their own documents
+-- ---------------------------------------------------------------------------
+-- document_files was readable by every member of the organisation, so a parent
+-- or pupil could list every staff contract and payroll attachment, with its URL.
+INSERT INTO document_files (id, org_id, school_id, entity_type, entity_id, file_name, file_url) VALUES
+  ('f5000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222',
+   'staff', 'f5000000-0000-0000-0000-0000000000aa', 'contract.pdf', 'school-documents/x/contract.pdf'),
+  ('f5000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222',
+   'student', '66666666-6666-6666-6666-666666666666', 'certificate.pdf', 'school-documents/x/certificate.pdf');
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000002';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id IN ('f5000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-000000000002')) = 0,
+  'a pupil can read other people''s document records');
+COMMIT;
+-- Positive controls: the pupil the certificate belongs to sees it, and the
+-- owner sees both.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'f5000000-0000-0000-0000-000000000002') = 1,
+  'a pupil cannot read a document attached to their own record');
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id = 'f5000000-0000-0000-0000-000000000001') = 0,
+  'a pupil can read a staff member''s document record');
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM document_files WHERE id IN ('f5000000-0000-0000-0000-000000000001', 'f5000000-0000-0000-0000-000000000002')) = 2,
+  'the owner cannot read the school''s document records');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- Rate limiting for the public endpoints
+-- ---------------------------------------------------------------------------
+-- start-demo and admissions answer anyone, with no account. consume_rate_limit()
+-- counts hits per key in a fixed window; only edge functions may call it.
+SELECT public.assert(NOT has_function_privilege('anon', 'public.consume_rate_limit(text, integer, integer)', 'EXECUTE')
+    AND NOT has_function_privilege('authenticated', 'public.consume_rate_limit(text, integer, integer)', 'EXECUTE'),
+  'a client can call consume_rate_limit');
+SELECT public.assert(has_function_privilege('service_role', 'public.consume_rate_limit(text, integer, integer)', 'EXECUTE'),
+  'the service role cannot call consume_rate_limit');
+SELECT public.assert(public.consume_rate_limit('test:ip', 2, 3600), 'the first hit was refused');
+SELECT public.assert(public.consume_rate_limit('test:ip', 2, 3600), 'the second hit was refused');
+SELECT public.assert(NOT public.consume_rate_limit('test:ip', 2, 3600), 'the third hit over a limit of two was allowed');
+SELECT public.assert(public.consume_rate_limit('test:other', 2, 3600), 'one key''s hits counted against another');
+
+-- ---------------------------------------------------------------------------
+-- The AI allowance is reserved before the model is called
+-- ---------------------------------------------------------------------------
+-- ai-insights checked the month's successful count, then called the model, then
+-- recorded the use, so parallel requests all passed the check.
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.reserve_ai_analysis(uuid, integer, uuid, uuid, text, text)', 'EXECUTE'),
+  'a client can reserve AI analyses');
+DELETE FROM ai_usage_events WHERE org_id = 'cccccccc-0000-0000-0000-00000000000c';
+DO $$
+DECLARE r record;
+BEGIN
+  -- Two slots in a limit of two, then a refusal: the pending rows count.
+  SELECT * INTO r FROM public.reserve_ai_analysis('cccccccc-0000-0000-0000-00000000000c', 2, NULL, NULL, 'performance', 'm');
+  PERFORM public.assert(r.event_id IS NOT NULL AND r.used = 0, 'the first AI reservation was refused');
+  SELECT * INTO r FROM public.reserve_ai_analysis('cccccccc-0000-0000-0000-00000000000c', 2, NULL, NULL, 'performance', 'm');
+  PERFORM public.assert(r.event_id IS NOT NULL AND r.used = 1, 'the second AI reservation was refused');
+  SELECT * INTO r FROM public.reserve_ai_analysis('cccccccc-0000-0000-0000-00000000000c', 2, NULL, NULL, 'performance', 'm');
+  PERFORM public.assert(r.event_id IS NULL AND r.used = 2, 'an in-flight analysis did not count against the allowance');
+  -- A failed analysis gives its slot back; a stale pending one stops counting.
+  UPDATE ai_usage_events SET status = 'failed'
+    WHERE id = (SELECT id FROM ai_usage_events WHERE org_id = 'cccccccc-0000-0000-0000-00000000000c' LIMIT 1);
+  SELECT * INTO r FROM public.reserve_ai_analysis('cccccccc-0000-0000-0000-00000000000c', 2, NULL, NULL, 'performance', 'm');
+  PERFORM public.assert(r.event_id IS NOT NULL, 'a failed analysis still used up a slot');
+  UPDATE ai_usage_events SET created_at = now() - interval '20 minutes'
+    WHERE org_id = 'cccccccc-0000-0000-0000-00000000000c' AND status = 'pending'
+      AND created_at > date_trunc('month', now());
+  SELECT * INTO r FROM public.reserve_ai_analysis('cccccccc-0000-0000-0000-00000000000c', 2, NULL, NULL, 'performance', 'm');
+  PERFORM public.assert(r.event_id IS NOT NULL, 'a pending analysis from a dead request still counted');
+END $$;
+DELETE FROM ai_usage_events WHERE org_id = 'cccccccc-0000-0000-0000-00000000000c';
+
+-- ---------------------------------------------------------------------------
 -- Scores: each per-user check runs once per query, and nobody's reach changes
 -- ---------------------------------------------------------------------------
 -- The score policies called is_self_service_role(auth.uid()) and five siblings

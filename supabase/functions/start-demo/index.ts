@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchCallerRoles, primaryRole } from "../_shared/caller-roles.ts";
+import { clientIp, withinRateLimit } from "../_shared/abuse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,6 +142,20 @@ Deno.serve(async (req) => {
     }
 
     const role: DemoRole = DEMO_ROLES.includes(body.role) ? body.role : "proprietor";
+
+    // Anyone can start a demo without an account, and each one creates an
+    // organisation, a user and a school's worth of seed data, with a
+    // proprietor who can use the AI allowance. Enough for a visitor to try
+    // every role; a ceiling across everyone so a botnet cannot flood the
+    // database either.
+    const ip = clientIp(req.headers);
+    const allowed =
+      (await withinRateLimit(admin, `demo:ip-hour:${ip}`, 3, 60 * 60)) &&
+      (await withinRateLimit(admin, `demo:ip-day:${ip}`, 10, 24 * 60 * 60)) &&
+      (await withinRateLimit(admin, "demo:all-hour", 200, 60 * 60));
+    if (!allowed) {
+      return jsonResponse({ error: "Too many demos started from here. Please try again later." }, 429);
+    }
 
     await purgeExpired(admin);
 

@@ -5,6 +5,7 @@
 // so a tampered request cannot under- or over-pay.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { safeReturnUrl } from "../_shared/abuse.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -43,10 +44,16 @@ Deno.serve(async (req) => {
       ? (body.provider as Provider)
       : null;
     const requested = Number(body.amount);
-    const returnUrl = typeof body.return_url === "string" ? body.return_url : null;
+    // The gateway sends the payer here after paying, so it must be this app:
+    // otherwise anyone who can start a checkout can bounce a real payer, fresh
+    // from a genuine payment page, to a site of their choosing.
+    const returnUrl = body.return_url == null ? null : safeReturnUrl(body.return_url, (Deno.env.get("ALLOWED_RETURN_ORIGINS") ?? "").split(","));
 
     if (!invoiceId || !provider || !Number.isFinite(requested) || requested <= 0) {
       return json({ error: "invoice_id, provider and a positive amount are required" }, 400);
+    }
+    if (body.return_url != null && !returnUrl) {
+      return json({ error: "return_url must point back to this app" }, 400);
     }
 
     // Read through the signed-in user's own permissions: if they may not see the

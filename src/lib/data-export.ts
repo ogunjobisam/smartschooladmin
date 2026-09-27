@@ -207,6 +207,7 @@ export const EXCLUDED_TABLES: Record<string, string> = {
   client_errors: "Error telemetry.",
   error_alerts: "Error telemetry.",
   demo_cleanup_log: "Demo housekeeping.",
+  rate_limit_hits: "Request counters for rate limiting, readable only by the server.",
 };
 
 export const EXPORT_PAGE_SIZE = 1000;
