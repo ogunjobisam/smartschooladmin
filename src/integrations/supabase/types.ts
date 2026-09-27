@@ -648,24 +648,30 @@ export type Database = {
       }
       classes: {
         Row: {
+          arm: string | null
           created_at: string
           id: string
+          level_name: string | null
           level_order: number | null
           name: string
           school_id: string
           section: Database["public"]["Enums"]["school_section"] | null
         }
         Insert: {
+          arm?: string | null
           created_at?: string
           id?: string
+          level_name?: string | null
           level_order?: number | null
           name: string
           school_id: string
           section?: Database["public"]["Enums"]["school_section"] | null
         }
         Update: {
+          arm?: string | null
           created_at?: string
           id?: string
+          level_name?: string | null
           level_order?: number | null
           name?: string
           school_id?: string
@@ -3278,6 +3284,52 @@ export type Database = {
           },
         ]
       }
+      subject_teachers: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          staff_id: string
+          subject_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          staff_id: string
+          subject_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          staff_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_teachers_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_teachers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_teachers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           created_at: string
@@ -3728,6 +3780,14 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
+      can_enter_mark: {
+        Args: { _student_id: string; _subject_id: string }
+        Returns: boolean
+      }
+      can_mark_subject: {
+        Args: { _class_id: string; _subject_id: string }
+        Returns: boolean
+      }
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       can_view_own_recognition_photo: {
         Args: { _name: string }
@@ -3796,6 +3856,10 @@ export type Database = {
       is_self_service_role: { Args: { _user_id: string }; Returns: boolean }
       is_support_staff_only: { Args: { _user_id: string }; Returns: boolean }
       is_teacher_only: { Args: { _user_id: string }; Returns: boolean }
+      markable_subjects: {
+        Args: { _class_id: string; _subject_ids: string[] }
+        Returns: string[]
+      }
       my_ai_entitlement: {
         Args: never
         Returns: {
@@ -3880,6 +3944,13 @@ export type Database = {
         }[]
       }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
+      split_class_arm: {
+        Args: { _name: string }
+        Returns: {
+          arm: string
+          level_name: string
+        }[]
+      }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       sweep_expired_demo_orgs: { Args: never; Returns: number }
