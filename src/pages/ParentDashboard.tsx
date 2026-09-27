@@ -31,7 +31,6 @@ import { AchievementHighlights } from "@/components/achievements/AchievementHigh
 import { ChildAchievements } from "@/components/achievements/ChildAchievements";
 import { StatementDialog } from "@/components/finance/StatementDialog";
 import { ReleasedTermReports } from "@/components/exams/ReleasedTermReports";
-import { WithheldNotice } from "@/components/exams/WithheldNotice";
 
 function ChildPerformance({ studentId }: { studentId: string }) {
   const { scores, attendance, isLoading } = useStudentPerformanceData(studentId);
@@ -393,7 +392,6 @@ export default function ParentDashboard() {
                 <TabsContent key={child.id} value={child.id} className="mt-4 space-y-4">
                   {/* The register and the marks themselves, then the analysis
                       staff see for the same child. */}
-                  <WithheldNotice studentId={child.id!} name={child.first_name} />
                   <ReleasedTermReports
                     studentId={child.id!}
                     studentName={`${child.first_name} ${child.last_name}`}

@@ -15,7 +15,6 @@ import { IdFormatCard } from "@/components/settings/IdFormatCard";
 import { BrandColorsCard } from "@/components/settings/BrandColorsCard";
 import { AppearanceCard } from "@/components/settings/AppearanceCard";
 import { ReportTraitsCard } from "@/components/settings/ReportTraitsCard";
-import { WithholdResultsCard } from "@/components/settings/WithholdResultsCard";
 import { canManageTermReports } from "@/lib/access";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
@@ -653,7 +652,6 @@ export default function SettingsPage() {
 
         {/* ── Report card Tab ── */}
         <TabsContent value="report-card" className="space-y-6 pt-4">
-          <WithholdResultsCard schoolId={schoolId} canManage={canManageTermReports(userRole)} />
           <ReportTraitsCard schoolId={schoolId} canManage={canManageTermReports(userRole)} />
         </TabsContent>
 

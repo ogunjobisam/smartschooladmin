@@ -58,7 +58,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 let role = "principal";
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ schoolId: "school", orgId: "org", userRole: role, currency: "NGN" }),
+  useAuth: () => ({ schoolId: "school", orgId: "org", userRole: role }),
 }));
 vi.mock("@/contexts/SchoolBrandingContext", () => ({
   useSchoolBranding: () => ({ branding: { name: "Kings & Queens Academy" } }),
@@ -140,21 +140,5 @@ describe("Term report page", () => {
     renderPage();
     await screen.findByText("Tunde Bello");
     expect(screen.queryByText(/since release/)).not.toBeInTheDocument();
-  });
-
-  it("shows staff which pupils families cannot see, and why", async () => {
-    report = {
-      ...baseReport,
-      withheld: [
-        { student_id: "kemi", reason: "debt", balance: 40000 },
-        { student_id: "zainab", reason: "hold", balance: 0, note: "Library books" },
-      ],
-    };
-    renderPage();
-    const kemi = (await screen.findByText("Kemi Ade")).closest("tr")!;
-    expect(within(kemi).getByText(/Owes .*40,000/)).toBeInTheDocument();
-    const zainab = screen.getByText("Zainab Cole").closest("tr")!;
-    expect(within(zainab).getByText("On hold")).toBeInTheDocument();
-    expect(screen.getByText(/2 withheld from families/)).toBeInTheDocument();
   });
 });
