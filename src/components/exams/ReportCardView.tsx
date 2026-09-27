@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
-import { documentTheme } from "@/lib/document-theme";
+import { documentTheme, esc } from "@/lib/document-theme";
 import { useSchoolBranding } from "@/contexts/SchoolBrandingContext";
 import { gradeForScore, remarkForGrade } from "@/lib/performance";
 
@@ -52,10 +52,10 @@ export function ReportCardView({ student, exam, subjects, scores, maxScore }: Re
       accentColor: branding.accentColor,
     });
     const crest = branding.logoUrl
-      ? `<img src="${branding.logoUrl}" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:12px;margin:0 auto 8px;display:block" />`
+      ? `<img src="${esc(branding.logoUrl)}" alt="" style="height:56px;width:56px;object-fit:contain;border-radius:12px;margin:0 auto 8px;display:block" />`
       : "";
     win.document.write(`
-      <html><head><title>Report Card - ${student?.first_name} ${student?.last_name}</title>
+      <html><head><title>Report Card - ${esc(student?.first_name)} ${esc(student?.last_name)}</title>
       <style>
         @page { size: A4; margin: 14mm; }
         :root { --brand: ${theme.primary}; --brand-accent: ${theme.accent}; --on-brand: ${theme.onPrimary}; --brand-soft: ${theme.soft}; --brand-border: ${theme.border}; }

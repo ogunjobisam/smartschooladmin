@@ -457,6 +457,13 @@ Deno.serve(async (req) => {
         }
         const clash = heldRoles.find((r) => !rolesCompatible(r.role, "parent"));
         if (clash) return jsonResponse({ error: `The parent role cannot be combined with the ${clash.role} role` }, 400);
+        // Same rule as the staff invite: never attach an account that already
+        // belongs to another organisation. Without it, any proprietor (a free
+        // anonymous demo included) could pull a stranger's account into their
+        // org by email — and ending a demo deletes every login in the org.
+        if (heldRoles.some((r) => r.org_id && r.org_id !== org_id)) {
+          return jsonResponse({ error: "That user belongs to another organisation" }, 409);
+        }
       } else {
         const tempPassword = crypto.randomUUID() + "Aa1!";
         const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -542,6 +549,9 @@ Deno.serve(async (req) => {
         const clash = heldRoles.find((r) => !rolesCompatible(r.role, "student"));
         if (clash) {
           return jsonResponse({ error: `A student account cannot also hold the ${clash.role} role` }, 400);
+        }
+        if (heldRoles.some((r) => r.org_id && r.org_id !== org_id)) {
+          return jsonResponse({ error: "That user belongs to another organisation" }, 409);
         }
       } else {
         const tempPassword = crypto.randomUUID() + "Aa1!";

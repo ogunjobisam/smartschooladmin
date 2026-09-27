@@ -40,7 +40,9 @@ export function UploadDocumentDialog({ open, onOpenChange, entityType, entityId,
 
     const { error: uploadError } = await supabase.storage
       .from(DOCUMENTS_BUCKET)
-      .upload(storagePath, file, { upsert: true });
+      // Never an overwrite: the path carries a timestamp. Upsert would also need
+      // the storage UPDATE policy, which teachers and the office do not hold.
+      .upload(storagePath, file, { upsert: false });
 
     if (uploadError) {
       toast.error("Upload failed: " + uploadError.message);

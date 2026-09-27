@@ -74,9 +74,24 @@ async function purgeOrphanDemoUsers(admin: AdminClient) {
  * ever created for it. Used both by the expiry sweep and by "End demo".
  */
 async function destroyDemoOrg(admin: AdminClient, orgId: string): Promise<boolean> {
-  // Collect the throwaway logins before the role rows disappear.
+  // Collect the throwaway logins before the role rows disappear. Only a login
+  // on the reserved demo domain with no role anywhere else is throwaway: a
+  // role row in a demo org says nothing about who owns the account, and a real
+  // user attached to a sandbox must survive its teardown.
   const { data: roles } = await admin.from("user_roles").select("user_id").eq("org_id", orgId);
-  const userIds = [...new Set((roles ?? []).map((r) => r.user_id as string))];
+  const candidates = [...new Set((roles ?? []).map((r) => r.user_id as string))];
+  const userIds: string[] = [];
+  for (const userId of candidates) {
+    const { data: found } = await admin.auth.admin.getUserById(userId);
+    if (!found?.user?.email?.endsWith(DEMO_EMAIL_DOMAIN)) continue;
+    const { count } = await admin
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .neq("org_id", orgId);
+    if ((count ?? 0) > 0) continue;
+    userIds.push(userId);
+  }
 
   const { error } = await admin.rpc("delete_demo_org", { _org_id: orgId });
   if (error) {

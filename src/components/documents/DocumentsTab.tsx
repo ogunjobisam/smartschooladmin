@@ -30,7 +30,9 @@ export function DocumentsTab({ entityType, entityId, schoolId, orgId }: Document
   const queryClient = useQueryClient();
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const canDelete = userRole !== "parent" && userRole !== "teacher";
+  // Mirrors the document_files delete policy: teachers and the school office
+  // may add documents but not remove them.
+  const canDelete = userRole !== "parent" && userRole !== "student" && userRole !== "teacher" && userRole !== "support_staff";
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ["documents", entityType, entityId],

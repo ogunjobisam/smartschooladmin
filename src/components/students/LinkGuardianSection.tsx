@@ -33,9 +33,11 @@ interface LinkGuardianSectionProps {
     } | null;
   }[];
   onRefresh: () => void;
+  /** Linking decides which parent account sees this pupil, so only school managers may change it. */
+  editable: boolean;
 }
 
-export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGuardianSectionProps) {
+export function LinkGuardianSection({ studentId, guardians, onRefresh, editable }: LinkGuardianSectionProps) {
   const { orgId } = useAuth();
   const queryClient = useQueryClient();
   const [showLink, setShowLink] = useState(false);
@@ -115,9 +117,11 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-card-foreground">Linked Guardians</h4>
-        <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowLink(true)}>
-          <UserPlus className="h-3.5 w-3.5" /> Link Guardian
-        </Button>
+        {editable && (
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowLink(true)}>
+            <UserPlus className="h-3.5 w-3.5" /> Link Guardian
+          </Button>
+        )}
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -144,15 +148,18 @@ export function LinkGuardianSection({ studentId, guardians, onRefresh }: LinkGua
                   <TableCell className="text-muted-foreground">{sg.guardians?.email || "—"}</TableCell>
                   <TableCell>{sg.is_primary ? <StatusBadge status="active" /> : "—"}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => unlinkMutation.mutate(sg.id)}
-                      disabled={unlinkMutation.isPending}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                    {editable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        aria-label="Unlink guardian"
+                        onClick={() => unlinkMutation.mutate(sg.id)}
+                        disabled={unlinkMutation.isPending}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
