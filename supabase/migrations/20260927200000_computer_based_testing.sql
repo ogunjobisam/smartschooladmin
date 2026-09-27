@@ -26,6 +26,32 @@
 --
 -- Safe to run twice.
 
+-- /cbt is a new top-level route, so no school may take it as its web address.
+-- Mirrors RESERVED_SLUGS in src/lib/admissions.ts.
+CREATE OR REPLACE FUNCTION public.reserved_school_slugs()
+RETURNS text[]
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+  SELECT ARRAY[
+    -- hostnames
+    'www', 'app', 'admin', 'api', 'mail', 'demo',
+    'assets', 'auth', 'blog', 'cdn', 'docs', 'ftp', 'help', 'static',
+    'status', 'support', 'smtp', 'staging', 'test',
+    -- top-level routes in src/App.tsx
+    'achievements', 'admissions', 'announcements', 'apply', 'approvals',
+    'arrears', 'attendance', 'audit-log', 'billing', 'cbt', 'dashboard', 'events',
+    'exams', 'fees', 'forgot-password', 'group-overview', 'guardians',
+    'invoices', 'login', 'message-delivery', 'my-pay',
+    'notification-settings', 'notification-templates', 'notifications',
+    'onboarding', 'parent', 'payments', 'payroll', 'performance', 'pricing',
+    'privacy', 'reports', 'reset-password', 'roles', 'school-profile',
+    'settings', 'signup', 'staff', 'staff-portal', 'student', 'students',
+    'terms', 'timetable', 'transport', 'users', 'wall'
+  ]::text[]
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Who may author
 -- ---------------------------------------------------------------------------

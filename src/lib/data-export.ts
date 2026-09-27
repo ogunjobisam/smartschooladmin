@@ -74,7 +74,7 @@ export const EXPORT_DATASETS: ExportDataset[] = [
   {
     key: "academic",
     label: "Exams and results",
-    description: "Exams, grade bands, every score entered, report card comments and ratings, awards.",
+    description: "Exams, grade bands, every score entered, report card comments and ratings, awards, computer-based tests.",
     tables: [
       { table: "exams", scope: school },
       { table: "exam_subjects", scope: via("exams") },
@@ -86,6 +86,9 @@ export const EXPORT_DATASETS: ExportDataset[] = [
       { table: "term_report_releases", scope: via("classes") },
       { table: "student_awards", scope: school },
       { table: "recognitions", scope: org },
+      { table: "cbt_questions", scope: school },
+      { table: "cbt_tests", scope: school },
+      { table: "cbt_attempts", scope: via("cbt_tests") },
     ],
   },
   {
@@ -182,6 +185,8 @@ export const EXCLUDED_TABLES: Record<string, string> = {
   sms_credit_balances: "Platform billing state.",
   sms_usage_log: "Platform billing state.",
   ai_usage_events: "Platform metering.",
+  cbt_test_questions: "Which bank questions make up each CBT paper; the questions and tests themselves are exported.",
+  cbt_answers: "Each pupil's answer to each CBT question; every sitting's score is exported with CBT attempts.",
   notifications: "Each user's personal inbox.",
   notification_preferences: "Each user's personal settings.",
   notification_settings: "App configuration.",

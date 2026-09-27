@@ -45,12 +45,14 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "timetable", title: "Timetable", url: "/timetable", group: "overview" },
   { key: "exams", title: "Exams", url: "/exams", group: "overview" },
   { key: "performance", title: "Performance", url: "/performance", group: "overview" },
+  { key: "cbt", title: "CBT", url: "/cbt", group: "overview" },
   { key: "achievements", title: "Achievements", url: "/achievements", group: "overview" },
   { key: "wall", title: "Achievement Wall", url: "/wall", group: "overview" },
   // A student's own record, from their portal out to the detail behind it.
   { key: "my-results", title: "My Results", url: "/student/results", group: "overview" },
   { key: "my-attendance", title: "My Attendance", url: "/student/attendance", group: "overview" },
   { key: "my-timetable", title: "My Timetable", url: "/student/timetable", group: "overview" },
+  { key: "my-tests", title: "My Tests", url: "/student/tests", group: "overview" },
 
   { key: "fees", title: "Fee Schedules", url: "/fees", group: "finance" },
   { key: "invoices", title: "Invoices", url: "/invoices", group: "finance" },
@@ -102,14 +104,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   group_admin: NAV_ITEMS.map((i) => i.key),
 
   school_admin: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "cbt", "achievements",
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
     "billing", "school-profile", "settings", "users", "roles", "data-export",
   ],
   principal: [
-    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "cbt", "achievements",
     "invoices", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
@@ -147,7 +149,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "announcements", "events", "achievements", "preferences", "my-pay",
   ],
   teacher: [
-    "dashboard", "staff-portal", "wall", "students", "attendance", "timetable", "exams", "performance", "achievements",
+    "dashboard", "staff-portal", "wall", "students", "attendance", "timetable", "exams", "performance", "cbt", "achievements",
     "announcements", "events", "preferences", "my-pay",
   ],
   parent: [
@@ -157,7 +159,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
   // A student sees their own portal and their own notification preferences.
   // Everything else on the dashboard is the school's, not theirs.
   student: [
-    "dashboard", "wall", "my-results", "my-attendance", "my-timetable",
+    "dashboard", "wall", "my-results", "my-tests", "my-attendance", "my-timetable",
     "events", "preferences",
   ],
 };
@@ -278,6 +280,19 @@ export const RESULT_RELEASERS: AppRole[] = [
 /** Whether a role may offer "Release anyway" on withheld results. */
 export function canReleaseResults(role: string | null): boolean {
   return RESULT_RELEASERS.includes((role || "") as AppRole);
+}
+
+/**
+ * Roles that may write CBT questions and tests. Mirrors can_author_cbt() in SQL:
+ * academic managers and teachers, an allowlist rather than the staff denylist,
+ * because an answer key is no business of the bursar or the school office.
+ */
+export const CBT_AUTHORS: AppRole[] = [
+  "super_admin", "proprietor", "group_admin", "school_admin", "principal", "teacher",
+];
+
+export function canAuthorCbt(role: string | null): boolean {
+  return CBT_AUTHORS.includes((role || "") as AppRole);
 }
 
 /** Exported for tests. */

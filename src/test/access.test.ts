@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canAccessPath, canManageStudents, canManageTermReports, canReleaseResults, RESULT_RELEASERS, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
+import { canAccessPath, canAuthorCbt, CBT_AUTHORS, canManageStudents, canManageTermReports, canReleaseResults, RESULT_RELEASERS, navItemsForRole, portalPathForRole, profileLinkForRole, NAV_ITEMS, _internals } from "@/lib/access";
 import { ROLES } from "@/lib/roles";
 import fs from "node:fs";
 import path from "node:path";
@@ -266,5 +266,43 @@ describe("canReleaseResults", () => {
     for (const role of ["teacher", "support_staff", "hr_admin", "parent", "student", null]) {
       expect(canReleaseResults(role), String(role)).toBe(false);
     }
+  });
+});
+
+describe("canAuthorCbt", () => {
+  // can_author_cbt() admits is_academic_manager() plus teachers. The CBT screen
+  // and its nav item must name the same roles, or it offers what RLS refuses.
+  it("names exactly the roles can_author_cbt() admits", () => {
+    const dir = path.resolve(__dirname, "../../supabase/migrations");
+    const sqls = fs.readdirSync(dir).sort().map((f) => fs.readFileSync(path.join(dir, f), "utf8"));
+    const latest = (re: RegExp) => {
+      const all = sqls.flatMap((sql) => sql.match(re) ?? []);
+      expect(all.length).toBeGreaterThan(0);
+      return all[all.length - 1];
+    };
+    const author = latest(/FUNCTION public\.can_author_cbt[\s\S]*?\$\$;/g);
+    expect(author).toContain("public.is_academic_manager(auth.uid())");
+    const managers = latest(/FUNCTION public\.is_academic_manager[\s\S]*?\$\$;/g);
+    const sqlRoles = [
+      ...[...managers.matchAll(/'([a-z_]+)'::app_role/g)].map((m) => m[1]),
+      ...[...author.matchAll(/'([a-z_]+)'::app_role/g)].map((m) => m[1]),
+    ];
+    const expected = new Set([...sqlRoles, "super_admin"]);
+    for (const { value } of ROLES) {
+      expect(canAuthorCbt(value), value).toBe(expected.has(value));
+      expect(canAccessPath(value, "/cbt"), `${value} /cbt`).toBe(expected.has(value));
+    }
+    expect([...expected].sort()).toEqual([...CBT_AUTHORS].sort());
+  });
+
+  it("keeps the bursar, the office and families away from answer keys", () => {
+    for (const role of ["bursar", "finance_officer", "hr_admin", "support_staff", "parent", "student"]) {
+      expect(canAuthorCbt(role), role).toBe(false);
+    }
+  });
+
+  it("gives pupils their tests page", () => {
+    expect(navItemsForRole("student").map((i) => i.key)).toContain("my-tests");
+    expect(canAccessPath("student", "/student/tests/abc")).toBe(true);
   });
 });
