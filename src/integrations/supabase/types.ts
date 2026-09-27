@@ -1389,10 +1389,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "invoice_adjustments_approval_request_id_fkey"
+            columns: ["approval_request_id"]
+            isOneToOne: false
+            referencedRelation: "approval_requests"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoice_adjustments_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_adjustments_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1949,6 +1963,7 @@ export type Database = {
       payment_transactions: {
         Row: {
           amount: number
+          claimed_at: string | null
           created_at: string
           gateway: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference: string | null
@@ -1964,6 +1979,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           gateway?: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference?: string | null
@@ -1979,6 +1995,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           gateway?: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference?: string | null
@@ -2243,6 +2260,7 @@ export type Database = {
         Row: {
           academic_period_id: string | null
           amount: number
+          claimed_at: string | null
           created_at: string
           currency: string
           gateway: string
@@ -2260,6 +2278,7 @@ export type Database = {
         Insert: {
           academic_period_id?: string | null
           amount: number
+          claimed_at?: string | null
           created_at?: string
           currency?: string
           gateway: string
@@ -2277,6 +2296,7 @@ export type Database = {
         Update: {
           academic_period_id?: string | null
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           currency?: string
           gateway?: string
@@ -4139,7 +4159,10 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
-      can_approve_adjustments: { Args: { _school_id: string }; Returns: boolean }
+      can_approve_adjustments: {
+        Args: { _school_id: string }
+        Returns: boolean
+      }
       can_enter_mark: {
         Args: { _student_id: string; _subject_id: string }
         Returns: boolean
@@ -4300,10 +4323,10 @@ export type Database = {
       refund_sms: { Args: { _queue_id: string }; Returns: number }
       request_invoice_adjustment: {
         Args: {
-          _amount: number | null
+          _amount: number
           _invoice_id: string
           _kind: string
-          _percent: number | null
+          _percent: number
           _reason: string
         }
         Returns: string
@@ -4337,6 +4360,7 @@ export type Database = {
         }[]
       }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
+      school_in_my_scope: { Args: { _school_id: string }; Returns: boolean }
       score_withheld_from_family: {
         Args: { _exam_id: string; _student_id: string }
         Returns: boolean

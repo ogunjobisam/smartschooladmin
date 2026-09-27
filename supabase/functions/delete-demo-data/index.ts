@@ -121,9 +121,13 @@ Deno.serve(async (req) => {
     await del("payments", { school_id });
     await del("invoices", { school_id });
 
-    // 7-8. Org-level tables
+    // 7. Org-level tables
+    //
+    // audit_logs is deliberately left alone. It used to be wiped here, for the
+    // whole organisation, which meant the one action that erases a school's
+    // records also erased the record of who did it — and of every earlier role
+    // change and retry. The wipe is logged below instead.
     await del("approval_requests", { org_id });
-    await del("audit_logs", { org_id });
 
     // 9-10. student child tables (via students)
     await delVia("student_guardians", "student_id", "students", { school_id });
@@ -172,6 +176,17 @@ Deno.serve(async (req) => {
     await delVia("class_teachers", "class_id", "classes", { school_id });
 
     const totalDeleted = Object.values(counts).reduce((a, b) => a + b, 0);
+
+    const { error: auditError } = await admin.from("audit_logs").insert({
+      org_id,
+      user_id: userId,
+      action: "school_data_deleted",
+      entity_type: "school",
+      entity_id: school_id,
+      detail: `Deleted all data for the school: ${totalDeleted} records`,
+      new_values: counts,
+    });
+    if (auditError) console.error("Could not write the audit log for the deletion:", auditError.message);
 
     return new Response(
       JSON.stringify({ success: true, total_deleted: totalDeleted, counts }),

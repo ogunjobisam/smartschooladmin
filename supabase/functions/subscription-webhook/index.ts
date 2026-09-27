@@ -12,6 +12,9 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const service = createClient(SUPABASE_URL, SERVICE_KEY);
 
+/** How long a claim on a payment holds before another request may retake it. */
+const CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -77,6 +80,19 @@ async function finalisePayment(reference: string, provider: string) {
     await service.from("platform_payments").update({ status: "failed" }).eq("id", pay.id);
     return { ok: false, reason: "amount_mismatch" };
   }
+
+  // Claim the payment before granting anything, so parallel confirmations of
+  // one reference cannot each add the SMS credits. See payment-webhook for the
+  // reasoning; a single conditional UPDATE lets only one request win.
+  const staleClaim = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString();
+  const { data: claimed } = await service
+    .from("platform_payments")
+    .update({ claimed_at: new Date().toISOString() })
+    .eq("id", pay.id)
+    .neq("status", "successful")
+    .or(`claimed_at.is.null,claimed_at.lt.${staleClaim}`)
+    .select("id");
+  if (!claimed?.length) return { ok: true, reason: "already_recorded" };
 
   if (pay.purpose === "subscription" && pay.plan_code) {
     await service.rpc("activate_subscription", {

@@ -1793,6 +1793,396 @@ SELECT public.assert(
 COMMIT;
 
 -- ---------------------------------------------------------------------------
+-- Platform billing is the service role's alone
+-- ---------------------------------------------------------------------------
+-- activate_subscription, add_sms_credits and charge_sms are SECURITY DEFINER
+-- and check nobody: they trust the webhook that calls them to have verified a
+-- payment first. They were executable by anon, so the public key alone could
+-- hand any organisation a premium plan or unlimited SMS credits, or drain
+-- another organisation's balance.
+SELECT public.assert(NOT has_function_privilege('anon', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE'),
+  'anon can call activate_subscription');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE'),
+  'a signed-in user can call activate_subscription');
+SELECT public.assert(NOT has_function_privilege('anon', 'public.add_sms_credits(uuid, integer)', 'EXECUTE'),
+  'anon can call add_sms_credits');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.add_sms_credits(uuid, integer)', 'EXECUTE'),
+  'a signed-in user can call add_sms_credits');
+SELECT public.assert(NOT has_function_privilege('anon', 'public.charge_sms(uuid, uuid, text, integer, text)', 'EXECUTE'),
+  'anon can call charge_sms');
+SELECT public.assert(NOT has_function_privilege('authenticated', 'public.charge_sms(uuid, uuid, text, integer, text)', 'EXECUTE'),
+  'a signed-in user can call charge_sms');
+-- Positive control: the webhook still can.
+SELECT public.assert(has_function_privilege('service_role', 'public.add_sms_credits(uuid, integer)', 'EXECUTE')
+    AND has_function_privilege('service_role', 'public.activate_subscription(uuid, text, uuid)', 'EXECUTE')
+    AND has_function_privilege('service_role', 'public.charge_sms(uuid, uuid, text, integer, text)', 'EXECUTE'),
+  'the service role can no longer call the billing functions');
+
+-- The subscription webhook trusts the platform_payments row for the price, the
+-- plan and the credit count. An owner who could insert that row could pair a
+-- one-naira payment reference with ten million credits.
+INSERT INTO auth.users (id, email) VALUES ('d3000000-0000-0000-0000-000000000001', 'owner@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id)
+  VALUES ('d3000000-0000-0000-0000-000000000001', 'proprietor', '11111111-1111-1111-1111-111111111111', NULL);
+INSERT INTO platform_payments (org_id, gateway, gateway_reference, amount, purpose, plan_code)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'paystack', 'SUB-FIXTURE', 45000, 'subscription', 'premium');
+
+-- Positive control: the owner can see their organisation's payments, so the
+-- refusal below is about writing, not about the owner being the wrong role.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM platform_payments WHERE gateway_reference = 'SUB-FIXTURE') = 1,
+  'an owner cannot see their own organisation''s platform payments');
+COMMIT;
+
+DO $$
+BEGIN
+  PERFORM set_config('test.uid', 'd3000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO platform_payments (org_id, gateway, gateway_reference, amount, purpose, sms_credits)
+      VALUES ('11111111-1111-1111-1111-111111111111', 'paystack', 'PAY-FORGED', 1, 'sms_bundle', 10000000);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an owner can insert their own platform payment and set its price';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET ROLE;
+END $$;
+SELECT public.assert(NOT EXISTS (SELECT 1 FROM platform_payments WHERE gateway_reference = 'PAY-FORGED'),
+  'a forged platform payment was written');
+
+-- ---------------------------------------------------------------------------
+-- Pupils are not staff
+-- ---------------------------------------------------------------------------
+-- Every "staff" policy below was written as "not a parent" before the pupil role
+-- existed, so a pupil passed all of them: other families' receipts and invoice
+-- lines, the staff contracts in document storage, and writes to announcements,
+-- awards and subjects. A fresh pupil with no student record of their own, so any
+-- row they can see is someone else's.
+INSERT INTO auth.users (id, email) VALUES
+  ('d3000000-0000-0000-0000-000000000002', 'pupil.two@example.test'),
+  ('d3000000-0000-0000-0000-000000000003', 'bursar@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('d3000000-0000-0000-0000-000000000002', 'student', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('d3000000-0000-0000-0000-000000000003', 'bursar', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+INSERT INTO receipts (id, school_id, student_id, receipt_number, amount)
+  VALUES ('f1000000-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', '66666666-6666-6666-6666-666666666666', 'RCP-FIXTURE', 500);
+INSERT INTO invoice_items (id, invoice_id, description, amount)
+  VALUES ('f1000000-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Tuition', 1000);
+INSERT INTO storage.objects (bucket_id, name)
+  VALUES ('school-documents', '22222222-2222-2222-2222-222222222222/staff/contract.pdf');
+-- As on Supabase, where signed-in users reach storage through its policies.
+GRANT USAGE ON SCHEMA storage TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+
+SELECT public.assert(NOT public.is_org_staff('d3000000-0000-0000-0000-000000000002'),
+  'is_org_staff() is true for a pupil');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000002';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'f1000000-0000-0000-0000-000000000001') = 0,
+  'a pupil can read another family''s receipt');
+SELECT public.assert((SELECT count(*) FROM invoice_items WHERE id = 'f1000000-0000-0000-0000-000000000002') = 0,
+  'a pupil can read another family''s invoice items');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE bucket_id = 'school-documents') = 0,
+  'a pupil can read staff documents in storage');
+COMMIT;
+
+-- Positive controls: the owner sees all three, and the pupil whose receipt it
+-- is still sees their own.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'f1000000-0000-0000-0000-000000000001') = 1,
+  'the owner cannot read the school''s receipts');
+SELECT public.assert((SELECT count(*) FROM invoice_items WHERE id = 'f1000000-0000-0000-0000-000000000002') = 1,
+  'the owner cannot read the school''s invoice items');
+SELECT public.assert((SELECT count(*) FROM storage.objects WHERE bucket_id = 'school-documents') = 1,
+  'the owner cannot read the school''s documents');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM receipts WHERE id = 'f1000000-0000-0000-0000-000000000001') = 1,
+  'a pupil can no longer read their own receipt');
+COMMIT;
+
+-- Writes a pupil must not make. Each is attempted, and each must be refused.
+CREATE OR REPLACE FUNCTION pg_temp.refused(_uid uuid, _sql text, _message text)
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('test.uid', _uid::text, true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    EXECUTE _sql;
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: %', _message;
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000002',
+  $q$INSERT INTO school_announcements (org_id, title, body, status)
+     VALUES ('11111111-1111-1111-1111-111111111111', 'No school tomorrow', 'x', 'sent')$q$,
+  'a pupil can broadcast a school announcement');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000002',
+  $q$INSERT INTO student_awards (student_id, school_id, title)
+     VALUES ('66666666-6666-6666-6666-666666666666', '22222222-2222-2222-2222-222222222222', 'Head pupil')$q$,
+  'a pupil can grant a student award');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000002',
+  $q$INSERT INTO subjects (school_id, name) VALUES ('22222222-2222-2222-2222-222222222222', 'Free periods')$q$,
+  'a pupil can create a subject');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000002',
+  $q$INSERT INTO storage.objects (bucket_id, name)
+     VALUES ('school-documents', '22222222-2222-2222-2222-222222222222/staff/forged.pdf')$q$,
+  'a pupil can upload into staff documents');
+
+-- Positive control: staff can still make the same announcement.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000003';
+INSERT INTO school_announcements (org_id, title, body, status)
+  VALUES ('11111111-1111-1111-1111-111111111111', 'Sports day', 'x', 'sent');
+ROLLBACK;
+
+-- ---------------------------------------------------------------------------
+-- Timetables stay inside their organisation
+-- ---------------------------------------------------------------------------
+-- The timetable write policies were `is_school_manager()` and nothing else, and
+-- the read policies let anyone with no school of their own read every school's.
+-- A bursar in one organisation could rewrite or wipe another's timetable.
+INSERT INTO classes (id, school_id, name)
+  VALUES ('cccccccc-0000-0000-0000-0000000000e1', 'cccccccc-0000-0000-0000-00000000000d', 'Other JSS1');
+INSERT INTO timetable_periods (id, school_id, name, start_time, end_time) VALUES
+  ('f2000000-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', 'P1', '08:00', '08:40'),
+  ('f2000000-0000-0000-0000-000000000002', 'cccccccc-0000-0000-0000-00000000000d', 'P1', '08:00', '08:40');
+INSERT INTO timetable_entries (id, school_id, academic_period_id, class_id, timetable_period_id, day_of_week, room) VALUES
+  ('f2000000-0000-0000-0000-000000000011', '22222222-2222-2222-2222-222222222222', '44444444-4444-4444-4444-444444444444',
+   '55555555-5555-5555-5555-555555555555', 'f2000000-0000-0000-0000-000000000001', 1, 'Lab'),
+  ('f2000000-0000-0000-0000-000000000012', 'cccccccc-0000-0000-0000-00000000000d', '44444444-4444-4444-4444-444444444444',
+   'cccccccc-0000-0000-0000-0000000000e1', 'f2000000-0000-0000-0000-000000000002', 1, 'Hall');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000003';
+UPDATE timetable_entries SET room = 'defaced' WHERE id = 'f2000000-0000-0000-0000-000000000012';
+DELETE FROM timetable_periods WHERE id = 'f2000000-0000-0000-0000-000000000002';
+-- Positive control: their own school's entry.
+UPDATE timetable_entries SET room = 'Lab 2' WHERE id = 'f2000000-0000-0000-0000-000000000011';
+COMMIT;
+SELECT public.assert((SELECT room FROM timetable_entries WHERE id = 'f2000000-0000-0000-0000-000000000012') = 'Hall',
+  'a bursar can edit another organisation''s timetable');
+SELECT public.assert(EXISTS (SELECT 1 FROM timetable_periods WHERE id = 'f2000000-0000-0000-0000-000000000002'),
+  'a bursar can delete another organisation''s timetable periods');
+SELECT public.assert((SELECT room FROM timetable_entries WHERE id = 'f2000000-0000-0000-0000-000000000011') = 'Lab 2',
+  'a bursar can no longer edit their own school''s timetable');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM timetable_entries WHERE school_id = 'cccccccc-0000-0000-0000-00000000000d') = 0,
+  'an owner can read another organisation''s timetable');
+SELECT public.assert((SELECT count(*) FROM timetable_entries WHERE school_id = '22222222-2222-2222-2222-222222222222') = 1,
+  'an owner cannot read their own school''s timetable');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000002';
+SELECT public.assert((SELECT count(*) FROM timetable_periods WHERE school_id = 'cccccccc-0000-0000-0000-00000000000d') = 0,
+  'a pupil can read another organisation''s timetable periods');
+SELECT public.assert((SELECT count(*) FROM timetable_periods WHERE school_id = '22222222-2222-2222-2222-222222222222') = 1,
+  'a pupil cannot read their own school''s timetable periods');
+COMMIT;
+
+-- ---------------------------------------------------------------------------
+-- What an organisation pays for is not the organisation's to set
+-- ---------------------------------------------------------------------------
+-- Owners had a FOR ALL policy on org_subscriptions, so they could write
+-- themselves an active premium plan, and could raise their own AI allowance or
+-- clear their demo flag on organisation_groups.
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$INSERT INTO org_subscriptions (org_id, plan_code, status)
+     VALUES ('11111111-1111-1111-1111-111111111111', 'premium', 'active')$q$,
+  'an owner can grant themselves a subscription');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$UPDATE organisation_groups SET ai_monthly_limit = 100000
+     WHERE id = '11111111-1111-1111-1111-111111111111'$q$,
+  'an owner can raise their own AI allowance');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$UPDATE organisation_groups SET is_demo = true
+     WHERE id = '11111111-1111-1111-1111-111111111111'$q$,
+  'an owner can change their organisation''s demo flag');
+-- Positive control: the settings an owner is meant to change still save,
+-- including switching the AI add-on itself on and off.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+UPDATE organisation_groups SET name = 'Renamed Org', currency = 'NGN', ai_addon_enabled = true
+  WHERE id = '11111111-1111-1111-1111-111111111111';
+COMMIT;
+SELECT public.assert((SELECT name FROM organisation_groups WHERE id = '11111111-1111-1111-1111-111111111111') = 'Renamed Org',
+  'an owner can no longer rename their organisation');
+UPDATE organisation_groups SET name = 'Org', ai_addon_enabled = false WHERE id = '11111111-1111-1111-1111-111111111111';
+
+-- ---------------------------------------------------------------------------
+-- The message queue sends only what the organisation wrote
+-- ---------------------------------------------------------------------------
+-- A row could name any school, which sets the From name and logo, so a message
+-- could go out as another organisation's school. And the retry policy let a
+-- manager rewrite a queued row's recipient and body, not just requeue it.
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$INSERT INTO outbound_message_queue (org_id, school_id, channel, recipient, body)
+     VALUES ('11111111-1111-1111-1111-111111111111', 'cccccccc-0000-0000-0000-00000000000d', 'email', 'x@example.test', 'hi')$q$,
+  'a message can be queued under another organisation''s school');
+INSERT INTO outbound_message_queue (id, org_id, school_id, channel, recipient, body, status)
+  VALUES ('f3000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+          '22222222-2222-2222-2222-222222222222', 'email', 'parent@example.test', 'Fees due', 'failed');
+SELECT pg_temp.refused('d3000000-0000-0000-0000-000000000001',
+  $q$UPDATE outbound_message_queue SET recipient = 'victim@example.test', body = 'phish'
+     WHERE id = 'f3000000-0000-0000-0000-000000000001'$q$,
+  'a manager can rewrite a queued message''s recipient and body');
+-- Positive controls: queueing for their own school, and requeueing a failure.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd3000000-0000-0000-0000-000000000001';
+INSERT INTO outbound_message_queue (org_id, school_id, channel, recipient, body)
+  VALUES ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'email', 'parent@example.test', 'hi');
+UPDATE outbound_message_queue SET status = 'queued', attempts = 0, error_message = NULL
+  WHERE id = 'f3000000-0000-0000-0000-000000000001';
+COMMIT;
+SELECT public.assert((SELECT status FROM outbound_message_queue WHERE id = 'f3000000-0000-0000-0000-000000000001') = 'queued',
+  'a manager can no longer requeue a failed message');
+
+-- ---------------------------------------------------------------------------
+-- Teachers write only the exams of classes they teach; the office writes no
+-- grade bands (20260928000200)
+-- ---------------------------------------------------------------------------
+-- The maths teacher (d1000000…01) is teacher-only and teaches JSS1 (555…555).
+-- The plain teacher (deeeeeee…) is teacher-only at the same school and teaches
+-- nothing. Exam 777…777 is whole-school (no class). Each refusal below has a
+-- positive control showing someone can make that same change.
+INSERT INTO classes (id, school_id, name)
+  VALUES ('55555555-5555-5555-5555-5555555555e9', '22222222-2222-2222-2222-222222222222', 'JSS3 exam scope');
+INSERT INTO exams (id, school_id, academic_period_id, class_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-7777777777e1', '22222222-2222-2222-2222-222222222222',
+          '44444444-4444-4444-4444-444444444444', '55555555-5555-5555-5555-555555555555', 'JSS1 quiz', 20);
+INSERT INTO exam_grade_bands (id, exam_id, label, min_percent)
+  VALUES ('e9000000-0000-0000-0000-0000000000b1', '77777777-7777-7777-7777-7777777777e1', 'A', 70);
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the unassigned teacher fixture is not teacher-only, so the narrowed clause is never reached');
+SELECT public.assert((SELECT count(*) FROM exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 1,
+  'the unassigned teacher cannot even see the JSS1 exam, so the write refusals below would be vacuous');
+-- Deletes are governed by USING alone, so a hole there shows up here.
+DELETE FROM exams WHERE id IN ('77777777-7777-7777-7777-7777777777e1', '77777777-7777-7777-7777-777777777777');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 1,
+  'a teacher deleted an exam for a class they do not teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 1,
+  'a teacher deleted a whole-school exam');
+-- An update is refused either silently (USING) or loudly (WITH CHECK); both count.
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE exams SET name = 'hijacked' WHERE id = '77777777-7777-7777-7777-7777777777e1';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    UPDATE exams SET max_score = 1 WHERE id = '77777777-7777-7777-7777-777777777777';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+SELECT public.assert((SELECT name FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 'JSS1 quiz',
+  'a teacher renamed an exam for a class they do not teach');
+SELECT public.assert((SELECT max_score FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 100,
+  'a teacher changed a whole-school exam');
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO exams (school_id, class_id, name)
+      VALUES ('22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555', 'Sneaky');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher created an exam for a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- The class's own teacher: can write that exam, but not a whole-school one,
+-- and cannot move theirs into a class they do not teach.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the maths teacher fixture is not teacher-only, so the narrowed clause is never reached');
+UPDATE exams SET name = 'JSS1 quiz (edited)' WHERE id = '77777777-7777-7777-7777-7777777777e1';
+INSERT INTO exams (id, school_id, class_id, name)
+  VALUES ('77777777-7777-7777-7777-7777777777e2', '22222222-2222-2222-2222-222222222222',
+          '55555555-5555-5555-5555-555555555555', 'JSS1 quiz 2');
+DELETE FROM exams WHERE id = '77777777-7777-7777-7777-777777777777';
+COMMIT;
+SELECT public.assert((SELECT name FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e1') = 'JSS1 quiz (edited)',
+  'a teacher cannot edit an exam for a class they teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-7777777777e2') = 1,
+  'a teacher cannot create an exam for a class they teach');
+SELECT public.assert((SELECT count(*) FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 1,
+  'a class teacher deleted a whole-school exam');
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE exams SET class_id = '55555555-5555-5555-5555-5555555555e9'
+      WHERE id = '77777777-7777-7777-7777-7777777777e2';
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher moved an exam into a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO exams (school_id, class_id, name)
+      VALUES ('22222222-2222-2222-2222-222222222222', NULL, 'Whole school by a teacher');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher created a whole-school exam';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- A principal still writes any exam in the school, whole-school included.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+UPDATE exams SET max_score = 90 WHERE id = '77777777-7777-7777-7777-777777777777';
+COMMIT;
+SELECT public.assert((SELECT max_score FROM public.exams WHERE id = '77777777-7777-7777-7777-777777777777') = 90,
+  'a principal can no longer edit a whole-school exam');
+UPDATE exams SET max_score = 100 WHERE id = '77777777-7777-7777-7777-777777777777';
+
+-- Grade bands decide every pupil's grade: the office neither reads nor writes them.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 1,
+  'a principal cannot see the grade band fixture, so the support staff check below would be vacuous');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000a';
+SELECT public.assert(public.is_support_staff_only(auth.uid()),
+  'the support staff fixture is not support-staff-only, so the exclusion is never reached');
+SELECT public.assert((SELECT count(*) FROM exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 0,
+  'support staff can read exam grade bands');
+UPDATE exam_grade_bands SET min_percent = 1 WHERE id = 'e9000000-0000-0000-0000-0000000000b1';
+COMMIT;
+SELECT public.assert((SELECT min_percent FROM public.exam_grade_bands WHERE id = 'e9000000-0000-0000-0000-0000000000b1') = 70,
+  'support staff changed an exam''s grade bands');
+
+-- ---------------------------------------------------------------------------
 -- Scores: each per-user check runs once per query, and nobody's reach changes
 -- ---------------------------------------------------------------------------
 -- The score policies called is_self_service_role(auth.uid()) and five siblings

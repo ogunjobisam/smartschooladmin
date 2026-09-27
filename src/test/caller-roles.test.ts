@@ -7,6 +7,7 @@ import {
   primaryRole,
   rankOf,
   ROLE_RANK,
+  targetRolesInScope,
   type RoleRow,
 } from "../../supabase/functions/_shared/caller-roles.ts";
 
@@ -260,5 +261,39 @@ describe("fetchCallerRoles", () => {
     const { client, calls } = stub([]);
     await fetchCallerRoles(client, "user-1");
     expect(calls.cols).toContain("school_id");
+  });
+});
+
+/**
+ * Which of a target user's roles an admin may manage.
+ *
+ * invite-user used to check only rank, and school scope for school-level
+ * callers. It never compared organisations, and its writes matched on user_id
+ * alone, so a proprietor of a throwaway demo organisation could make a parent
+ * in someone else's school a group_admin there.
+ */
+describe("targetRolesInScope", () => {
+  const proprietorA = row("proprietor", ORG_A);
+
+  it("keeps only the target's roles in the caller's organisation", () => {
+    const target = [row("parent", ORG_A, SCHOOL_1), row("parent", ORG_B, SCHOOL_2)];
+    expect(targetRolesInScope(proprietorA, target)).toEqual([row("parent", ORG_A, SCHOOL_1)]);
+  });
+
+  it("gives an admin nothing to manage for a user in another organisation", () => {
+    expect(targetRolesInScope(proprietorA, [row("parent", ORG_B, SCHOOL_2)])).toEqual([]);
+  });
+
+  it("does not let an organisation reach a platform-wide super_admin row", () => {
+    expect(targetRolesInScope(proprietorA, [row("super_admin", null)])).toEqual([]);
+  });
+
+  it("gives a caller with no organisation nothing, rather than every org-less row", () => {
+    expect(targetRolesInScope(row("school_admin", null, SCHOOL_1), [row("super_admin", null)])).toEqual([]);
+  });
+
+  it("lets a super_admin manage roles in every organisation", () => {
+    const target = [row("parent", ORG_A), row("teacher", ORG_B, SCHOOL_2), row("super_admin", null)];
+    expect(targetRolesInScope(row("super_admin", null), target)).toEqual(target);
   });
 });

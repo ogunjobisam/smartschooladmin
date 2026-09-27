@@ -23,7 +23,10 @@ interface CreateExamDialogProps {
 }
 
 export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) {
-  const { schoolId, user } = useAuth();
+  const { schoolId, user, userRole } = useAuth();
+  // A teacher may only create exams for classes they teach (RLS on exams), so a
+  // whole-school exam — no class — is not theirs to create.
+  const needsClass = userRole === "teacher";
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [classId, setClassId] = useState("");
@@ -55,7 +58,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
   const weightInvalid = weight !== null && !(weight > 0 && weight <= 100);
 
   const handleCreate = async () => {
-    if (!schoolId || !name.trim() || weightInvalid) return;
+    if (!schoolId || !name.trim() || weightInvalid || (needsClass && !classId)) return;
     setSaving(true);
 
     // CA1, CA2 and the exam are set once per term but sat by every arm, so
@@ -104,7 +107,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
             <div className="space-y-2">
               <Label>Class</Label>
               <Select value={classId} onValueChange={setClassId}>
-                <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={needsClass ? "Choose a class" : "All classes"} /></SelectTrigger>
                 <SelectContent>
                   {classes.length > 1 && <SelectItem value={EVERY_CLASS}>Every class</SelectItem>}
                   {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -158,7 +161,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
                 : "How much of the term total this counts for. Leave blank if it is not part of the term report."}
             </p>
           </div>
-          <Button onClick={handleCreate} disabled={!name.trim() || saving || weightInvalid} className="w-full">
+          <Button onClick={handleCreate} disabled={!name.trim() || saving || weightInvalid || (needsClass && !classId)} className="w-full">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Exam
           </Button>
