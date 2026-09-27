@@ -1802,12 +1802,15 @@ export type Database = {
           last_attempt_at: string | null
           org_id: string
           processed_at: string | null
+          provider: string | null
+          provider_message_id: string | null
           recipient: string
           related_notification_id: string | null
           reply_to: string | null
           retried_by: string | null
           scheduled_for: string | null
           school_id: string | null
+          sms_parts: number | null
           status: string
           subject: string | null
         }
@@ -1823,12 +1826,15 @@ export type Database = {
           last_attempt_at?: string | null
           org_id: string
           processed_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient: string
           related_notification_id?: string | null
           reply_to?: string | null
           retried_by?: string | null
           scheduled_for?: string | null
           school_id?: string | null
+          sms_parts?: number | null
           status?: string
           subject?: string | null
         }
@@ -1844,12 +1850,15 @@ export type Database = {
           last_attempt_at?: string | null
           org_id?: string
           processed_at?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient?: string
           related_notification_id?: string | null
           reply_to?: string | null
           retried_by?: string | null
           scheduled_for?: string | null
           school_id?: string | null
+          sms_parts?: number | null
           status?: string
           subject?: string | null
         }
@@ -3072,6 +3081,9 @@ export type Database = {
           created_at: string
           id: string
           org_id: string
+          parts: number
+          provider: string | null
+          provider_message_id: string | null
           queue_id: string | null
           recipient: string
         }
@@ -3079,6 +3091,9 @@ export type Database = {
           created_at?: string
           id?: string
           org_id: string
+          parts?: number
+          provider?: string | null
+          provider_message_id?: string | null
           queue_id?: string | null
           recipient: string
         }
@@ -3086,6 +3101,9 @@ export type Database = {
           created_at?: string
           id?: string
           org_id?: string
+          parts?: number
+          provider?: string | null
+          provider_message_id?: string | null
           queue_id?: string | null
           recipient?: string
         }
@@ -4160,7 +4178,13 @@ export type Database = {
         Returns: boolean
       }
       charge_sms: {
-        Args: { _org_id: string; _queue_id: string; _recipient: string }
+        Args: {
+          _org_id: string
+          _parts?: number
+          _provider?: string
+          _queue_id: string
+          _recipient: string
+        }
         Returns: boolean
       }
       child_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
@@ -4296,6 +4320,7 @@ export type Database = {
           school_id: string
         }[]
       }
+      refund_sms: { Args: { _queue_id: string }; Returns: number }
       request_invoice_adjustment: {
         Args: {
           _amount: number
