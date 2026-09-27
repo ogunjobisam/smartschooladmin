@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gradeScoreFromRubric, type RubricBand } from "@/lib/performance";
 import { ExamRubricEditor } from "@/components/exams/ExamRubricEditor";
-import { canManageStudents } from "@/lib/access";
+import { canManageStudents, canManageTermReports } from "@/lib/access";
 import { notifySchoolAdmins } from "@/lib/school-updates";
 import { sendResultsPublishedAlerts } from "@/lib/family-alerts";
 
@@ -633,6 +633,13 @@ export default function ExamDetail() {
         </div>
       </PageHeader>
 
+      <TermWeightCard
+        examId={exam.id}
+        weight={exam.term_weight}
+        canEdit={canManageTermReports(userRole)}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["exam", id] })}
+      />
+
       {id && (
         <ExamRubricEditor
           examId={id}
@@ -824,5 +831,71 @@ export default function ExamDetail() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * How much of the term total this exam carries: CA1 20, CA2 20, the exam 60.
+ * Blank leaves it out of the term report, which is what every exam created
+ * before term reports existed does.
+ */
+function TermWeightCard({
+  examId, weight, canEdit, onSaved,
+}: {
+  examId: string;
+  weight: number | null;
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const [value, setValue] = useState(weight === null ? "" : String(weight));
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setValue(weight === null ? "" : String(weight)), [weight]);
+
+  const next = value.trim() === "" ? null : Number(value);
+  const invalid = next !== null && !(next > 0 && next <= 100);
+  const changed = next !== (weight === null ? null : Number(weight));
+
+  const save = async () => {
+    if (invalid || !changed) return;
+    setSaving(true);
+    const { error } = await supabase.from("exams").update({ term_weight: next }).eq("id", examId);
+    setSaving(false);
+    if (error) toast.error(getErrorMessage(error, "Could not save the term weight."));
+    else { toast.success(next === null ? "Left out of the term report" : `Counts for ${next}% of the term`); onSaved(); }
+  };
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center gap-3 py-3 text-sm">
+        <span className="font-medium">Term report</span>
+        {canEdit ? (
+          <>
+            <span className="text-muted-foreground">counts for</span>
+            <Input
+              type="number"
+              min="1"
+              max="100"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="—"
+              aria-label="Term report weight"
+              className="h-8 w-20"
+            />
+            <span className="text-muted-foreground">% of the term total</span>
+            {changed && (
+              <Button size="sm" variant="secondary" onClick={save} disabled={saving || invalid}>
+                {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Save
+              </Button>
+            )}
+            {invalid && <span className="text-xs text-destructive">Between 1 and 100, or blank.</span>}
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            {weight === null ? "Not part of the term report" : `Counts for ${weight}% of the term total`}
+          </span>
+        )}
+      </CardContent>
+    </Card>
   );
 }

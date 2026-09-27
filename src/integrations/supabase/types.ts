@@ -1114,6 +1114,7 @@ export type Database = {
           name: string
           school_id: string
           status: string
+          term_weight: number | null
           updated_at: string
           weight: number
         }
@@ -1128,6 +1129,7 @@ export type Database = {
           name: string
           school_id: string
           status?: string
+          term_weight?: number | null
           updated_at?: string
           weight?: number
         }
@@ -1142,6 +1144,7 @@ export type Database = {
           name?: string
           school_id?: string
           status?: string
+          term_weight?: number | null
           updated_at?: string
           weight?: number
         }
@@ -3401,6 +3404,138 @@ export type Database = {
         }
         Relationships: []
       }
+      term_report_comments: {
+        Row: {
+          academic_period_id: string
+          body: string
+          id: string
+          kind: string
+          student_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_period_id: string
+          body: string
+          id?: string
+          kind: string
+          student_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_period_id?: string
+          body?: string
+          id?: string
+          kind?: string
+          student_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_report_comments_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_report_comments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_report_ratings: {
+        Row: {
+          academic_period_id: string
+          domain: string
+          id: string
+          rating: number
+          student_id: string
+          trait: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_period_id: string
+          domain: string
+          id?: string
+          rating: number
+          student_id: string
+          trait: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_period_id?: string
+          domain?: string
+          id?: string
+          rating?: number
+          student_id?: string
+          trait?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_report_ratings_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_report_ratings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_report_releases: {
+        Row: {
+          academic_period_id: string
+          class_id: string
+          id: string
+          released_at: string
+          released_by: string | null
+        }
+        Insert: {
+          academic_period_id: string
+          class_id: string
+          id?: string
+          released_at?: string
+          released_by?: string | null
+        }
+        Update: {
+          academic_period_id?: string
+          class_id?: string
+          id?: string
+          released_at?: string
+          released_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_report_releases_academic_period_id_fkey"
+            columns: ["academic_period_id"]
+            isOneToOne: false
+            referencedRelation: "academic_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_report_releases_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timetable_entries: {
         Row: {
           academic_period_id: string
@@ -3850,6 +3985,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      holds_class_of: { Args: { _student_id: string }; Returns: boolean }
+      is_academic_manager: { Args: { _user_id: string }; Returns: boolean }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
       is_school_manager: { Args: { _user_id: string }; Returns: boolean }
@@ -3952,10 +4089,19 @@ export type Database = {
         }[]
       }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
+      student_org_id: { Args: { _student_id: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
+      term_report: {
+        Args: { _class_id: string; _period_id: string }
+        Returns: Json
+      }
+      term_report_released: {
+        Args: { _period_id: string; _student_id: string }
+        Returns: boolean
+      }
       verify_queue_drain_token: { Args: { t: string }; Returns: boolean }
       wall_recipient_names: {
         Args: { _school_id: string }

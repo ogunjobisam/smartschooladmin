@@ -15,6 +15,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { sortBySection } from "@/lib/sections";
 
+const EVERY_CLASS = "__every_class__";
+
 interface CreateExamDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,6 +30,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
   const [periodId, setPeriodId] = useState("");
   const [examDate, setExamDate] = useState<Date>();
   const [maxScore, setMaxScore] = useState("100");
+  const [termWeight, setTermWeight] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: classes = [] } = useQuery({
@@ -48,24 +51,33 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
     },
   });
 
+  const weight = termWeight.trim() === "" ? null : Number(termWeight);
+  const weightInvalid = weight !== null && !(weight > 0 && weight <= 100);
+
   const handleCreate = async () => {
-    if (!schoolId || !name.trim()) return;
+    if (!schoolId || !name.trim() || weightInvalid) return;
     setSaving(true);
 
-    const { error } = await supabase.from("exams").insert({
-      school_id: schoolId,
-      name: name.trim(),
-      class_id: classId || null,
-      academic_period_id: periodId || null,
-      exam_date: examDate ? format(examDate, "yyyy-MM-dd") : null,
-      max_score: parseInt(maxScore) || 100,
-      created_by: user?.id,
-    });
+    // CA1, CA2 and the exam are set once per term but sat by every arm, so
+    // "Every class" creates the same assessment for each one in one go.
+    const targets = classId === EVERY_CLASS ? classes.map((c) => c.id) : [classId || null];
+    const { error } = await supabase.from("exams").insert(
+      targets.map((target) => ({
+        school_id: schoolId,
+        name: name.trim(),
+        class_id: target,
+        academic_period_id: periodId || null,
+        exam_date: examDate ? format(examDate, "yyyy-MM-dd") : null,
+        max_score: parseInt(maxScore) || 100,
+        term_weight: weight,
+        created_by: user?.id,
+      }))
+    );
 
     setSaving(false);
     if (error) toast.error("Failed to create exam");
     else {
-      toast.success("Exam created");
+      toast.success(targets.length > 1 ? `Created for ${targets.length} classes` : "Exam created");
       queryClient.invalidateQueries({ queryKey: ["exams"] });
       onOpenChange(false);
       setName("");
@@ -73,6 +85,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
       setPeriodId("");
       setExamDate(undefined);
       setMaxScore("100");
+      setTermWeight("");
     }
   };
 
@@ -93,6 +106,7 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
               <Select value={classId} onValueChange={setClassId}>
                 <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
+                  {classes.length > 1 && <SelectItem value={EVERY_CLASS}>Every class</SelectItem>}
                   {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -127,7 +141,24 @@ export function CreateExamDialog({ open, onOpenChange }: CreateExamDialogProps) 
               <Input type="number" value={maxScore} onChange={(e) => setMaxScore(e.target.value)} />
             </div>
           </div>
-          <Button onClick={handleCreate} disabled={!name.trim() || saving} className="w-full">
+          <div className="space-y-2">
+            <Label htmlFor="term-weight">Term report weight (%)</Label>
+            <Input
+              id="term-weight"
+              type="number"
+              min="1"
+              max="100"
+              value={termWeight}
+              onChange={(e) => setTermWeight(e.target.value)}
+              placeholder="e.g. 20 for a CA, 60 for the exam"
+            />
+            <p className={cn("text-xs", weightInvalid ? "text-destructive" : "text-muted-foreground")}>
+              {weightInvalid
+                ? "Between 1 and 100."
+                : "How much of the term total this counts for. Leave blank if it is not part of the term report."}
+            </p>
+          </div>
+          <Button onClick={handleCreate} disabled={!name.trim() || saving || weightInvalid} className="w-full">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create Exam
           </Button>
