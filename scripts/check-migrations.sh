@@ -165,7 +165,7 @@ student_guard=$(target -c "
 pass "has_role() still excludes 'student' for super_admin"
 
 # A crude but effective check that a migration was not silently dropped.
-expected_tables="ai_usage_events applications class_teachers school_events school_notices student_transport subject_teachers term_report_comments term_report_ratings term_report_releases transport_routes transport_stops"
+expected_tables="ai_usage_events applications cbt_answers cbt_attempts cbt_questions cbt_test_questions cbt_tests class_teachers school_events school_notices student_transport subject_teachers term_report_comments term_report_ratings term_report_releases transport_routes transport_stops"
 for table in $expected_tables; do
   exists=$(target -c "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename='$table';")
   [[ "$exists" == "1" ]] || fail "expected table '$table' is missing after replay"
