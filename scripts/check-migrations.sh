@@ -55,6 +55,30 @@ pass "$count migrations applied in filename order"
 # Each of these is a property someone could plausibly break with a careless
 # migration, and each has a real consequence.
 
+# Tables deliberately sealed against every client: row-level security on and no
+# policies at all, reached only by an edge function holding the service role key,
+# which bypasses row-level security. That is Supabase's shape for "clients cannot
+# touch this", and it is indistinguishable from an accidental lockout by
+# inspection — both are RLS-on with no readable policy. The only thing that
+# separates them is intent, so intent gets written down here.
+#
+# Adding a name to this list means: nothing signed in may ever read this table,
+# and we have decided that on purpose. It is a visible diff for a reason.
+#
+#   email_unsubscribe_tokens — (email, token) for every address the platform has
+#     ever emailed. Written and read only by process-message-queue. A policy
+#     admitting authenticated would let any signed-in user enumerate those
+#     addresses and the token that unsubscribes each one.
+#
+# NOTE: do not be tempted to infer this from grants instead. In the replay
+# database anon and authenticated hold SELECT on only 29 of the 72 public tables
+# — Supabase's default privileges are not part of the migration set — so a grant
+# test would quietly skip schools, students, invoices and 40 others and report
+# green while checking almost nothing.
+PRIVATE_TABLES="email_unsubscribe_tokens"
+
+private_sql=$(printf "'%s'," $PRIVATE_TABLES); private_sql="${private_sql%,}"
+
 # Row-level security with no readable policy locks every user out of the table.
 locked=$(target -c "
   SELECT coalesce(string_agg(c.relname, ', ' ORDER BY c.relname), '')
@@ -62,12 +86,33 @@ locked=$(target -c "
   WHERE c.relnamespace = 'public'::regnamespace
     AND c.relkind = 'r'
     AND c.relrowsecurity
+    AND c.relname NOT IN ($private_sql)
     AND NOT EXISTS (
       SELECT 1 FROM pg_policy p
       WHERE p.polrelid = c.oid AND p.polcmd IN ('r', '*')
     );")
 [[ -z "$locked" ]] || fail "tables have row-level security on but no readable policy: $locked"
 pass "every table with row-level security can still be read by someone"
+
+# …and the exemptions do not rot. A sealed table that has since gained a policy
+# is no longer sealed, so the entry is stale and someone should re-read it
+# rather than let it keep a real lockout hidden.
+unsealed=$(target -c "
+  SELECT coalesce(string_agg(c.relname, ', ' ORDER BY c.relname), '')
+  FROM pg_class c
+  WHERE c.relnamespace = 'public'::regnamespace
+    AND c.relname IN ($private_sql)
+    AND (NOT c.relrowsecurity OR EXISTS (
+      SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid
+    ));")
+[[ -z "$unsealed" ]] || fail "listed as private but no longer sealed — drop from PRIVATE_TABLES: $unsealed"
+
+missing_private=$(target -c "
+  SELECT coalesce(string_agg(n, ', '), '')
+  FROM unnest(ARRAY[$private_sql]) n
+  WHERE to_regclass('public.' || n) IS NULL;")
+[[ -z "$missing_private" ]] || fail "listed as private but no longer exists — drop from PRIVATE_TABLES: $missing_private"
+pass "every deliberately private table is still sealed"
 
 # Applications and notices are written only by the admissions edge function
 # using the service role. A policy granting anon or PUBLIC would expose every
