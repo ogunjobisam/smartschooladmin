@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { canAssignRole, ROLE_RANK } from "../_shared/caller-roles.ts";
+import { canAssignRole, ROLE_RANK, targetRolesInScope } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -224,9 +224,16 @@ Deno.serve(async (req) => {
      * A user may now hold several roles, so every management action works on the
      * target's whole role set: the caller must outrank each of the target's
      * existing roles, and school-level callers may only touch their own school.
+     *
+     * Only the target's roles in the caller's organisation count, and a target
+     * with none there is refused outright: without that, an admin of any
+     * organisation could change the roles of a user in another one.
      */
     const guardTarget = async (userId: string) => {
-      const existing = await rolesOf(adminClient, userId);
+      const existing = targetRolesInScope(callerRole, await rolesOf(adminClient, userId));
+      if (!existing.length) {
+        return { error: jsonResponse({ error: "That user is not in your organisation" }, 403), existing };
+      }
       for (const r of existing) {
         if (!canAssignRole(callerRole.role, r.role)) {
           return { error: jsonResponse({ error: `Your role cannot manage a ${r.role}` }, 403), existing };
@@ -302,6 +309,8 @@ Deno.serve(async (req) => {
 
       let query = adminClient.from("user_roles").update({ role: new_role }).eq("user_id", user_id);
       if (old_role) query = query.eq("role", old_role);
+      // Their roles in any other organisation are not this caller's to change.
+      if (callerRole.role !== "super_admin") query = query.eq("org_id", callerRole.org_id!);
       const { error } = await query;
       if (error) return jsonResponse({ error: error.message }, 400);
 
@@ -360,6 +369,7 @@ Deno.serve(async (req) => {
 
       let query = adminClient.from("user_roles").delete().eq("user_id", user_id);
       if (roleToRemove) query = query.eq("role", roleToRemove);
+      if (callerRole.role !== "super_admin") query = query.eq("org_id", callerRole.org_id!);
       const { error } = await query;
       if (error) return jsonResponse({ error: error.message }, 400);
       await logRoleEvent(adminClient, {

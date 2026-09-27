@@ -15,7 +15,7 @@ import { logAudit } from "@/lib/audit";
 const ALL_KEYS = EXPORT_DATASETS.map((d) => d.key);
 
 function downloadZip(bytes: Uint8Array, filename: string) {
-  const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+  const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: "application/zip" }));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
