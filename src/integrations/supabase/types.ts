@@ -1881,6 +1881,7 @@ export type Database = {
       payment_transactions: {
         Row: {
           amount: number
+          claimed_at: string | null
           created_at: string
           gateway: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference: string | null
@@ -1896,6 +1897,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           gateway?: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference?: string | null
@@ -1911,6 +1913,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           gateway?: Database["public"]["Enums"]["payment_gateway"]
           gateway_reference?: string | null
@@ -2175,6 +2178,7 @@ export type Database = {
         Row: {
           academic_period_id: string | null
           amount: number
+          claimed_at: string | null
           created_at: string
           currency: string
           gateway: string
@@ -2192,6 +2196,7 @@ export type Database = {
         Insert: {
           academic_period_id?: string | null
           amount: number
+          claimed_at?: string | null
           created_at?: string
           currency?: string
           gateway: string
@@ -2209,6 +2214,7 @@ export type Database = {
         Update: {
           academic_period_id?: string | null
           amount?: number
+          claimed_at?: string | null
           created_at?: string
           currency?: string
           gateway?: string
@@ -4149,6 +4155,7 @@ export type Database = {
         }[]
       }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
+      school_in_my_scope: { Args: { _school_id: string }; Returns: boolean }
       score_withheld_from_family: {
         Args: { _exam_id: string; _student_id: string }
         Returns: boolean
