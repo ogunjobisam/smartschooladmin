@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { administers, fetchCallerRoles } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,22 +37,22 @@ serve(async (req) => {
     // bypasses RLS. Prove the caller holds a billing role in the org that owns
     // this school before writing anything into it.
     const BILLING_ROLES = ["super_admin", "proprietor", "group_admin", "school_admin", "principal", "bursar", "finance_officer"];
-    const { data: callerRole } = await supabase
-      .from("user_roles")
-      .select("role, org_id")
-      .eq("user_id", user.id)
-      .in("role", BILLING_ROLES)
-      .limit(1)
-      .maybeSingle();
-    if (!callerRole) return jsonError("Forbidden — you do not have permission to generate invoices", 403);
-
+    // The school is resolved first so the role question can be asked about it.
+    // Picking one role row and scoping the school lookup by its org — the old
+    // shape — denied a multi-org billing admin their own school at random.
     const { data: targetSchool } = await supabase
       .from("schools")
       .select("id, org_id")
       .eq("id", school_id)
-      .eq("org_id", callerRole.org_id)
       .maybeSingle();
     if (!targetSchool) return jsonError("Forbidden — school does not belong to your organisation", 403);
+
+    const callerRole = administers(await fetchCallerRoles(supabase, user.id), {
+      allowed: BILLING_ROLES,
+      orgId: targetSchool.org_id as string,
+      schoolId: school_id,
+    });
+    if (!callerRole) return jsonError("Forbidden — you do not have permission to generate invoices", 403);
 
     // 1. Get fee schedule with class & period info — must belong to the same school
     const { data: schedule, error: schedErr } = await supabase

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchCallerRoles, primaryRole } from "../_shared/caller-roles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,12 +90,14 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: callerRole } = await admin
-      .from("user_roles")
-      .select("role, org_id, school_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+    // This handler is not told which organisation to analyse — it picks one —
+    // so it needs the caller's *most senior* role, not whichever row PostgREST
+    // returned first. The old `.limit(1)` with no ORDER BY meant someone who
+    // teaches at one school and runs another could have `callerRole.role` come
+    // back as either, which decides both the analyses they may run (below) and
+    // whose data gets analysed. primaryRole() uses the same ordering as the
+    // database's primary_user_role(), so the two cannot disagree.
+    const callerRole = primaryRole(await fetchCallerRoles(admin, user.id));
     if (!callerRole?.org_id) return json({ error: "No organisation for this account" }, 403);
 
     const body = await req.json();
