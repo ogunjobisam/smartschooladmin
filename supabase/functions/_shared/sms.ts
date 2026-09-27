@@ -9,6 +9,7 @@
  *
  * Plain TypeScript with no Deno or npm imports, so vitest can run it directly.
  */
+import { termiiProvider } from "./termii.ts";
 
 // ---------------------------------------------------------------------------
 // Phone numbers
@@ -162,7 +163,9 @@ export type SmsSendOutcome =
   /** Nothing left the building: the text was only recorded, never delivered. */
   | { status: "simulated"; providerMessageId: string }
   | { status: "retry"; error: string }
-  | { status: "failed"; error: string };
+  | { status: "failed"; error: string }
+  /** The provider account, not the message, is the problem: wait for it to be fixed. */
+  | { status: "unconfigured"; error: string };
 
 export interface SmsProvider {
   /** Recorded on the queue row and the usage log. */
@@ -190,18 +193,32 @@ export type ProviderChoice =
   | { provider: SmsProvider }
   | { provider: null; reason: string };
 
+export interface SmsEnv {
+  SMS_PROVIDER?: string | null;
+  TERMII_API_KEY?: string | null;
+  TERMII_BASE_URL?: string | null;
+  TERMII_CHANNEL?: string | null;
+}
+
 /**
- * Which provider SMS_PROVIDER names. "sandbox" simulates; real providers are
- * named here but not wired, so choosing one reports that plainly instead of
- * quietly doing nothing. Unset means SMS stays queued, exactly as before.
+ * Which provider SMS_PROVIDER names. "sandbox" simulates; "termii" delivers
+ * once its API key is set. A provider that is named but not usable reports why
+ * instead of quietly doing nothing, and SMS stays queued meanwhile.
  */
-export function chooseSmsProvider(env: { SMS_PROVIDER?: string | null }): ProviderChoice {
+export function chooseSmsProvider(env: SmsEnv): ProviderChoice {
   const name = (env.SMS_PROVIDER ?? "").trim().toLowerCase();
   if (!name) {
     return { provider: null, reason: "No SMS provider configured. SMS messages stay queued until one is added." };
   }
   if (name === "sandbox") return { provider: sandboxProvider };
-  if (name === "termii" || name === "africastalking") {
+  if (name === "termii") {
+    const apiKey = (env.TERMII_API_KEY ?? "").trim();
+    if (!apiKey) {
+      return { provider: null, reason: "SMS_PROVIDER is termii but TERMII_API_KEY is not set. SMS messages stay queued." };
+    }
+    return { provider: termiiProvider({ apiKey, baseUrl: env.TERMII_BASE_URL, channel: env.TERMII_CHANNEL }) };
+  }
+  if (name === "africastalking") {
     return { provider: null, reason: `The ${name} SMS provider is not connected yet. SMS messages stay queued.` };
   }
   return { provider: null, reason: `Unknown SMS provider "${name}". SMS messages stay queued.` };
@@ -296,6 +313,7 @@ export async function deliverSms(
   }
 
   // The provider did not take it: give the credits back before anything else.
+  // An account problem refunds too, and leaves the message queued untouched.
   if (provider.delivers) await ledger.rpc("refund_sms", { _queue_id: row.id });
-  return { status: outcome.status, error: `${provider.name}: ${outcome.error}`.slice(0, 400) };
+  return { status: outcome.status, error: `${provider.name}: ${outcome.error}`.slice(0, 500) };
 }

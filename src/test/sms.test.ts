@@ -89,10 +89,22 @@ describe("chooseSmsProvider", () => {
     expect(chooseSmsProvider({ SMS_PROVIDER: " Sandbox " }).provider).toBe(sandboxProvider);
   });
 
-  it("says plainly that a real provider is not connected yet, rather than pretending", () => {
-    const choice = chooseSmsProvider({ SMS_PROVIDER: "termii" });
+  it("says plainly that a provider is not connected yet, rather than pretending", () => {
+    const choice = chooseSmsProvider({ SMS_PROVIDER: "africastalking" });
     expect(choice.provider).toBeNull();
     expect("reason" in choice && choice.reason).toMatch(/not connected yet/);
+  });
+
+  it("will not pick Termii without its API key, and says which secret is missing", () => {
+    const choice = chooseSmsProvider({ SMS_PROVIDER: "termii", TERMII_API_KEY: "  " });
+    expect(choice.provider).toBeNull();
+    expect("reason" in choice && choice.reason).toMatch(/TERMII_API_KEY/);
+  });
+
+  it("picks Termii once its key is set", () => {
+    const choice = chooseSmsProvider({ SMS_PROVIDER: "Termii", TERMII_API_KEY: "key" });
+    expect(choice.provider?.name).toBe("termii");
+    expect(choice.provider?.delivers).toBe(true);
   });
 });
 
@@ -199,5 +211,23 @@ describe("deliverSms", () => {
     const result = await deliverSms(row, l, provider(new Error("socket hang up")), "", "X");
     expect(result).toEqual({ status: "retry", error: "test: socket hang up" });
     expect(calls.map((c) => c.fn)).toEqual(["charge_sms", "refund_sms"]);
+  });
+});
+
+describe("deliverSms with a provider account problem", () => {
+  it("refunds and leaves the message queued rather than failing it", async () => {
+    const calls: string[] = [];
+    const ledger: SmsLedger = {
+      rpc: async (fn) => { calls.push(fn); return { data: true, error: null }; },
+      from: () => ({ update: () => ({ eq: async () => undefined }) }),
+    };
+    const provider: SmsProvider = {
+      name: "termii",
+      delivers: true,
+      send: async () => ({ status: "unconfigured", error: "sender ID not approved" }),
+    };
+    const result = await deliverSms({ id: "r", org_id: "o", recipient: "08031234567", body: "Hi" }, ledger, provider, "", "X");
+    expect(result.status).toBe("unconfigured");
+    expect(calls).toEqual(["charge_sms", "refund_sms"]);
   });
 });

@@ -425,7 +425,12 @@ Deno.serve(async (req) => {
 
 
     // One decision per drain, not per message.
-    const smsChoice = chooseSmsProvider({ SMS_PROVIDER: Deno.env.get("SMS_PROVIDER") });
+    const smsChoice = chooseSmsProvider({
+      SMS_PROVIDER: Deno.env.get("SMS_PROVIDER"),
+      TERMII_API_KEY: Deno.env.get("TERMII_API_KEY"),
+      TERMII_BASE_URL: Deno.env.get("TERMII_BASE_URL"),
+      TERMII_CHANNEL: Deno.env.get("TERMII_CHANNEL"),
+    });
     const smsProvider = smsChoice.provider;
     const smsMissing = "reason" in smsChoice ? smsChoice.reason : "";
     const smsSenderId = validSenderId(Deno.env.get("SMS_SENDER_ID"));
