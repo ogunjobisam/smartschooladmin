@@ -993,4 +993,109 @@ SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 1,
   'after release a parent cannot see their child''s ratings');
 COMMIT;
 
+-- ---------------------------------------------------------------------------
+-- A web address for each school (20260927190000)
+-- ---------------------------------------------------------------------------
+-- The slug and custom domain are validated by a trigger, not row-level
+-- security, but the question is the same: can a signed-in school lead do more
+-- than they should? A custom domain is a paid extra and points traffic at us,
+-- so a principal must not be able to grant themselves one.
+INSERT INTO auth.users (id, email) VALUES
+  ('f1000000-0000-0000-0000-00000000000a', 'principal@example.test'),
+  ('f1000000-0000-0000-0000-00000000000b', 'platform@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('f1000000-0000-0000-0000-00000000000a', 'principal', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('f1000000-0000-0000-0000-00000000000b', 'super_admin', NULL, NULL);
+
+-- A slug saved before these rules existed, too short to pass them now. Written
+-- with the trigger off, which is the only way live data like this could exist.
+ALTER TABLE schools DISABLE TRIGGER schools_validate_web_address;
+UPDATE schools SET admissions_slug = 'ga' WHERE id = '22222222-2222-2222-2222-222222222222';
+ALTER TABLE schools ENABLE TRIGGER schools_validate_web_address;
+
+CREATE OR REPLACE FUNCTION pg_temp.update_rejected(sql text) RETURNS boolean
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE sql;
+  RETURN false;
+EXCEPTION WHEN check_violation OR insufficient_privilege THEN
+  RETURN true;
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+-- Positive control first: the principal can write to their school at all, or
+-- every "rejected" below would be row-level security and prove nothing.
+UPDATE schools SET phone = '0800 000 000' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT phone FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = '0800 000 000',
+  'a principal cannot update their own school, so the web-address assertions are vacuous');
+-- A school whose slug predates the rules can still save the admissions
+-- settings, which re-send the slug unchanged beside the intro. That is the
+-- reason this is a trigger comparing OLD and NEW rather than a CHECK. (A phone
+-- update alone proves nothing here: the trigger is UPDATE OF admissions_slug
+-- and never fires for it.)
+UPDATE schools SET admissions_slug = 'ga', admissions_intro = 'Admissions open'
+  WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT admissions_intro FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'Admissions open',
+  'a school with a pre-existing short slug cannot save its admissions settings');
+
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'portal.grace.com.ng' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a principal can give their school a custom domain');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'login' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can take the slug of an app route');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'www' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can take a reserved hostname as its slug');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'x' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can save a one-character slug');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET admissions_slug = 'grace--academy' WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a school can save a slug with a double hyphen');
+
+UPDATE schools SET admissions_slug = 'Grace-Academy' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT admissions_slug FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'grace-academy',
+  'a valid slug was not saved, or not lowercased');
+COMMIT;
+
+-- The platform edits schools from outside row-level security (the super_admin
+-- row carries no org, so no school policy admits it as a client). What is under
+-- test here is the trigger, so run as the table owner with the uid set.
+BEGIN;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000b';
+UPDATE schools SET custom_domain = 'Portal.Grace.com.ng.' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT custom_domain FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = 'portal.grace.com.ng',
+  'a super_admin cannot set a custom domain, or it was not normalised');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'https://grace.com.ng/portal' WHERE id = '22222222-2222-2222-2222-222222222223'$q$),
+  'a custom domain can carry a scheme and a path');
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = 'kingsqueens.smartschooladmin.app' WHERE id = '22222222-2222-2222-2222-222222222223'$q$),
+  'a custom domain can claim one of our own subdomains');
+COMMIT;
+
+-- Two schools cannot share a host, whatever the case.
+SELECT public.assert(pg_temp.update_rejected(
+  $q$DO $d$ BEGIN
+       UPDATE schools SET custom_domain = 'PORTAL.grace.com.ng' WHERE id = '22222222-2222-2222-2222-222222222223';
+     EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION USING ERRCODE = 'check_violation';
+     END $d$$q$),
+  'two schools can share a custom domain');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+-- Once set, the school cannot move or drop it either.
+SELECT public.assert(pg_temp.update_rejected(
+  $q$UPDATE schools SET custom_domain = NULL WHERE id = '22222222-2222-2222-2222-222222222222'$q$),
+  'a principal can remove their school''s custom domain');
+-- …and still edits everything else.
+UPDATE schools SET phone = '0800 111 111' WHERE id = '22222222-2222-2222-2222-222222222222';
+SELECT public.assert((SELECT phone FROM schools WHERE id = '22222222-2222-2222-2222-222222222222') = '0800 111 111',
+  'a school with a custom domain can no longer edit its own profile');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;

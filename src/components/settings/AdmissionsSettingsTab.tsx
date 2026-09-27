@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { admissionsUrl, toSlug } from "@/lib/admissions";
+import { admissionsUrl, slugProblem, toSlug } from "@/lib/admissions";
 import { getErrorMessage } from "@/lib/errors";
 
 interface AdmissionsSettingsTabProps {
@@ -57,6 +57,9 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
         if (error.code === "23505") {
           throw new Error("Another school already uses that link. Try a different one.");
         }
+        // Rejected by schools_validate_web_address(); its message is written
+        // for the office, so show it as it is.
+        if (error.code === "23514") throw new Error(error.message);
         throw error;
       }
     },
@@ -77,6 +80,7 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
   const savedSlug = school.admissions_slug;
   const publicUrl = savedSlug ? admissionsUrl(savedSlug, window.location.origin) : null;
   const unsavedSlug = cleanedSlug !== (savedSlug ?? "");
+  const slugError = cleanedSlug ? slugProblem(cleanedSlug, savedSlug) : null;
 
   const copyLink = async () => {
     if (!publicUrl) return;
@@ -127,7 +131,8 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
           {cleanedSlug !== slug && slug !== "" && (
             <p className="text-xs text-muted-foreground">Will be saved as <code>{cleanedSlug}</code>.</p>
           )}
-          {unsavedSlug && cleanedSlug !== "" && (
+          {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+          {unsavedSlug && cleanedSlug !== "" && !slugError && (
             <p className="text-xs text-warning-foreground">
               Save before sharing — the link below still points at the address you had before.
             </p>
@@ -166,7 +171,7 @@ export function AdmissionsSettingsTab({ schoolId, canManage }: AdmissionsSetting
         {canManage && (
           <Button
             className="gap-1.5"
-            disabled={save.isPending || !cleanedSlug}
+            disabled={save.isPending || !cleanedSlug || !!slugError}
             onClick={() => save.mutate({ admissions_slug: cleanedSlug, admissions_intro: intro.trim() || null })}
           >
             {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   admissionsUrl, ageOn, daysWaiting, funnelCounts, isOpenStatus, isStale,
-  nextStatuses, statusLabel, suggestSection, toSlug,
+  nextStatuses, RESERVED_SLUGS, slugProblem, statusLabel, suggestSection, toSlug,
 } from "@/lib/admissions";
 
 const NOW = new Date("2026-08-28T12:00:00Z");
@@ -112,6 +114,57 @@ describe("toSlug", () => {
   it("makes a school name safe for a URL", () => {
     expect(toSlug("Beloved Lifewalk Montessori Schools")).toBe("beloved-lifewalk-montessori-schools");
     expect(toSlug("  St. Mary's  Academy!! ")).toBe("st-mary-s-academy");
+  });
+});
+
+describe("reserved slugs", () => {
+  const root = path.resolve(__dirname, "../..");
+
+  it("match public.reserved_school_slugs() exactly", () => {
+    // The last migration to define it wins, as it does on the database.
+    const dir = path.join(root, "supabase/migrations");
+    const defs = fs.readdirSync(dir).sort()
+      .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+      .map((sql) => sql.match(/FUNCTION public\.reserved_school_slugs\(\)[\s\S]*?ARRAY\[([\s\S]*?)\]::text\[\]/))
+      .filter((m): m is RegExpMatchArray => m !== null);
+    expect(defs.length).toBeGreaterThan(0);
+    const body = defs[defs.length - 1][1].replace(/--.*$/gm, "");
+    const inSql = [...body.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    expect([...inSql].sort()).toEqual([...RESERVED_SLUGS].sort());
+  });
+
+  it("cover every top-level route, so no school can sit on one", () => {
+    const app = fs.readFileSync(path.join(root, "src/App.tsx"), "utf8");
+    const routes = new Set([...app.matchAll(/path="\/([^/":]+)/g)].map((m) => m[1]));
+    expect(routes.size).toBeGreaterThan(10);
+    const missing = [...routes].filter((r) => !RESERVED_SLUGS.includes(r));
+    expect(missing).toEqual([]);
+  });
+
+  it("include the hostnames kept back for subdomains", () => {
+    for (const host of ["www", "app", "admin", "api", "mail", "demo"]) {
+      expect(RESERVED_SLUGS).toContain(host);
+    }
+  });
+});
+
+describe("slugProblem", () => {
+  it("accepts an ordinary school slug", () => {
+    expect(slugProblem("kingsqueens")).toBeNull();
+  });
+
+  it("rejects reserved words and routes", () => {
+    expect(slugProblem("www")).toMatch(/reserved/);
+    expect(slugProblem("login")).toMatch(/reserved/);
+  });
+
+  it("rejects slugs too short or too long", () => {
+    expect(slugProblem("ab")).toMatch(/at least 3/);
+    expect(slugProblem("a".repeat(61))).toMatch(/60/);
+  });
+
+  it("never blocks the slug a school already has", () => {
+    expect(slugProblem("ab", "ab")).toBeNull();
   });
 });
 
