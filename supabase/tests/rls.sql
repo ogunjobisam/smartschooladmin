@@ -1258,4 +1258,60 @@ COMMIT;
 
 UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
 
+-- ---------------------------------------------------------------------------
+-- Term reports obey the fees gate (20260927190200)
+-- ---------------------------------------------------------------------------
+-- By here JSS3A's Term 1 report is released and Kemi's parent (d2…003) can
+-- read her report, two comments and one rating — the term report section above
+-- asserts exactly that, which is this block's positive control. Kemi has no
+-- invoices yet. Give her family a debt and switch withholding on.
+INSERT INTO invoices (id, school_id, student_id, academic_period_id, invoice_number, total_amount, status)
+  VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', '22222222-2222-2222-2222-222222222222',
+          'a3000000-0000-0000-0000-000000000001', '44444444-4444-4444-4444-444444444444', 'INV-K1', 800, 'pending');
+UPDATE schools SET withhold_results_until_paid = true WHERE id = '22222222-2222-2222-2222-222222222222';
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(coalesce(jsonb_array_length(r->'students'), 0) = 0
+    AND coalesce(jsonb_array_length(r->'subjects'), 0) = 0,
+    'a family with unpaid fees can read the released term report');
+
+  -- Staff are not affected: the principal still sees the whole arm.
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000001', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 3,
+    'withholding from a family hid the term report from the principal');
+END $$;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 0,
+  'a family with unpaid fees can read the report card comments');
+SELECT public.assert((SELECT count(*) FROM term_report_ratings) = 0,
+  'a family with unpaid fees can read the report card ratings');
+COMMIT;
+
+-- Paid: everything comes back.
+UPDATE invoices SET amount_paid = 800, status = 'paid' WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3';
+DO $$
+DECLARE r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'd2000000-0000-0000-0000-000000000003', true);
+  r := public.term_report('55555555-5555-5555-5555-555555555559', '44444444-4444-4444-4444-444444444444');
+  PERFORM public.assert(jsonb_array_length(r->'students') = 1,
+    'a family that has paid still cannot read the released term report');
+END $$;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd2000000-0000-0000-0000-000000000003';
+SELECT public.assert((SELECT count(*) FROM term_report_comments) = 2,
+  'a family that has paid still cannot read the report card comments');
+COMMIT;
+
+UPDATE schools SET withhold_results_until_paid = false WHERE id = '22222222-2222-2222-2222-222222222222';
+
 SELECT 'rls behaviour tests passed' AS result;
