@@ -455,4 +455,73 @@ SELECT public.assert((SELECT count(*) FROM class_teachers) = 2,
   'a teacher employed at two schools loses one school''s class assignments');
 COMMIT;
 
+
+-- ---------------------------------------------------------------------------
+-- Support staff see the school's people, and none of its money or marks
+-- ---------------------------------------------------------------------------
+-- The staff read policies on invoices, payments, fee schedules, exams and scores
+-- are denylists: "not a parent or pupil, and not teacher-only, therefore
+-- allowed". That shape admits every role the enum ever gains, silently, the
+-- moment it exists — so support_staff arrived able to read the whole
+-- organisation's cash book and mark book. The nav map hides those pages, but
+-- src/lib/access.ts says in its own header that it is not the boundary.
+--
+-- Two users, because "only" is the whole point of is_support_staff_only():
+-- someone who is *also* a bursar must keep the bursar's reach.
+INSERT INTO auth.users (id, email) VALUES
+  ('e0000000-0000-0000-0000-00000000000a', 'office@example.test'),
+  ('e0000000-0000-0000-0000-00000000000b', 'office-and-bursar@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('e0000000-0000-0000-0000-00000000000a', 'support_staff',
+   '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('e0000000-0000-0000-0000-00000000000b', 'support_staff',
+   '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('e0000000-0000-0000-0000-00000000000b', 'bursar',
+   '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000a';
+
+-- Without this the assertions below pass for the wrong reason: a user the helper
+-- does not consider support-staff-only never reaches the new clause at all.
+SELECT public.assert(public.is_support_staff_only(auth.uid()),
+  'the fixture user is not support-staff-only, so the new clause is never reached');
+
+-- The office does need the people and the day.
+SELECT public.assert((SELECT count(*) FROM students) = 1,
+  'support staff cannot see the school''s students');
+SELECT public.assert((SELECT count(*) FROM staff) >= 1,
+  'support staff cannot see the school''s staff directory');
+SELECT public.assert((SELECT count(*) FROM classes) >= 1,
+  'support staff cannot see the school''s classes');
+
+-- And none of the money.
+SELECT public.assert((SELECT count(*) FROM invoices) = 0,
+  'support staff can read the school''s invoices');
+SELECT public.assert((SELECT count(*) FROM payments) = 0,
+  'support staff can read the school''s payments');
+SELECT public.assert((SELECT count(*) FROM fee_schedules) = 0,
+  'support staff can read the school''s fee schedules');
+
+-- Nor the marks. A teacher-only user is narrowed to their own pupils here, so
+-- leaving support staff in the denylist would have given them more than a
+-- teacher gets, org-wide.
+SELECT public.assert((SELECT count(*) FROM exams) = 0,
+  'support staff can read the school''s exams');
+SELECT public.assert((SELECT count(*) FROM student_scores) = 0,
+  'support staff can read pupils'' scores');
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000b';
+-- Holding a more senior role must win: the helper is "most senior role held",
+-- not "holds this role", which is the bug is_teacher_only() shipped with.
+SELECT public.assert(NOT public.is_support_staff_only(auth.uid()),
+  'a support_staff who is also a bursar is being treated as support-staff-only');
+SELECT public.assert((SELECT count(*) FROM invoices) = 1,
+  'a support_staff who is also a bursar lost the bursar''s sight of invoices');
+COMMIT;
+
 SELECT 'rls behaviour tests passed' AS result;

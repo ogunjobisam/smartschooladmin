@@ -23,16 +23,19 @@ export function TopBar() {
 
       {/* Each school's own crest, so the bar belongs to the school rather than
           to the product. Falls back to the initial when none is set. */}
+      {/* h-12 in a h-16 bar: as large as the crest can go before the row stops
+          having any breathing room. The fallback tile matches it exactly, so the
+          bar does not jolt when a school with no crest set signs in. */}
       {branding.logoUrl ? (
         <img
           src={branding.logoUrl}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-contain ring-1 ring-gold/50"
+          className="h-12 w-12 shrink-0 rounded-full object-contain ring-1 ring-gold/50"
         />
       ) : (
         <span
           aria-hidden
-          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full bg-tile text-sm font-bold text-gold-on-primary ring-1 ring-gold/50"
+          className="font-display grid h-12 w-12 shrink-0 place-items-center rounded-full bg-tile text-base font-bold text-gold-on-primary ring-1 ring-gold/50"
         >
           {(branding.name || "S").charAt(0)}
         </span>

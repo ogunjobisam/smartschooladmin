@@ -19,6 +19,7 @@ export type AppRole =
   | "bursar"
   | "finance_officer"
   | "hr_admin"
+  | "support_staff"
   | "teacher"
   | "parent"
   | "student";
@@ -130,6 +131,15 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "announcements", "events", "preferences",
     "payroll", "reports", "my-pay",
     "users",
+  ],
+  // The school office. Whole-school reach across people and the day-to-day —
+  // who a pupil is, who their guardian is, where a class is, what was announced
+  // — and deliberately nothing with money or personnel in it: no fees, invoices,
+  // payments, arrears, payroll, approvals or reports. No "users" either: an
+  // office assistant does not hand out roles.
+  support_staff: [
+    "dashboard", "wall", "students", "guardians", "staff", "attendance", "timetable",
+    "announcements", "events", "achievements", "preferences", "my-pay",
   ],
   teacher: [
     "dashboard", "staff-portal", "wall", "students", "attendance", "timetable", "exams", "performance", "achievements",

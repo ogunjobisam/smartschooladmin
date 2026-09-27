@@ -43,12 +43,52 @@ export const ROLE_RANK: Record<string, number> = {
   bursar: 5,
   finance_officer: 6,
   hr_admin: 7,
-  teacher: 8,
-  parent: 9,
-  student: 10,
+  support_staff: 8,
+  teacher: 9,
+  parent: 10,
+  student: 11,
 };
 
 export const rankOf = (role: string): number => ROLE_RANK[role] ?? 99;
+
+/**
+ * Roles whose holders may appoint someone at their own level, not only below it.
+ *
+ * The rule everywhere else is "strictly below your own rank", which is right for
+ * almost everything: it is what stops a bursar appointing a bursar or a teacher
+ * appointing a teacher. But it also meant a school could never have two people
+ * who run it, because a school_admin could not appoint a school_admin — the one
+ * case where a peer appointment is the point rather than a mistake.
+ *
+ * Deliberately not a blanket `>=`. Widening the comparison itself would hand
+ * every role the power to clone itself, which is a much bigger change than the
+ * one asked for.
+ */
+export const PEER_ASSIGNABLE = ["school_admin", "principal"];
+
+/**
+ * May a caller holding `callerRole` grant `targetRole` to someone?
+ *
+ * This is the authority rule for every grant in invite-user, and the UI reads
+ * the same function so the dropdown cannot offer what the function will refuse.
+ * It says nothing about *scope* — same org, same school, and outranking the
+ * target's existing roles are all checked separately by the caller.
+ */
+export function canAssignRole(callerRole: string, targetRole: string): boolean {
+  const callerRank = ROLE_RANK[callerRole];
+  const targetRank = ROLE_RANK[targetRole];
+  if (callerRank === undefined || targetRank === undefined) return false;
+
+  // Its own branch, above the rank rules, so that a grep for "super_admin"
+  // lands on the one line that can hand out access to every organisation,
+  // school and setting on the platform. Only a super admin may, and no rank
+  // comparison can be loosened into granting it by accident.
+  if (targetRole === "super_admin") return callerRole === "super_admin";
+
+  if (callerRank === targetRank) return PEER_ASSIGNABLE.includes(targetRole);
+
+  return targetRank > callerRank;
+}
 
 /**
  * Roles that are not scoped to one organisation. A super_admin's row carries a

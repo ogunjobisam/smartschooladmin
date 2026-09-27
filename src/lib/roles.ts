@@ -5,7 +5,16 @@
  * is also a parent, a bursar who also runs HR. The one combination that must
  * never happen is a pupil holding a staff or admin role, because every staff
  * role grants sight of other people's records.
+ *
+ * Seniority and the "who may appoint whom" rule are not restated here: they come
+ * from the same module the invite-user edge function reads, because two copies is
+ * how a screen ends up offering a role the server then refuses.
  */
+import {
+  ROLE_RANK,
+  canAssignRole,
+  PEER_ASSIGNABLE,
+} from "../../supabase/functions/_shared/caller-roles";
 
 export interface RoleOption {
   value: string;
@@ -21,25 +30,13 @@ export const ROLES: RoleOption[] = [
   { value: "bursar", label: "Bursar" },
   { value: "finance_officer", label: "Finance Officer" },
   { value: "hr_admin", label: "HR Admin" },
+  { value: "support_staff", label: "Support Staff" },
   { value: "teacher", label: "Teacher" },
   { value: "parent", label: "Parent" },
   { value: "student", label: "Student" },
 ];
 
-/** Lower number = more senior. */
-export const ROLE_RANK: Record<string, number> = {
-  super_admin: 0,
-  proprietor: 1,
-  group_admin: 2,
-  school_admin: 3,
-  principal: 4,
-  bursar: 5,
-  finance_officer: 6,
-  hr_admin: 7,
-  teacher: 8,
-  parent: 9,
-  student: 10,
-};
+export { ROLE_RANK, canAssignRole, PEER_ASSIGNABLE };
 
 export const ADMIN_ROLES = [
   "super_admin", "proprietor", "group_admin", "school_admin",
@@ -79,6 +76,7 @@ export const roleBadgeClass: Record<string, string> = {
   bursar: "bg-warning/10 text-warning border-warning/20",
   finance_officer: "bg-warning/10 text-warning border-warning/20",
   hr_admin: "bg-muted text-muted-foreground",
+  support_staff: "bg-muted text-muted-foreground",
   teacher: "bg-muted text-muted-foreground",
   parent: "bg-muted text-muted-foreground",
   student: "bg-muted text-muted-foreground",
@@ -97,6 +95,7 @@ export const ROLE_DESCRIPTIONS: Record<string, string> = {
   bursar: "Owns fees and money in: schedules, invoices, payments, arrears and payroll.",
   finance_officer: "Handles day-to-day money work — invoices, payments and arrears only.",
   hr_admin: "Handles staff records, payroll and staff recognition.",
+  support_staff: "Office and support staff: sees the school's people, timetable and notices, but no money and no payroll.",
   teacher: "Sees only their own classes: attendance, exams, results and their own pay.",
   parent: "Sees only their own children: attendance, results, fees and invoices.",
   student: "Sees only their own records: results, attendance, fees and achievements.",

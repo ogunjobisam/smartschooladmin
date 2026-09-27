@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   administers,
   fetchCallerRoles,
@@ -150,10 +152,26 @@ describe("ROLE_RANK", () => {
   it("matches the database's role_rank() ordering", () => {
     // If these drift, a caller is gated one way by an edge function and another
     // by row-level security — which 20260829120000 already had to converge once.
-    expect(Object.entries(ROLE_RANK).sort((a, b) => a[1] - b[1]).map(([r]) => r)).toEqual([
-      "super_admin", "proprietor", "group_admin", "school_admin", "principal",
-      "bursar", "finance_officer", "hr_admin", "teacher", "parent", "student",
-    ]);
+    //
+    // Read out of the migration rather than restated here. A hand-written copy
+    // of the expected order is a third place to forget: adding support_staff to
+    // role_rank() and to this module left this assertion failing against a list
+    // that was only ever a transcription of the SQL.
+    const migrations = path.join(process.cwd(), "supabase", "migrations");
+    const latest = fs.readdirSync(migrations)
+      .filter((f) => fs.readFileSync(path.join(migrations, f), "utf8").includes("FUNCTION public.role_rank"))
+      .sort()
+      .pop();
+    expect(latest, "no migration defines role_rank()").toBeDefined();
+
+    const sql = fs.readFileSync(path.join(migrations, latest!), "utf8");
+    const body = sql.slice(sql.lastIndexOf("FUNCTION public.role_rank"));
+    const fromSql = [...body.matchAll(/WHEN '([a-z_]+)' THEN (\d+)/g)]
+      .map(([, role, rank]) => [role, Number(rank)] as const)
+      .sort((a, b) => a[1] - b[1]);
+
+    expect(fromSql.length).toBeGreaterThan(0);
+    expect(Object.fromEntries(fromSql)).toEqual(ROLE_RANK);
   });
 
   it("puts an unrecognised role last rather than first", () => {

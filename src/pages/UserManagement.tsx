@@ -31,7 +31,7 @@ import { Navigate } from "react-router-dom";
 import { getErrorMessage } from "@/lib/errors";
 import {
   ROLES, ROLE_RANK, ADMIN_ROLES, roleBadgeClass, roleLabel,
-  roleAllowedAlongside, primaryRole, rolesCompatible,
+  roleAllowedAlongside, primaryRole, rolesCompatible, canAssignRole,
 } from "@/lib/roles";
 
 /** True when a person holds two roles that are not allowed together. */
@@ -183,10 +183,11 @@ export default function UserManagement() {
     enabled: !!orgId && canViewAudit,
   });
 
-  const callerRank = ROLE_RANK[userRole || ""] ?? 99;
-
-  // Can only assign/see roles strictly below their own rank
-  const availableRoles = ROLES.filter((r) => (ROLE_RANK[r.value] ?? 99) > callerRank);
+  // Whatever the caller may actually grant. canAssignRole is the same function
+  // the invite-user edge function gates on, so this dropdown cannot offer a role
+  // the server will then refuse — which is how a school admin used to be shown
+  // "School Admin" and get a 403 for choosing it.
+  const availableRoles = ROLES.filter((r) => canAssignRole(userRole || "", r.value));
 
   // Roles that may be added to the selected user without clashing with what they hold.
   //
@@ -315,9 +316,14 @@ export default function UserManagement() {
     }
   };
 
-  /** The caller may manage a person only if they outrank all of their roles. */
+  /**
+   * The caller may manage a person only if they could have granted every role
+   * that person holds — the same rule guardTarget() applies server-side. Peers
+   * are included, so two school admins can manage each other; that is the point
+   * of letting a school have two.
+   */
   const canManage = (u: UserRow) =>
-    u.userId !== currentUser?.id && u.roles.every((r) => (ROLE_RANK[r.role] ?? 99) > callerRank);
+    u.userId !== currentUser?.id && u.roles.every((r) => canAssignRole(userRole || "", r.role));
 
   return (
     <div className="space-y-6">
