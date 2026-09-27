@@ -2494,6 +2494,51 @@ export type Database = {
           },
         ]
       }
+      result_holds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          family_message: string | null
+          id: string
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          family_message?: string | null
+          id?: string
+          reason: string
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          family_message?: string | null
+          id?: string
+          reason?: string
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_holds_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_holds_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       result_releases: {
         Row: {
           academic_period_id: string
@@ -2870,6 +2915,7 @@ export type Database = {
           primary_color: string | null
           tagline: string | null
           updated_at: string
+          withhold_overdue_only: boolean
           withhold_results_until_paid: boolean
         }
         Insert: {
@@ -2889,6 +2935,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_overdue_only?: boolean
           withhold_results_until_paid?: boolean
         }
         Update: {
@@ -2908,6 +2955,7 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
+          withhold_overdue_only?: boolean
           withhold_results_until_paid?: boolean
         }
         Relationships: [
@@ -4239,6 +4287,9 @@ export type Database = {
         Args: { _student_id: string }
         Returns: {
           academic_period_id: string
+          held: boolean
+          message: string
+          note: string
           outstanding: number
           period_name: string
         }[]
