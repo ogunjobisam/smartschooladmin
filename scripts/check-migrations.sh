@@ -69,13 +69,16 @@ pass "$count migrations applied in filename order"
 #     ever emailed. Written and read only by process-message-queue. A policy
 #     admitting authenticated would let any signed-in user enumerate those
 #     addresses and the token that unsubscribes each one.
+#   rate_limit_hits — per-IP and per-address hit counts for the public
+#     start-demo and admissions endpoints. Written only through
+#     consume_rate_limit(), which only the service role may call.
 #
 # NOTE: do not be tempted to infer this from grants instead. In the replay
 # database anon and authenticated hold SELECT on only 29 of the 72 public tables
 # — Supabase's default privileges are not part of the migration set — so a grant
 # test would quietly skip schools, students, invoices and 40 others and report
 # green while checking almost nothing.
-PRIVATE_TABLES="email_unsubscribe_tokens"
+PRIVATE_TABLES="email_unsubscribe_tokens rate_limit_hits"
 
 private_sql=$(printf "'%s'," $PRIVATE_TABLES); private_sql="${private_sql%,}"
 

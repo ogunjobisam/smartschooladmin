@@ -6,6 +6,7 @@ import { formatSender, replyToAddress } from "../_shared/sender.ts";
 import {
   chooseSmsProvider, deliverSms, validSenderId, type SmsDetail, type SmsLedger, type SmsProvider,
 } from "../_shared/sms.ts";
+import { timingSafeEqual } from "../_shared/abuse.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -308,7 +309,7 @@ Deno.serve(async (req) => {
     // signed-in admin draining their own. The scheduler runs inside the database
     // and holds a token kept in the vault, checked here — the service role key
     // is also accepted so a manual admin call still works.
-    let isScheduler = token === serviceKey;
+    let isScheduler = !!serviceKey && timingSafeEqual(token, serviceKey);
     if (!isScheduler && token && !token.includes(".")) {
       const { data: valid } = await admin.rpc("verify_queue_drain_token", { t: token });
       isScheduler = valid === true;

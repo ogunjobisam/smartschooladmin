@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { clientIp, containsLink, withinRateLimit } from "../_shared/abuse.ts";
 
 /**
  * Public admissions intake.
@@ -144,6 +145,23 @@ Deno.serve(async (req) => {
     if (!firstName || !lastName) return jsonResponse({ error: "The applicant's first and last name are required." }, 400);
     if (!guardianName) return jsonResponse({ error: "A parent or guardian name is required." }, 400);
     if (!guardianPhone) return jsonResponse({ error: "A phone number is required so the school can reach you." }, 400);
+    // These names go into an email sent from the platform's domain to an
+    // address the caller chooses, so a link in one made this a phishing relay.
+    if ([firstName, lastName, guardianName].some(containsLink)) {
+      return jsonResponse({ error: "Names cannot contain web addresses." }, 400);
+    }
+
+    // This form answers anyone, and every accepted application emails the
+    // school and the address given. Per caller, a family applying for several
+    // children fits comfortably; per school, a flood cannot bury the office.
+    const ip = clientIp(req.headers);
+    const allowed =
+      (await withinRateLimit(admin, `admissions:ip-hour:${ip}`, 5, 60 * 60)) &&
+      (await withinRateLimit(admin, `admissions:ip-day:${ip}`, 20, 24 * 60 * 60)) &&
+      (await withinRateLimit(admin, `admissions:school-day:${school.id}`, 300, 24 * 60 * 60));
+    if (!allowed) {
+      return jsonResponse({ error: "Too many applications from here. Please try again later." }, 429);
+    }
 
     const guardianEmail = clean(payload.guardian_email, 255);
     if (guardianEmail && !isEmail(guardianEmail)) {
@@ -227,7 +245,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (guardianEmail) {
+    // The acknowledgement goes to an address the caller typed, so cap how often
+    // any one address can be sent one, whoever is asking.
+    const acknowledge =
+      !!guardianEmail &&
+      (await withinRateLimit(admin, `admissions:ack-day:${guardianEmail.toLowerCase()}`, 3, 24 * 60 * 60));
+
+    if (guardianEmail && acknowledge) {
       messages.push({
         org_id: school.org_id,
         school_id: school.id,
