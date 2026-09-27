@@ -3813,6 +3813,7 @@ export type Database = {
         }[]
       }
       my_staff_id: { Args: never; Returns: string }
+      my_staff_ids: { Args: never; Returns: string[] }
       my_student_id: { Args: never; Returns: string }
       my_subscription: {
         Args: never
@@ -3840,6 +3841,8 @@ export type Database = {
         Returns: string
       }
       org_current_student_count: { Args: { _org_id: string }; Returns: number }
+      payroll_run_includes_me: { Args: { _run_id: string }; Returns: boolean }
+      payroll_run_released: { Args: { _run_id: string }; Returns: boolean }
       photo_path_owns_account: {
         Args: { _name: string; _user_id: string }
         Returns: boolean
