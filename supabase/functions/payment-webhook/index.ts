@@ -13,6 +13,9 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const service = createClient(SUPABASE_URL, SERVICE_KEY);
 
+/** How long a claim on a payment holds before another request may retake it. */
+const CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -117,6 +120,26 @@ async function finalisePayment(reference: string, provider: string) {
     return { ok: false, reason: "not_paid" };
   }
 
+  // Claim the transaction before recording anything. The status check above is
+  // not enough on its own: the gateway's webhook and the parent's return page
+  // (or a parent replaying it) can arrive together, all see "not successful",
+  // and each credit the invoice. This UPDATE is a single statement, so only one
+  // request can move claimed_at off null; the others back off. Claiming only
+  // after the gateway confirms payment means an early "not paid yet" does not
+  // block the webhook that follows, and a stale claim can be retaken so a
+  // request that died mid-way does not strand the payment.
+  const staleClaim = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString();
+  const { data: claimed } = await service
+    .from("payment_transactions")
+    .update({ claimed_at: new Date().toISOString() })
+    .eq("id", tx.id)
+    .neq("status", "successful")
+    .or(`claimed_at.is.null,claimed_at.lt.${staleClaim}`)
+    .select("id");
+  if (!claimed?.length) return { ok: true, reason: "already_recorded" };
+  const releaseClaim = () =>
+    service.from("payment_transactions").update({ claimed_at: null }).eq("id", tx.id);
+
   const amount = Math.min(Number(tx.amount), verified.amount);
 
   const { data: invoice } = await service
@@ -124,7 +147,10 @@ async function finalisePayment(reference: string, provider: string) {
     .select("id, invoice_number, total_amount, amount_paid, school_id, student_id")
     .eq("id", tx.invoice_id!)
     .maybeSingle();
-  if (!invoice) return { ok: false, reason: "invoice_missing" };
+  if (!invoice) {
+    await releaseClaim();
+    return { ok: false, reason: "invoice_missing" };
+  }
 
   const { data: payment } = await service
     .from("payments")
@@ -139,7 +165,10 @@ async function finalisePayment(reference: string, provider: string) {
     .select("id")
     .single();
 
-  if (!payment) return { ok: false, reason: "payment_insert_failed" };
+  if (!payment) {
+    await releaseClaim();
+    return { ok: false, reason: "payment_insert_failed" };
+  }
 
   await service.from("payment_allocations").insert({
     payment_id: payment.id,

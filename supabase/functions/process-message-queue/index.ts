@@ -370,7 +370,38 @@ Deno.serve(async (req) => {
     const { data: rows, error: fetchError } = await query;
     if (fetchError) throw fetchError;
 
-    const pending = (rows || []) as QueueRow[];
+    const fetched = (rows || []) as QueueRow[];
+
+    // Demo organisations never deliver. Anyone can start a demo without an
+    // account, add a "guardian" with any address and queue a message to them,
+    // which made this function an open relay on the platform's verified sending
+    // domain. Their messages are closed off as failed with the reason, so the
+    // demo's own Message Delivery screen says why instead of showing a stuck
+    // queue.
+    const orgIds = [...new Set(fetched.map((r) => r.org_id))];
+    const demoOrgIds = new Set<string>();
+    if (orgIds.length > 0) {
+      const { data: demoOrgs, error: demoError } = await admin
+        .from("organisation_groups")
+        .select("id")
+        .in("id", orgIds)
+        .eq("is_demo", true);
+      // Unknown means unsafe: send nothing this run rather than risk a demo's.
+      if (demoError) throw demoError;
+      for (const org of demoOrgs || []) demoOrgIds.add(org.id);
+    }
+    const withheld = fetched.filter((r) => demoOrgIds.has(r.org_id));
+    if (withheld.length > 0) {
+      await admin
+        .from("outbound_message_queue")
+        .update({
+          status: "failed",
+          error_message: "Demo schools do not send real email or SMS.",
+          processed_at: new Date().toISOString(),
+        })
+        .in("id", withheld.map((r) => r.id));
+    }
+    const pending = fetched.filter((r) => !demoOrgIds.has(r.org_id));
 
     // One lookup for the handful of distinct schools in the batch, rather than
     // a query per message. Names go on the From line; the school's own address
@@ -506,7 +537,8 @@ Deno.serve(async (req) => {
 
     return json({
       success: true,
-      considered: pending.length,
+      considered: fetched.length,
+      withheld_demo: withheld.length,
       sent,
       simulated,
       failed,
