@@ -27,6 +27,33 @@ Two consequences worth knowing:
   The file list looks fine in both the harmless and the harmful case; only the
   replay tells them apart.
 
+### Deploying a migration through Lovable
+
+Lovable's migration tool **always writes a copy** of the SQL it runs to
+`supabase/migrations/<its own timestamp>_<uuid>.sql` and commits it to `main` —
+and then reports "no files created or changed". It did so on every deploy on 27
+September, even when told in advance to list the file. Check git, not the
+report:
+
+- `git log` / `git diff --stat` on `main` since the merge: expect one copy per
+  migration applied, byte-identical to its original apart from a trailing
+  newline. Leave the copies in place — the live migration history records
+  their versions, and deleting them makes the repo disagree with production.
+- The copies are harmless only because every migration is safe to run twice.
+  That rule is what makes Lovable usable here; never relax it.
+- Ask for **one named file**, and say *do not apply any other migration*. Asked
+  to fix a build error, it once applied four unrelated migrations nobody had
+  asked for.
+- It also **regenerates `src/integrations/supabase/types.ts` from the live
+  database**. If a merged migration has not been applied yet, the types lose its
+  tables and `main` stops typechecking. So "every file is already applied",
+  above, is the goal rather than a guarantee: after merging a PR with a
+  migration, apply it, or the next deploy of anything else breaks the build.
+- If live applies migrations out of filename order, rebuild a database in the
+  live order (everything else, then the late ones) and run
+  `supabase/tests/rls.sql` against it. The normal replay re-runs the originals
+  after the copies and can hide a fix that was undone.
+
 ## 2. Never hardcode a colour
 
 `src/lib/theme.ts` derives ~30 HSL tokens from a school's two brand colours, and
