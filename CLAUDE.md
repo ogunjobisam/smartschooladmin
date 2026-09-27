@@ -116,7 +116,3 @@ npm run test:migrations  # needs a Postgres; see scripts/check-migrations.sh
 asserts eight invariants. It is the check that catches the class of problem in
 §1 and §4, and it is worth running against `main` itself after anything reorders
 the migration set.
-
-**CI has not started a runner in this repository since 9 September** — jobs die
-in 2–6 seconds with no steps and 404 logs, on `main` as much as any branch. Until
-that is fixed, local verification is the only verification, so run all of it.
