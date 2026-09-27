@@ -2183,6 +2183,289 @@ SELECT public.assert((SELECT min_percent FROM public.exam_grade_bands WHERE id =
   'support staff changed an exam''s grade bands');
 
 -- ---------------------------------------------------------------------------
+-- Computer-based testing (20260928000300)
+-- ---------------------------------------------------------------------------
+-- Fixture state reaching here: Ada (666…, user dbbbbbbb…) is enrolled in JSS1
+-- (555…555) for the current Term 1. The maths teacher (d1000000…01) is
+-- teacher-only and teaches Maths in JSS1; the plain teacher (deeeeeee…) is
+-- teacher-only at the same school and teaches nothing. Withholding is off.
+-- Every "cannot see" below has a positive control proving the rows exist.
+INSERT INTO auth.users (id, email) VALUES
+  ('c0b00000-0000-0000-0000-00000000000a', 'cbt.bursar@example.test'),
+  ('c0b00000-0000-0000-0000-00000000000b', 'cbt.other.pupil@example.test');
+INSERT INTO user_roles (user_id, role, org_id, school_id) VALUES
+  ('c0b00000-0000-0000-0000-00000000000a', 'bursar', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'),
+  ('c0b00000-0000-0000-0000-00000000000b', 'student', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+-- A pupil at the same school in a different class.
+INSERT INTO classes (id, school_id, name)
+  VALUES ('55555555-5555-5555-5555-5555555555c0', '22222222-2222-2222-2222-222222222222', 'JSS2 CBT');
+INSERT INTO students (id, school_id, first_name, last_name, user_id)
+  VALUES ('66666666-6666-6666-6666-6666666666c0', '22222222-2222-2222-2222-222222222222', 'Tobi', 'Ade',
+          'c0b00000-0000-0000-0000-00000000000b');
+INSERT INTO enrolments (student_id, class_id, academic_period_id)
+  VALUES ('66666666-6666-6666-6666-6666666666c0', '55555555-5555-5555-5555-5555555555c0', '44444444-4444-4444-4444-444444444444');
+-- The exam a graded CBT posts into, with Maths out of 40.
+INSERT INTO exams (id, school_id, academic_period_id, name, max_score)
+  VALUES ('77777777-7777-7777-7777-7777777777c0', '22222222-2222-2222-2222-222222222222',
+          '44444444-4444-4444-4444-444444444444', 'CBT mid-term', 100);
+INSERT INTO exam_subjects (exam_id, subject_id, max_score)
+  VALUES ('77777777-7777-7777-7777-7777777777c0', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 40);
+
+-- The maths teacher authors a bank, a graded test linked to the exam, and a
+-- practice test, all for JSS1. This is the positive control for authoring.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+INSERT INTO cbt_questions (id, school_id, subject_id, question_type, prompt, options, correct_option, marks) VALUES
+  ('c0000000-0000-0000-0000-0000000000a1', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+   'mcq', '7 x 8 = ?', '[{"id":"a","text":"54"},{"id":"b","text":"56"},{"id":"c","text":"58"}]', 'b', 2),
+  ('c0000000-0000-0000-0000-0000000000a2', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+   'true_false', '10 is even', '[{"id":"a","text":"True"},{"id":"b","text":"False"}]', 'a', 1);
+INSERT INTO cbt_tests (id, school_id, class_id, subject_id, exam_id, title, mode, duration_minutes, max_attempts) VALUES
+  ('c1000000-0000-0000-0000-0000000000a1', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '77777777-7777-7777-7777-7777777777c0', 'Maths CBT', 'graded', 30, 1),
+  ('c1000000-0000-0000-0000-0000000000a2', '22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', NULL, 'Maths practice', 'practice', 10, NULL);
+INSERT INTO cbt_test_questions (test_id, question_id, position) VALUES
+  ('c1000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a1', 1),
+  ('c1000000-0000-0000-0000-0000000000a1', 'c0000000-0000-0000-0000-0000000000a2', 2),
+  ('c1000000-0000-0000-0000-0000000000a2', 'c0000000-0000-0000-0000-0000000000a1', 1);
+UPDATE cbt_tests SET status = 'published'
+  WHERE id IN ('c1000000-0000-0000-0000-0000000000a1', 'c1000000-0000-0000-0000-0000000000a2');
+SELECT public.assert((SELECT count(*) FROM cbt_tests WHERE status = 'published') = 2,
+  'a teacher cannot publish CBT tests for a class they teach');
+COMMIT;
+SELECT public.assert((SELECT count(*) FROM public.cbt_questions) = 2 AND (SELECT count(*) FROM public.cbt_tests) = 2,
+  'the CBT fixture rows were not written, so every "cannot see" below would be vacuous');
+
+-- Positive control: a principal sees the bank and both tests.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f1000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 2, 'a principal cannot see the CBT question bank');
+SELECT public.assert((SELECT count(*) FROM cbt_tests) = 2, 'a principal cannot see the school''s CBT tests');
+COMMIT;
+
+-- A teacher at the school who does not teach JSS1 shares the bank but not the test.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'deeeeeee-0000-0000-0000-00000000000e';
+SELECT public.assert(public.is_teacher_only(auth.uid()),
+  'the unassigned teacher fixture is not teacher-only, so the class clause is never reached');
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 2, 'a teacher cannot see their school''s question bank');
+SELECT public.assert((SELECT count(*) FROM cbt_tests) = 0, 'a teacher can see CBT tests for a class they do not teach');
+SELECT public.assert((SELECT count(*) FROM cbt_test_questions) = 0, 'a teacher can see the paper of a class they do not teach');
+UPDATE cbt_tests SET title = 'hijacked' WHERE id = 'c1000000-0000-0000-0000-0000000000a1';
+COMMIT;
+SELECT public.assert((SELECT title FROM public.cbt_tests WHERE id = 'c1000000-0000-0000-0000-0000000000a1') = 'Maths CBT',
+  'a teacher edited a CBT test for a class they do not teach');
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    INSERT INTO cbt_tests (school_id, class_id, subject_id, title)
+      VALUES ('22222222-2222-2222-2222-222222222222', '55555555-5555-5555-5555-555555555555',
+              'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Sneaky');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher created a CBT test for a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- Staff outside the allowlist see no answer keys at all.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'c0b00000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 0, 'a bursar can read CBT answer keys');
+SELECT public.assert((SELECT count(*) FROM cbt_tests) = 0, 'a bursar can see CBT tests');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'e0000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 0, 'support staff can read CBT answer keys');
+SELECT public.assert((SELECT count(*) FROM cbt_tests) = 0, 'support staff can see CBT tests');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'f2000000-0000-0000-0000-00000000000a';
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 0, 'a parent can read CBT answer keys');
+COMMIT;
+
+-- The pupil: no table access at all, only the functions.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM cbt_questions) = 0, 'a pupil can read CBT answer keys');
+SELECT public.assert((SELECT count(*) FROM cbt_tests) = 0, 'a pupil can read CBT tests directly');
+SELECT public.assert((SELECT count(*) FROM cbt_test_questions) = 0, 'a pupil can read CBT papers directly');
+SELECT public.assert((SELECT count(*) FROM public.cbt_my_tests()) = 2,
+  'a pupil cannot see the published CBT tests for their class');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'c0b00000-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM public.cbt_my_tests()) = 0,
+  'a pupil can see CBT tests for a class they are not in');
+COMMIT;
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'c0b00000-0000-0000-0000-00000000000b', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    PERFORM public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a1');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a pupil started a CBT test for a class they are not in';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+SELECT public.assert(NOT has_function_privilege('anon', 'public.cbt_start_attempt(uuid)', 'EXECUTE'),
+  'anonymous callers can start CBT attempts');
+
+-- Ada sits the graded test.
+CREATE TEMP TABLE cbt_ctx (attempt_id uuid);
+GRANT ALL ON cbt_ctx TO authenticated;
+DO $$
+DECLARE _id uuid; _again uuid; paper jsonb; r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'dbbbbbbb-0000-0000-0000-00000000000b', true);
+  SET LOCAL ROLE authenticated;
+  _id := public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a1');
+  _again := public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a1');
+  PERFORM public.assert(_id = _again, 'starting a CBT test twice opened two sittings');
+  INSERT INTO cbt_ctx VALUES (_id);
+
+  paper := public.cbt_attempt_paper(_id);
+  PERFORM public.assert(jsonb_array_length(paper->'questions') = 2, 'the pupil''s paper does not carry both questions');
+  PERFORM public.assert(paper::text NOT LIKE '%correct%', 'the pupil''s paper leaks the answer key');
+
+  -- Latest sequence number wins, and a stale resend does not undo it.
+  PERFORM public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"a","seq":1}]');
+  PERFORM public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"b","seq":3},
+                                         {"question_id":"c0000000-0000-0000-0000-0000000000a2","option_id":"a","seq":4}]');
+  r := public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"c","seq":2}]');
+  PERFORM public.assert((r->>'last_seq')::int = 4, 'the attempt lost track of the highest sequence number');
+  PERFORM public.assert(public.cbt_attempt_paper(_id)->'answers'->>'c0000000-0000-0000-0000-0000000000a1' = 'b',
+    'a stale queued answer overwrote a newer one');
+  BEGIN
+    PERFORM public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"z","seq":9}]');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: an answer that is not one of the options was accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+
+  paper := public.cbt_submit_attempt(_id);
+  PERFORM public.assert(paper->>'status' = 'submitted', 'handing in did not submit the attempt');
+  PERFORM public.assert(paper->'score' = 'null'::jsonb, 'a graded test showed its score though show_score_after is off');
+  BEGIN
+    PERFORM public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a1');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a pupil sat a one-attempt test twice';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM LIKE 'RLS ASSERTION FAILED%' THEN RAISE; END IF;
+  END;
+  RESET ROLE;
+END $$;
+
+SELECT public.assert((SELECT score FROM public.cbt_attempts WHERE id = (SELECT attempt_id FROM cbt_ctx)) = 3,
+  'the CBT attempt was not marked 3 out of 3');
+SELECT public.assert((SELECT score FROM public.student_scores
+                       WHERE exam_id = '77777777-7777-7777-7777-7777777777c0'
+                         AND student_id = '66666666-6666-6666-6666-666666666666'
+                         AND subject_id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') = 40,
+  'a full-marks graded CBT did not post 40/40 into the linked exam');
+
+-- Another pupil cannot read or write Ada's sitting.
+DO $$
+DECLARE _id uuid := (SELECT attempt_id FROM cbt_ctx);
+BEGIN
+  PERFORM set_config('test.uid', 'c0b00000-0000-0000-0000-00000000000b', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    PERFORM public.cbt_attempt_paper(_id);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a pupil read another pupil''s CBT paper';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.cbt_save_answers(_id, '[]');
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a pupil wrote to another pupil''s CBT attempt';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- Attempts and answers: the teacher sees them, the pupil does not.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'd1000000-0000-0000-0000-000000000001';
+SELECT public.assert((SELECT count(*) FROM cbt_attempts) = 1, 'the class''s teacher cannot see CBT attempts');
+SELECT public.assert((SELECT count(*) FROM cbt_answers) = 2, 'the class''s teacher cannot see CBT answers');
+COMMIT;
+BEGIN;
+SET LOCAL ROLE authenticated;
+SET LOCAL test.uid = 'dbbbbbbb-0000-0000-0000-00000000000b';
+SELECT public.assert((SELECT count(*) FROM cbt_attempts) = 0, 'a pupil can read CBT attempts directly');
+SELECT public.assert((SELECT count(*) FROM cbt_answers) = 0, 'a pupil can read CBT answers (with marking) directly');
+COMMIT;
+
+-- Once sat, the paper and its questions are frozen.
+DO $$ BEGIN
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE cbt_questions SET correct_option = 'a' WHERE id = 'c0000000-0000-0000-0000-0000000000a1';
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: the answer key changed after pupils had answered';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    DELETE FROM cbt_test_questions WHERE test_id = 'c1000000-0000-0000-0000-0000000000a1';
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a question was removed from a paper pupils had sat';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  RESET ROLE;
+END $$;
+
+-- Sync grace: answers queued offline still land shortly after the deadline,
+-- and not after the grace has run out.
+DO $$
+DECLARE _id uuid; r jsonb;
+BEGIN
+  PERFORM set_config('test.uid', 'dbbbbbbb-0000-0000-0000-00000000000b', true);
+  SET LOCAL ROLE authenticated;
+  _id := public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a2');
+  RESET ROLE;
+  UPDATE cbt_attempts SET deadline_at = now() - interval '1 minute' WHERE id = _id;
+  SET LOCAL ROLE authenticated;
+  r := public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"b","seq":1}]');
+  PERFORM public.assert(r->>'status' = 'in_progress', 'an answer synced inside the grace period was refused');
+  RESET ROLE;
+  UPDATE cbt_attempts SET deadline_at = now() - interval '10 minutes' WHERE id = _id;
+  SET LOCAL ROLE authenticated;
+  r := public.cbt_save_answers(_id, '[{"question_id":"c0000000-0000-0000-0000-0000000000a1","option_id":"a","seq":2}]');
+  PERFORM public.assert(r->>'status' = 'submitted', 'an answer synced after the grace period was accepted');
+  PERFORM public.assert(public.cbt_attempt_paper(_id)->'answers'->>'c0000000-0000-0000-0000-0000000000a1' = 'b',
+    'a late answer overwrote the one given in time');
+  PERFORM public.assert((public.cbt_attempt_paper(_id)->>'score')::numeric = 2,
+    'a practice test did not show its score');
+  RESET ROLE;
+END $$;
+
+-- More time: the class's teacher can give it, a teacher of another class cannot.
+DO $$
+DECLARE _id uuid;
+BEGIN
+  PERFORM set_config('test.uid', 'dbbbbbbb-0000-0000-0000-00000000000b', true);
+  SET LOCAL ROLE authenticated;
+  _id := public.cbt_start_attempt('c1000000-0000-0000-0000-0000000000a2');
+  PERFORM set_config('test.uid', 'deeeeeee-0000-0000-0000-00000000000e', true);
+  BEGIN
+    PERFORM public.cbt_extend_attempt(_id, 10);
+    RAISE EXCEPTION 'RLS ASSERTION FAILED: a teacher extended a sitting in a class they do not teach';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('test.uid', 'd1000000-0000-0000-0000-000000000001', true);
+  PERFORM public.assert(public.cbt_extend_attempt(_id, 10) > now() + interval '15 minutes',
+    'the class''s teacher could not extend a sitting');
+  RESET ROLE;
+END $$;
+
+-- ---------------------------------------------------------------------------
 -- Scores: each per-user check runs once per query, and nobody's reach changes
 -- ---------------------------------------------------------------------------
 -- The score policies called is_self_service_role(auth.uid()) and five siblings

@@ -53,6 +53,10 @@ const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const SchoolProfile = lazy(() => import("./pages/SchoolProfile"));
 const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
 const StudentPortal = lazy(() => import("./pages/StudentPortal"));
+const MyTests = lazy(() => import("./pages/student/MyTests"));
+const SitTest = lazy(() => import("./pages/student/SitTest"));
+const Cbt = lazy(() => import("./pages/Cbt"));
+const CbtTestDetail = lazy(() => import("./pages/CbtTestDetail"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 const MessageDelivery = lazy(() => import("./pages/MessageDelivery"));
@@ -162,6 +166,8 @@ function AppRoutes() {
           <Route path="/student/results" element={withLayout(<MyResults />)} />
           <Route path="/student/attendance" element={withLayout(<MyAttendance />)} />
           <Route path="/student/timetable" element={withLayout(<MyTimetable />)} />
+          <Route path="/student/tests" element={withLayout(<MyTests />)} />
+          <Route path="/student/tests/:attemptId" element={withLayout(<SitTest />)} />
           <Route path="/timetable" element={withLayout(<Timetable />)} />
           <Route path="/notifications" element={withLayout(<NotificationHistory />)} />
           <Route path="/group-overview" element={withLayout(<ProprietorDashboard />)} />
@@ -170,6 +176,8 @@ function AppRoutes() {
           <Route path="/performance" element={withLayout(<Performance />)} />
           <Route path="/exams/term-report" element={withLayout(<TermReport />)} />
           <Route path="/exams/:id" element={withLayout(<ExamDetail />)} />
+          <Route path="/cbt" element={withLayout(<Cbt />)} />
+          <Route path="/cbt/:id" element={withLayout(<CbtTestDetail />)} />
           <Route path="/announcements" element={withLayout(<Announcements />)} />
           <Route path="/events" element={withLayout(<Events />)} />
           <Route path="/transport" element={withLayout(<Transport />)} />
