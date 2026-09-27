@@ -648,30 +648,24 @@ export type Database = {
       }
       classes: {
         Row: {
-          arm: string | null
           created_at: string
           id: string
-          level_name: string | null
           level_order: number | null
           name: string
           school_id: string
           section: Database["public"]["Enums"]["school_section"] | null
         }
         Insert: {
-          arm?: string | null
           created_at?: string
           id?: string
-          level_name?: string | null
           level_order?: number | null
           name: string
           school_id: string
           section?: Database["public"]["Enums"]["school_section"] | null
         }
         Update: {
-          arm?: string | null
           created_at?: string
           id?: string
-          level_name?: string | null
           level_order?: number | null
           name?: string
           school_id?: string
@@ -1114,7 +1108,6 @@ export type Database = {
           name: string
           school_id: string
           status: string
-          term_weight: number | null
           updated_at: string
           weight: number
         }
@@ -1129,7 +1122,6 @@ export type Database = {
           name: string
           school_id: string
           status?: string
-          term_weight?: number | null
           updated_at?: string
           weight?: number
         }
@@ -1144,7 +1136,6 @@ export type Database = {
           name?: string
           school_id?: string
           status?: string
-          term_weight?: number | null
           updated_at?: string
           weight?: number
         }
@@ -2450,58 +2441,6 @@ export type Database = {
           },
         ]
       }
-      result_releases: {
-        Row: {
-          academic_period_id: string
-          created_at: string
-          id: string
-          reason: string | null
-          released_by: string | null
-          school_id: string
-          student_id: string
-        }
-        Insert: {
-          academic_period_id: string
-          created_at?: string
-          id?: string
-          reason?: string | null
-          released_by?: string | null
-          school_id: string
-          student_id: string
-        }
-        Update: {
-          academic_period_id?: string
-          created_at?: string
-          id?: string
-          reason?: string | null
-          released_by?: string | null
-          school_id?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "result_releases_academic_period_id_fkey"
-            columns: ["academic_period_id"]
-            isOneToOne: false
-            referencedRelation: "academic_periods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "result_releases_school_id_fkey"
-            columns: ["school_id"]
-            isOneToOne: false
-            referencedRelation: "schools"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "result_releases_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       salary_change_requests: {
         Row: {
           approval_request_id: string | null
@@ -2816,7 +2755,6 @@ export type Database = {
           admissions_open: boolean
           admissions_slug: string | null
           created_at: string
-          custom_domain: string | null
           email: string | null
           id: string
           logo_url: string | null
@@ -2826,7 +2764,6 @@ export type Database = {
           primary_color: string | null
           tagline: string | null
           updated_at: string
-          withhold_results_until_paid: boolean
         }
         Insert: {
           accent_color?: string | null
@@ -2835,7 +2772,6 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
-          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2845,7 +2781,6 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
-          withhold_results_until_paid?: boolean
         }
         Update: {
           accent_color?: string | null
@@ -2854,7 +2789,6 @@ export type Database = {
           admissions_open?: boolean
           admissions_slug?: string | null
           created_at?: string
-          custom_domain?: string | null
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -2864,7 +2798,6 @@ export type Database = {
           primary_color?: string | null
           tagline?: string | null
           updated_at?: string
-          withhold_results_until_paid?: boolean
         }
         Relationships: [
           {
@@ -3345,52 +3278,6 @@ export type Database = {
           },
         ]
       }
-      subject_teachers: {
-        Row: {
-          class_id: string
-          created_at: string
-          id: string
-          staff_id: string
-          subject_id: string
-        }
-        Insert: {
-          class_id: string
-          created_at?: string
-          id?: string
-          staff_id: string
-          subject_id: string
-        }
-        Update: {
-          class_id?: string
-          created_at?: string
-          id?: string
-          staff_id?: string
-          subject_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subject_teachers_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subject_teachers_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subject_teachers_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       subjects: {
         Row: {
           created_at: string
@@ -3461,138 +3348,6 @@ export type Database = {
           student_limit?: number | null
         }
         Relationships: []
-      }
-      term_report_comments: {
-        Row: {
-          academic_period_id: string
-          body: string
-          id: string
-          kind: string
-          student_id: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          academic_period_id: string
-          body: string
-          id?: string
-          kind: string
-          student_id: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          academic_period_id?: string
-          body?: string
-          id?: string
-          kind?: string
-          student_id?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "term_report_comments_academic_period_id_fkey"
-            columns: ["academic_period_id"]
-            isOneToOne: false
-            referencedRelation: "academic_periods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "term_report_comments_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      term_report_ratings: {
-        Row: {
-          academic_period_id: string
-          domain: string
-          id: string
-          rating: number
-          student_id: string
-          trait: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          academic_period_id: string
-          domain: string
-          id?: string
-          rating: number
-          student_id: string
-          trait: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          academic_period_id?: string
-          domain?: string
-          id?: string
-          rating?: number
-          student_id?: string
-          trait?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "term_report_ratings_academic_period_id_fkey"
-            columns: ["academic_period_id"]
-            isOneToOne: false
-            referencedRelation: "academic_periods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "term_report_ratings_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      term_report_releases: {
-        Row: {
-          academic_period_id: string
-          class_id: string
-          id: string
-          released_at: string
-          released_by: string | null
-        }
-        Insert: {
-          academic_period_id: string
-          class_id: string
-          id?: string
-          released_at?: string
-          released_by?: string | null
-        }
-        Update: {
-          academic_period_id?: string
-          class_id?: string
-          id?: string
-          released_at?: string
-          released_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "term_report_releases_academic_period_id_fkey"
-            columns: ["academic_period_id"]
-            isOneToOne: false
-            referencedRelation: "academic_periods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "term_report_releases_class_id_fkey"
-            columns: ["class_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       timetable_entries: {
         Row: {
@@ -3973,14 +3728,6 @@ export type Database = {
         Args: { _name: string; _user_id: string }
         Returns: boolean
       }
-      can_enter_mark: {
-        Args: { _student_id: string; _subject_id: string }
-        Returns: boolean
-      }
-      can_mark_subject: {
-        Args: { _class_id: string; _subject_id: string }
-        Returns: boolean
-      }
       can_view_own_family_photo: { Args: { _name: string }; Returns: boolean }
       can_view_own_recognition_photo: {
         Args: { _name: string }
@@ -4043,8 +3790,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      holds_class_of: { Args: { _student_id: string }; Returns: boolean }
-      is_academic_manager: { Args: { _user_id: string }; Returns: boolean }
       is_my_child: { Args: { _student_id: string }; Returns: boolean }
       is_org_staff: { Args: { _user_id: string }; Returns: boolean }
       is_school_manager: { Args: { _user_id: string }; Returns: boolean }
@@ -4059,10 +3804,6 @@ export type Database = {
           monthly_limit: number
           used: number
         }[]
-      }
-      markable_subjects: {
-        Args: { _class_id: string; _subject_ids: string[] }
-        Returns: string[]
       }
       my_guardian_id: { Args: never; Returns: string }
       my_outbox_summary: {
@@ -4139,27 +3880,11 @@ export type Database = {
         }[]
       }
       school_id_prefix: { Args: { _school_id: string }; Returns: string }
-      split_class_arm: {
-        Args: { _name: string }
-        Returns: {
-          arm: string
-          level_name: string
-        }[]
-      }
       storage_path_school_id: { Args: { _name: string }; Returns: string }
-      student_org_id: { Args: { _student_id: string }; Returns: string }
       student_sits_exam: { Args: { _exam_id: string }; Returns: boolean }
       sweep_expired_demo_orgs: { Args: never; Returns: number }
       teaches_class: { Args: { _class_id: string }; Returns: boolean }
       teaches_student: { Args: { _student_id: string }; Returns: boolean }
-      term_report: {
-        Args: { _class_id: string; _period_id: string }
-        Returns: Json
-      }
-      term_report_released: {
-        Args: { _period_id: string; _student_id: string }
-        Returns: boolean
-      }
       verify_queue_drain_token: { Args: { t: string }; Returns: boolean }
       wall_recipient_names: {
         Args: { _school_id: string }
@@ -4167,14 +3892,6 @@ export type Database = {
           full_name: string
           person_id: string
           subject_type: string
-        }[]
-      }
-      withheld_results: {
-        Args: { _student_id: string }
-        Returns: {
-          academic_period_id: string
-          outstanding: number
-          period_name: string
         }[]
       }
     }
