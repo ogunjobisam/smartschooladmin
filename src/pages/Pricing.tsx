@@ -12,12 +12,12 @@ export default function Pricing() {
       <header className="border-b">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <Link to="/" className="flex items-center gap-2">
-            <Logo variant="mark" alt="" className="h-7 w-7" />
-            <span className="text-lg font-bold">SmartSchoolAdmin</span>
+            <Logo variant="mark" alt="SmartSchoolAdmin" className="h-7 w-7" />
+            <span className="hidden text-lg font-bold sm:inline">SmartSchoolAdmin</span>
           </Link>
-          <div className="flex gap-2">
-            <Button variant="ghost" asChild><Link to="/login">Sign in</Link></Button>
-            <Button asChild><Link to="/signup">Get started</Link></Button>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="ghost" size="sm" asChild><Link to="/login">Sign in</Link></Button>
+            <Button size="sm" asChild><Link to="/signup">Get started</Link></Button>
           </div>
         </div>
       </header>
