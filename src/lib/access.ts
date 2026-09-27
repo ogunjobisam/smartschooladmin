@@ -73,6 +73,11 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "group-overview", title: "Group Overview", url: "/group-overview", group: "operations" },
   { key: "reports", title: "Reports", url: "/reports", group: "operations" },
   { key: "audit-log", title: "Audit Log", url: "/audit-log", group: "operations" },
+  // A copy of the school's records, for the school to keep. Owners, school
+  // admins, principals and bursars only: it is everything at once, including
+  // families' contact details. Row-level security still limits each file to
+  // what that role can read, so a principal's payroll files come out empty.
+  { key: "data-export", title: "Data Export", url: "/settings/data-export", group: "system" },
 
   { key: "billing", title: "Billing", url: "/billing", group: "system" },
   { key: "school-profile", title: "School Profile", url: "/school-profile", group: "system" },
@@ -101,7 +106,7 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "fees", "invoices", "payments", "arrears",
     "announcements", "templates", "delivery", "events", "preferences",
     "transport", "approvals", "reports", "my-pay",
-    "billing", "school-profile", "settings", "users", "roles",
+    "billing", "school-profile", "settings", "users", "roles", "data-export",
   ],
   principal: [
     "dashboard", "staff-portal", "wall", "admissions", "students", "guardians", "staff", "attendance", "timetable", "exams", "performance", "achievements",
@@ -110,14 +115,14 @@ const NAV_KEY_BY_ROLE: Record<AppRole, string[]> = {
     "transport", "approvals", "reports", "my-pay",
     // A principal runs their own school's profile, classes, terms and ID
     // numbering without needing the group owner to do it for them.
-    "school-profile", "settings", "users", "roles",
+    "school-profile", "settings", "users", "roles", "data-export",
   ],
   bursar: [
     "dashboard", "wall", "admissions", "students", "guardians",
     "fees", "invoices", "payments", "arrears",
     "announcements", "events", "preferences",
     "transport", "payroll", "reports", "my-pay",
-    "users",
+    "users", "data-export",
   ],
   finance_officer: [
     "dashboard", "wall", "students",
