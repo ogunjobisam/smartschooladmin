@@ -107,7 +107,7 @@ Write the assertion, watch it fail, then fix the code.
 ```
 npm run typecheck        # tsc -b; plain `npx tsc --noEmit` checks nothing here
 npx vitest run
-npx eslint .             # 0 errors; 67 pre-existing warnings
+npx eslint .             # 0 errors
 npx vite build
 npm run test:migrations  # needs a Postgres; see scripts/check-migrations.sh
 ```
