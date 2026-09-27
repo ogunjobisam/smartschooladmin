@@ -73,11 +73,13 @@ export function InvoiceAdjustments({
 
   const request = useMutation({
     mutationFn: async () => {
+      // The function takes either an amount or a percent (the other is null),
+      // but the generated types mark both as required numbers.
       const { error } = await supabase.rpc("request_invoice_adjustment", {
         _invoice_id: invoiceId,
         _kind: kind,
-        _amount: mode === "amount" ? Math.round(number) : null,
-        _percent: mode === "percent" ? number : null,
+        _amount: (mode === "amount" ? Math.round(number) : null) as number,
+        _percent: (mode === "percent" ? number : null) as number,
         _reason: reason.trim(),
       });
       if (error) throw error;
